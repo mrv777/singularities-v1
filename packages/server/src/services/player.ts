@@ -45,6 +45,7 @@ export function mapPlayerRow(row: Record<string, unknown>) {
     lastActiveAt: row.last_active_at as string,
     createdAt: row.created_at as string,
     seasonId: (row.season_id as number) ?? null,
+    adaptationPeriodUntil: (row.adaptation_period_until as string) ?? null,
   };
 }
 
@@ -76,5 +77,30 @@ export function mapLoadoutRow(row: Record<string, unknown>) {
     loadoutType: row.loadout_type as string,
     slot: row.slot as number,
     moduleId: (row.module_id as string) ?? null,
+  };
+}
+
+export function mapTraitRow(row: Record<string, unknown>) {
+  return {
+    id: row.id as string,
+    playerId: row.player_id as string,
+    traitId: row.trait_id as string,
+  };
+}
+
+export function mapCombatLogRow(row: Record<string, unknown>) {
+  return {
+    id: row.id as string,
+    attackerId: row.attacker_id as string,
+    defenderId: row.defender_id as string,
+    attackerLoadout: (row.attacker_loadout as Record<string, unknown>) ?? {},
+    defenderLoadout: (row.defender_loadout as Record<string, unknown>) ?? {},
+    result: row.result as string,
+    damageDealt: (row.damage_dealt as Record<string, number>) ?? null,
+    creditsTransferred: row.credits_transferred as number,
+    reputationChange: row.reputation_change as number,
+    combatLog: (row.combat_log as unknown[]) ?? [],
+    xpAwarded: (row.xp_awarded as number) ?? 0,
+    createdAt: row.created_at as string,
   };
 }

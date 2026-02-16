@@ -1,5 +1,6 @@
 import { create } from "zustand";
-import type { ScanTarget, PlayerLoadout, PlayerModule } from "@singularities/shared";
+import type { ScanTarget, PlayerLoadout, PlayerModule, CombatLog } from "@singularities/shared";
+import type { ArenaOpponent, ArenaAttackResponse } from "@singularities/shared";
 
 interface GameState {
   // Scanner
@@ -16,6 +17,13 @@ interface GameState {
   // Modules
   ownedModules: PlayerModule[];
 
+  // Arena
+  arenaOpponents: ArenaOpponent[];
+  combatResult: ArenaAttackResponse | null;
+  combatLogs: CombatLog[];
+  isAttacking: boolean;
+  isEnteringArena: boolean;
+
   // Actions
   setScannedTargets: (targets: ScanTarget[], expiresAt: string) => void;
   clearScan: () => void;
@@ -26,6 +34,11 @@ interface GameState {
   setIsHacking: (v: boolean) => void;
   setLoadout: (loadout: PlayerLoadout[]) => void;
   setOwnedModules: (modules: PlayerModule[]) => void;
+  setArenaOpponents: (opponents: ArenaOpponent[]) => void;
+  setCombatResult: (result: ArenaAttackResponse | null) => void;
+  setCombatLogs: (logs: CombatLog[]) => void;
+  setIsAttacking: (v: boolean) => void;
+  setIsEnteringArena: (v: boolean) => void;
 }
 
 export const useGameStore = create<GameState>((set) => ({
@@ -37,6 +50,11 @@ export const useGameStore = create<GameState>((set) => ({
   isHacking: false,
   loadout: [],
   ownedModules: [],
+  arenaOpponents: [],
+  combatResult: null,
+  combatLogs: [],
+  isAttacking: false,
+  isEnteringArena: false,
 
   setScannedTargets: (targets, expiresAt) =>
     set({ scannedTargets: targets, scanExpiresAt: expiresAt, selectedTargetIndex: null, hackResult: null }),
@@ -49,4 +67,9 @@ export const useGameStore = create<GameState>((set) => ({
   setIsHacking: (v) => set({ isHacking: v }),
   setLoadout: (loadout) => set({ loadout }),
   setOwnedModules: (modules) => set({ ownedModules: modules }),
+  setArenaOpponents: (opponents) => set({ arenaOpponents: opponents }),
+  setCombatResult: (result) => set({ combatResult: result }),
+  setCombatLogs: (logs) => set({ combatLogs: logs }),
+  setIsAttacking: (v) => set({ isAttacking: v }),
+  setIsEnteringArena: (v) => set({ isEnteringArena: v }),
 }));

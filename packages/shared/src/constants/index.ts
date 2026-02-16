@@ -7,3 +7,5 @@ export * from "./modifiers.js";
 export * from "./maintenance.js";
 export * from "./scripts.js";
 export * from "./passive.js";
+export * from "./combat.js";
+export * from "./traits.js";

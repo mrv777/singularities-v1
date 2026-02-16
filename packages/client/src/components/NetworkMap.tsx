@@ -1,8 +1,8 @@
-import { LEVEL_UNLOCKS } from "@singularities/shared";
+import { LEVEL_UNLOCKS, SANDBOX_EXIT_LEVEL } from "@singularities/shared";
 import { NetworkNode, type NodeDef } from "./NetworkNode";
 import { NetworkConnections } from "./NetworkConnections";
 import { useUIStore } from "@/stores/ui";
-import { Lock } from "lucide-react";
+import { Lock, LogOut } from "lucide-react";
 
 // Carefully positioned nodes on 800x600 viewport
 const NODES: NodeDef[] = [
@@ -20,10 +20,12 @@ const NODES: NodeDef[] = [
 interface NetworkMapProps {
   playerLevel: number;
   unlockedSystems?: string[];
+  isInSandbox?: boolean;
 }
 
-export function NetworkMap({ playerLevel, unlockedSystems }: NetworkMapProps) {
+export function NetworkMap({ playerLevel, unlockedSystems, isInSandbox }: NetworkMapProps) {
   const openModal = useUIStore((s) => s.openModal);
+  const showSandboxExit = isInSandbox && playerLevel >= SANDBOX_EXIT_LEVEL;
 
   return (
     <>
@@ -46,6 +48,19 @@ export function NetworkMap({ playerLevel, unlockedSystems }: NetworkMapProps) {
           ))}
         </svg>
       </div>
+
+      {/* Sandbox Exit Indicator */}
+      {showSandboxExit && (
+        <div className="w-full max-w-3xl mx-auto flex justify-center mt-2">
+          <button
+            onClick={() => openModal("sandbox_exit")}
+            className="flex items-center gap-2 px-4 py-2 border border-cyber-yellow/50 text-cyber-yellow rounded text-xs hover:bg-cyber-yellow/10 transition-colors animate-pulse"
+          >
+            <LogOut size={12} />
+            EXIT SANDBOX — Enter the live network
+          </button>
+        </div>
+      )}
 
       {/* Mobile list fallback */}
       <div className="sm:hidden space-y-2">

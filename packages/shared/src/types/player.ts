@@ -20,6 +20,7 @@ export interface Player {
   lastActiveAt: string;
   createdAt: string;
   seasonId: number | null;
+  adaptationPeriodUntil: string | null;
 }
 
 export type SystemType =

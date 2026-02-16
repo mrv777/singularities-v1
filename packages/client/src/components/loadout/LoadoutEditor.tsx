@@ -16,7 +16,7 @@ export function LoadoutEditor() {
 
   useEffect(() => {
     if (open) {
-      api.getLoadouts().then((r) => {
+      api.getLoadoutsByType("infiltration").then((r) => {
         setLoadout(r.loadout);
         const slots = [1, 2, 3].map((s) => {
           const entry = r.loadout.find((l) => l.slot === s);

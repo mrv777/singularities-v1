@@ -7,8 +7,11 @@ import {
   mapSystemRow,
   mapModuleRow,
   mapLoadoutRow,
+  mapTraitRow,
 } from "../services/player.js";
 import { STARTING_RESOURCES, getUnlockedSystems, SANDBOX_EXIT_LEVEL } from "@singularities/shared";
+import { withTransaction } from "../db/pool.js";
+import { getCarryoverForWallet, processRebirth } from "../services/death.js";
 import { computeSystemHealth } from "../services/maintenance.js";
 import { getActiveModifierEffects, getTodayModifier } from "../services/modifiers.js";
 import { materializePassiveIncome } from "../services/passive.js";
@@ -21,7 +24,7 @@ export async function playerRoutes(app: FastifyInstance) {
     async (request, reply) => {
       const { sub: playerId } = request.user as AuthPayload;
 
-      const [playerResult, systemsResult, modulesResult, loadoutsResult] =
+      const [playerResult, systemsResult, modulesResult, loadoutsResult, traitsResult] =
         await Promise.all([
           query("SELECT * FROM players WHERE id = $1", [playerId]),
           query("SELECT * FROM player_systems WHERE player_id = $1", [
@@ -31,6 +34,9 @@ export async function playerRoutes(app: FastifyInstance) {
             playerId,
           ]),
           query("SELECT * FROM player_loadouts WHERE player_id = $1", [
+            playerId,
+          ]),
+          query("SELECT * FROM player_traits WHERE player_id = $1", [
             playerId,
           ]),
         ]);
@@ -67,6 +73,7 @@ export async function playerRoutes(app: FastifyInstance) {
         systems: systemsResult.rows.map((r) => mapSystemRow(computeSystemHealth(r, modifierEffects))),
         modules: modulesResult.rows.map(mapModuleRow),
         loadouts: loadoutsResult.rows.map(mapLoadoutRow),
+        traits: traitsResult.rows.map(mapTraitRow),
         unlockedSystems: getUnlockedSystems(player.level, player.isInSandbox),
         passiveIncome,
         activeModifier,
@@ -128,17 +135,29 @@ export async function playerRoutes(app: FastifyInstance) {
         });
       }
 
+      const wasDead = !(existing.rows[0].is_alive as boolean);
+
       // Generate placeholder mint
       const mintAddress = `mock_mint_${wallet.slice(0, 8)}_${Date.now()}`;
 
-      // Update player
+      // Update player — includes full state reset (harmless for fresh, necessary for rebirth)
       await query(
         `UPDATE players
          SET ai_name = $2,
              mint_address = $3,
              credits = $4,
              data = $5,
-             processing_power = $6
+             processing_power = $6,
+             is_alive = true,
+             level = 1,
+             xp = 0,
+             reputation = 0,
+             alignment = 0,
+             heat_level = 0,
+             is_in_sandbox = true,
+             in_pvp_arena = false,
+             energy = 100,
+             energy_updated_at = NOW()
          WHERE id = $1`,
         [
           playerId,
@@ -150,14 +169,44 @@ export async function playerRoutes(app: FastifyInstance) {
         ]
       );
 
-      // Create default infiltration loadout (3 empty slots)
-      for (let slot = 1; slot <= 3; slot++) {
+      // On rebirth: reset systems, clear stale data before re-creating loadouts
+      if (wasDead) {
         await query(
-          `INSERT INTO player_loadouts (player_id, loadout_type, slot)
-           VALUES ($1, 'infiltration', $2)
-           ON CONFLICT (player_id, loadout_type, slot) DO NOTHING`,
-          [playerId, slot]
+          `UPDATE player_systems SET health = 100, status = 'OPTIMAL', updated_at = NOW() WHERE player_id = $1`,
+          [playerId]
         );
+        await query(
+          `DELETE FROM player_modules WHERE player_id = $1`,
+          [playerId]
+        );
+        await query(
+          `DELETE FROM player_traits WHERE player_id = $1`,
+          [playerId]
+        );
+        await query(
+          `UPDATE player_loadouts SET module_id = NULL WHERE player_id = $1`,
+          [playerId]
+        );
+      }
+
+      // Create default loadouts for all 3 types (3 empty slots each)
+      for (const loadoutType of ["infiltration", "attack", "defense"]) {
+        for (let slot = 1; slot <= 3; slot++) {
+          await query(
+            `INSERT INTO player_loadouts (player_id, loadout_type, slot)
+             VALUES ($1, $2, $3)
+             ON CONFLICT (player_id, loadout_type, slot) DO NOTHING`,
+            [playerId, loadoutType, slot]
+          );
+        }
+      }
+
+      // Check for wallet carryover (rebirth after death)
+      const carryover = await getCarryoverForWallet(wallet);
+      if (carryover) {
+        await withTransaction(async (client) => {
+          await processRebirth(playerId, wallet, client);
+        });
       }
 
       const updated = await query("SELECT * FROM players WHERE id = $1", [

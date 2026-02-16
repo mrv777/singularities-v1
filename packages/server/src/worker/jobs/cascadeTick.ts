@@ -2,6 +2,7 @@ import { query, withTransaction } from "../../db/pool.js";
 import { acquireLock, releaseLock } from "../lock.js";
 import { getActiveModifierEffects } from "../../services/modifiers.js";
 import { computeSystemHealth } from "../../services/maintenance.js";
+import { checkDeath } from "../../services/death.js";
 import {
   SYSTEM_ADJACENCY,
   CASCADE_THRESHOLD,
@@ -35,6 +36,8 @@ export async function runCascadeTick(): Promise<void> {
 
     for (const { player_id: playerId } of playersResult.rows) {
       await processCascadeForPlayer(playerId as string, effects);
+      // Check if cascade caused enough corruption for death
+      await checkDeath(playerId as string);
     }
   } finally {
     await releaseLock(LOCK_KEY, token);

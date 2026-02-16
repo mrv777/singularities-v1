@@ -38,7 +38,7 @@ export function ScannerModal() {
   // Load loadout & modules when scanner opens
   useEffect(() => {
     if (open) {
-      api.getLoadouts().then((r) => setLoadout(r.loadout)).catch(() => {});
+      api.getLoadoutsByType("infiltration").then((r) => setLoadout(r.loadout)).catch(() => {});
       api.getModules().then((r) => setOwnedModules(r.owned)).catch(() => {});
     }
   }, [open, setLoadout, setOwnedModules]);

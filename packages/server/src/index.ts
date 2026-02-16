@@ -13,6 +13,8 @@ import { loadoutRoutes } from "./routes/loadouts.js";
 import { modifierRoutes } from "./routes/modifiers.js";
 import { maintenanceRoutes } from "./routes/maintenance.js";
 import { scriptRoutes } from "./routes/scripts.js";
+import { arenaRoutes } from "./routes/arena.js";
+import { securityRoutes } from "./routes/security.js";
 import { startWorker, stopWorker } from "./worker/index.js";
 
 const app = Fastify({
@@ -53,6 +55,8 @@ await app.register(loadoutRoutes);
 await app.register(modifierRoutes);
 await app.register(maintenanceRoutes);
 await app.register(scriptRoutes);
+await app.register(arenaRoutes);
+await app.register(securityRoutes);
 
 // Start
 try {

@@ -24,6 +24,13 @@ import type {
   ScriptCreateRequest,
   ScriptListResponse,
   PlayerScript,
+  ArenaAvailableResponse,
+  ArenaEnterResponse,
+  ArenaAttackRequest,
+  ArenaAttackResponse,
+  ArenaCombatLogsResponse,
+  SecurityOverviewResponse,
+  LoadoutType,
 } from "@singularities/shared";
 
 const API_BASE = "/api";
@@ -196,6 +203,43 @@ class ApiClient {
   deleteScript(scriptId: string) {
     return this.fetch<{ success: boolean }>(`/scripts/${scriptId}`, {
       method: "DELETE",
+    });
+  }
+
+  // Arena
+  getArenaOpponents() {
+    return this.fetch<ArenaAvailableResponse>("/arena/available");
+  }
+
+  enterArena() {
+    return this.fetch<ArenaEnterResponse>("/arena/enter", { method: "POST" });
+  }
+
+  attackPlayer(data: ArenaAttackRequest) {
+    return this.fetch<ArenaAttackResponse>("/arena/attack", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  getCombatLogs() {
+    return this.fetch<ArenaCombatLogsResponse>("/arena/combat-logs");
+  }
+
+  // Security
+  getSecurityOverview() {
+    return this.fetch<SecurityOverviewResponse>("/security/overview");
+  }
+
+  // Loadouts by type
+  getLoadoutsByType(type: LoadoutType) {
+    return this.fetch<LoadoutResponse>(`/loadouts?type=${type}`);
+  }
+
+  updateLoadoutByType(type: LoadoutType, slots: [string | null, string | null, string | null]) {
+    return this.fetch<LoadoutUpdateResponse>("/loadouts", {
+      method: "PUT",
+      body: JSON.stringify({ type, slots }),
     });
   }
 }

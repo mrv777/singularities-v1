@@ -8,6 +8,10 @@ import { LoadoutEditor } from "@/components/loadout/LoadoutEditor";
 import { ModifierDetailModal } from "@/components/ModifierDetailModal";
 import { SystemStatusModal } from "@/components/maintenance/SystemStatusModal";
 import { ScriptManagerModal } from "@/components/scripts/ScriptManagerModal";
+import { ArenaModal } from "@/components/arena/ArenaModal";
+import { SecurityCenterModal } from "@/components/security/SecurityCenterModal";
+import { SandboxExitModal } from "@/components/SandboxExitModal";
+import { DeathScreen } from "@/components/death/DeathScreen";
 import { useState } from "react";
 import { api } from "@/lib/api";
 import { useQueryClient } from "@tanstack/react-query";
@@ -88,7 +92,8 @@ function RegistrationForm() {
 }
 
 function GamePage() {
-  const { isAuthenticated, player } = useAuthStore();
+  const { isAuthenticated, player, setPlayer } = useAuthStore();
+  const queryClient = useQueryClient();
 
   if (!isAuthenticated) {
     return <Navigate to="/" />;
@@ -97,6 +102,20 @@ function GamePage() {
   // Show registration if no mint address
   if (player && !player.mintAddress) {
     return <RegistrationForm />;
+  }
+
+  // Death screen
+  if (player && !player.isAlive) {
+    return (
+      <DeathScreen
+        aiName={player.aiName}
+        onRestart={() => {
+          // Clear mint address to show registration form for rebirth
+          setPlayer({ ...player, mintAddress: null });
+          queryClient.invalidateQueries({ queryKey: ["player"] });
+        }}
+      />
+    );
   }
 
   return (
@@ -112,7 +131,10 @@ function GamePage() {
         </p>
       </div>
 
-      <NetworkMap playerLevel={player?.level ?? 1} />
+      <NetworkMap
+        playerLevel={player?.level ?? 1}
+        isInSandbox={player?.isInSandbox}
+      />
 
       {/* Modals */}
       <ScannerModal />
@@ -121,6 +143,9 @@ function GamePage() {
       <ModifierDetailModal />
       <SystemStatusModal />
       <ScriptManagerModal />
+      <ArenaModal />
+      <SecurityCenterModal />
+      <SandboxExitModal />
     </motion.div>
   );
 }

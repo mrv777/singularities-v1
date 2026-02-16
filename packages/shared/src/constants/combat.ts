@@ -1,0 +1,66 @@
+// PvP Combat Constants
+
+export const PVP_ENERGY_COST = 25;
+
+// Daily damage cap: 240 HP total (40% of 600 total HP across 6 systems at 100 each)
+export const PVP_DAILY_DAMAGE_CAP = 240;
+
+// Max attacks a player can receive per day
+export const PVP_MAX_ATTACKS_RECEIVED = 3;
+
+// Matchmaking: opponent must be within ±5 levels
+export const PVP_LEVEL_RANGE = 5;
+
+// Win chance calculation: 50% + (attackPower - defensePower) / scaleFactor
+export const PVP_WIN_CHANCE_MIN = 15;
+export const PVP_WIN_CHANCE_MAX = 85;
+export const PVP_WIN_CHANCE_SCALE = 50;
+
+// Winner rewards (scaled by defender level)
+export const PVP_REWARD_CREDITS_MIN = 100;
+export const PVP_REWARD_CREDITS_MAX = 200;
+export const PVP_REWARD_REPUTATION_MIN = 20;
+export const PVP_REWARD_REPUTATION_MAX = 30;
+export const PVP_REWARD_XP = 50;
+
+// Loser damage: 10-20% per system, 1-2 systems affected
+export const PVP_LOSER_DAMAGE_MIN_PCT = 10;
+export const PVP_LOSER_DAMAGE_MAX_PCT = 20;
+export const PVP_LOSER_SYSTEMS_MIN = 1;
+export const PVP_LOSER_SYSTEMS_MAX = 2;
+
+// Default defense power when no loadout configured
+export const PVP_DEFAULT_DEFENSE_POWER = 5;
+
+// Combat narrative templates
+export const COMBAT_ATTACK_PHRASES = [
+  "launches a neural spike at",
+  "deploys exploit chain against",
+  "initiates packet flood on",
+  "fires quantum crack at",
+  "unleashes data barrage on",
+];
+
+export const COMBAT_DEFEND_PHRASES = [
+  "raises firewall barriers",
+  "deploys countermeasure protocols",
+  "activates shield matrix",
+  "engages redundancy buffers",
+  "reroutes through backup systems",
+];
+
+export const COMBAT_HIT_PHRASES = [
+  "breaches outer defenses",
+  "penetrates security layer",
+  "overloads target subsystem",
+  "corrupts data pathway",
+  "disrupts neural link",
+];
+
+export const COMBAT_MISS_PHRASES = [
+  "deflected by defensive matrix",
+  "absorbed by firewall",
+  "neutralized by countermeasures",
+  "evaded via ghost protocol",
+  "blocked by redundancy layer",
+];

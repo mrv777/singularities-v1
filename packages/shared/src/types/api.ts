@@ -1,5 +1,6 @@
-import type { Player, PlayerSystem, PlayerModule, PlayerLoadout, PlayerScript } from "./player.js";
-import type { ScanTarget, ModuleDefinition, ModifierDefinition } from "../constants/index.js";
+import type { Player, PlayerSystem, PlayerModule, PlayerLoadout, PlayerScript, PlayerTrait, LoadoutType } from "./player.js";
+import type { CombatLog } from "./combat.js";
+import type { ScanTarget, ModuleDefinition, ModifierDefinition, GeneticTrait } from "../constants/index.js";
 
 // Auth
 export interface AuthChallengeRequest {
@@ -28,6 +29,7 @@ export interface PlayerResponse {
   systems: PlayerSystem[];
   modules: PlayerModule[];
   loadouts: PlayerLoadout[];
+  traits: PlayerTrait[];
   unlockedSystems: string[];
   passiveIncome: { credits: number; data: number } | null;
   activeModifier: ModifierDefinition | null;
@@ -95,11 +97,16 @@ export interface LoadoutResponse {
 }
 
 export interface LoadoutUpdateRequest {
+  type?: LoadoutType;
   slots: [string | null, string | null, string | null];
 }
 
 export interface LoadoutUpdateResponse {
   loadout: PlayerLoadout[];
+}
+
+export interface LoadoutAllResponse {
+  loadouts: PlayerLoadout[];
 }
 
 // Health
@@ -141,6 +148,75 @@ export interface ScriptCreateRequest {
 
 export interface ScriptListResponse {
   scripts: PlayerScript[];
+}
+
+// Arena (PvP)
+export interface ArenaOpponent {
+  id: string;
+  aiName: string;
+  level: number;
+  reputation: number;
+  playstyle: string;
+}
+
+export interface ArenaAvailableResponse {
+  opponents: ArenaOpponent[];
+  isInArena: boolean;
+  isPvpHours: boolean;
+}
+
+export interface ArenaEnterResponse {
+  success: boolean;
+  player: Player;
+}
+
+export interface ArenaAttackRequest {
+  targetId: string;
+}
+
+export interface ArenaAttackResponse {
+  result: "attacker_win" | "defender_win";
+  narrative: string[];
+  rewards?: {
+    credits: number;
+    reputation: number;
+    xp: number;
+  };
+  damage?: {
+    systems: Array<{ systemType: string; damage: number }>;
+  };
+  player: Player;
+  combatLog: CombatLog;
+}
+
+export interface ArenaCombatLogsResponse {
+  logs: CombatLog[];
+}
+
+// Security Center
+export interface SecurityOverviewResponse {
+  defenseLoadout: PlayerLoadout[];
+  recentAttacks: CombatLog[];
+  heatLevel: number;
+  systemHealthSummary: Array<{ systemType: string; health: number; status: string }>;
+}
+
+// Death & Rebirth
+export interface DeathResponse {
+  guaranteedModule: string | null;
+  recoveredModules: string[];
+  deathCount: number;
+}
+
+export interface RebirthResponse {
+  player: Player;
+  traits: PlayerTrait[];
+  recoveredModules: string[];
+}
+
+// Traits
+export interface PlayerTraitResponse {
+  traits: Array<PlayerTrait & { definition: GeneticTrait }>;
 }
 
 // Generic error
