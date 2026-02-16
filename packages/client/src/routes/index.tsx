@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useAuthStore } from "@/stores/auth";
+import { api } from "@/lib/api";
 import { motion } from "framer-motion";
 
 export const Route = createFileRoute("/")({
@@ -25,6 +26,27 @@ function HomePage() {
           A competitive cyberpunk idle/strategy game. Expand your AI.
           Infiltrate global systems. Become the dominant intelligence.
         </p>
+
+        {import.meta.env.DEV && !isAuthenticated && (
+          <motion.button
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.5 }}
+            onClick={() => {
+              const DEV_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIzODg0N2E1Yi0xZjFkLTQ0N2EtYmNiYS01NWY3YjlhZGNkMjYiLCJ3YWxsZXQiOiI4Zm9oRWFRZldmNFhHOUxjWGprM1pCYXJ4cUgzNzdud2lCdHNVQkR0MlNEdCIsImlhdCI6MTc3MTI4MDI5MiwiZXhwIjoxNzcxODg1MDkyfQ.34HJpXDV9PW9vKB4xnxW-STy_OiojAlzfvE3FwVdFvg";
+              api.setToken(DEV_TOKEN);
+              api.getMe().then(({ player }) => {
+                useAuthStore.getState().setPlayer(player);
+              }).catch((err) => {
+                console.error("Dev login failed:", err);
+                api.setToken(null);
+              });
+            }}
+            className="mb-6 px-4 py-2 border border-cyber-amber/50 text-cyber-amber text-xs rounded hover:bg-cyber-amber/10 transition-colors"
+          >
+            DEV LOGIN
+          </motion.button>
+        )}
 
         {isAuthenticated && player ? (
           <motion.div

@@ -11,6 +11,7 @@ import { ScriptManagerModal } from "@/components/scripts/ScriptManagerModal";
 import { ArenaModal } from "@/components/arena/ArenaModal";
 import { SecurityCenterModal } from "@/components/security/SecurityCenterModal";
 import { SandboxExitModal } from "@/components/SandboxExitModal";
+import { NetStatsModal } from "@/components/stats/NetStatsModal";
 import { DeathScreen } from "@/components/death/DeathScreen";
 import { useState } from "react";
 import { api } from "@/lib/api";
@@ -145,6 +146,7 @@ function GamePage() {
       <ScriptManagerModal />
       <ArenaModal />
       <SecurityCenterModal />
+      <NetStatsModal />
       <SandboxExitModal />
     </motion.div>
   );

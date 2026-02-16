@@ -170,7 +170,7 @@ export async function executeHack(playerId: string, targetIndex: number) {
       detected = detectionRoll <= target.detectionChance;
 
       if (detected) {
-        const heatLevel = player.heatLevel as number;
+        const heatLevel = player.heat_level as number;
         const config = getHeatDamageConfig(heatLevel);
 
         // Apply damage to random systems

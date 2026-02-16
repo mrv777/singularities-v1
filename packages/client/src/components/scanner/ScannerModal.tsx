@@ -8,7 +8,7 @@ import { TargetCard } from "./TargetCard";
 import { LoadoutPreview } from "./LoadoutPreview";
 import { HackResultDisplay } from "./HackResult";
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 export function ScannerModal() {
   const activeModal = useUIStore((s) => s.activeModal);
@@ -33,6 +33,7 @@ export function ScannerModal() {
     setOwnedModules,
   } = useGameStore();
 
+  const [error, setError] = useState("");
   const open = activeModal === "scanner";
 
   // Load loadout & modules when scanner opens
@@ -45,6 +46,7 @@ export function ScannerModal() {
 
   const handleScan = async () => {
     setIsScanning(true);
+    setError("");
     try {
       const result = await api.scan();
       setScannedTargets(result.targets, result.expiresAt);
@@ -53,7 +55,7 @@ export function ScannerModal() {
       const me = await api.getMe();
       setPlayer(me.player);
     } catch (err: any) {
-      console.error("Scan failed:", err.message);
+      setError(err.message ?? "Scan failed");
     } finally {
       setIsScanning(false);
     }
@@ -63,6 +65,7 @@ export function ScannerModal() {
     if (selectedTargetIndex === null) return;
 
     setIsHacking(true);
+    setError("");
     try {
       const target = scannedTargets[selectedTargetIndex];
       const result = await api.hack({ targetIndex: target.index });
@@ -81,7 +84,13 @@ export function ScannerModal() {
       // Set hack result LAST — the calls above clear it
       setHackResult(result);
     } catch (err: any) {
-      console.error("Hack failed:", err.message);
+      const msg = err.message ?? "Hack failed";
+      // If scan expired, clear stale targets so user can re-scan
+      if (msg.includes("scan") || msg.includes("Scan")) {
+        setScannedTargets([], "");
+        selectTarget(null);
+      }
+      setError(msg);
     } finally {
       setIsHacking(false);
     }
@@ -99,6 +108,12 @@ export function ScannerModal() {
         />
       ) : (
         <div className="space-y-4">
+          {error && (
+            <div className="text-cyber-red text-xs text-center border border-cyber-red/30 rounded px-3 py-2 bg-cyber-red/5">
+              {error}
+            </div>
+          )}
+
           {/* Scan button */}
           {scannedTargets.length === 0 && (
             <div className="text-center py-8">
