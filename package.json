@@ -1,0 +1,16 @@
+{
+  "name": "singularities",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --filter client dev",
+    "dev:server": "pnpm --filter server dev",
+    "dev:all": "pnpm run --parallel dev dev:server",
+    "build": "pnpm --filter shared build && pnpm --filter server build && pnpm --filter client build",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "pnpm -r lint",
+    "db:migrate": "pnpm --filter server db:migrate"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
