@@ -2,7 +2,7 @@ import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { useAuthStore } from "@/stores/auth";
 import { Menu, ChevronDown } from "lucide-react";
 import { useUIStore } from "@/stores/ui";
-import { DAY_PHASE_HOURS } from "@singularities/shared";
+import { DAY_PHASE_HOURS, XP_THRESHOLDS, getXPForNextLevel } from "@singularities/shared";
 import { useState, useEffect } from "react";
 import { ModifierBadge } from "./ModifierBadge";
 
@@ -67,7 +67,26 @@ export function Header() {
           {/* Desktop resources */}
           <div className="hidden md:flex items-center gap-4 text-xs">
             <span className="text-cyber-green">{player.aiName}</span>
-            <span className="text-text-muted">LVL {player.level}</span>
+            <span className="text-text-muted flex items-center gap-1">
+              LVL {player.level}
+              {(() => {
+                const nextXP = getXPForNextLevel(player.level);
+                if (!nextXP) return null;
+                const prevXP = XP_THRESHOLDS[player.level - 1] ?? 0;
+                const progress = ((player.xp - prevXP) / (nextXP - prevXP)) * 100;
+                return (
+                  <span className="inline-flex items-center gap-1" title={`${player.xp} / ${nextXP} XP`}>
+                    <span className="inline-block w-16 h-1.5 bg-bg-primary rounded-full overflow-hidden">
+                      <span
+                        className="block h-full bg-cyber-magenta rounded-full transition-all"
+                        style={{ width: `${Math.max(0, Math.min(progress, 100))}%` }}
+                      />
+                    </span>
+                    <span className="text-[10px] text-text-muted">{player.xp}/{nextXP}</span>
+                  </span>
+                );
+              })()}
+            </span>
             <span className="text-cyber-amber">{player.credits} CR</span>
             <span className="text-cyber-cyan flex items-center gap-1">
               {player.energy}/{player.energyMax} EN
@@ -115,6 +134,11 @@ export function Header() {
             <div>
               <span className="text-text-muted">LVL</span>{" "}
               <span className="text-text-primary">{player.level}</span>
+              {(() => {
+                const nextXP = getXPForNextLevel(player.level);
+                if (!nextXP) return null;
+                return <span className="text-text-muted ml-1">({player.xp}/{nextXP} XP)</span>;
+              })()}
             </div>
             <div>
               <span className="text-text-muted">CR</span>{" "}
