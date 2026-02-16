@@ -1,6 +1,5 @@
-import { query, type TxClient } from "../db/pool.js";
+import { type TxClient } from "../db/pool.js";
 import {
-  MODULE_MAP,
   PVP_WIN_CHANCE_MIN,
   PVP_WIN_CHANCE_MAX,
   PVP_WIN_CHANCE_SCALE,
@@ -23,6 +22,9 @@ import {
   TRAIT_MAP,
   type LoadoutType,
 } from "@singularities/shared";
+import { resolveLoadoutStats } from "./stats.js";
+import { computeSystemHealth } from "./maintenance.js";
+import { getActiveModifierEffects } from "./modifiers.js";
 
 function randomInt(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -31,8 +33,6 @@ function randomInt(min: number, max: number): number {
 function pick<T>(arr: T[]): T {
   return arr[randomInt(0, arr.length - 1)];
 }
-
-type DbQuery = (text: string, params?: unknown[]) => Promise<{ rows: Record<string, unknown>[] }>;
 
 function getStatusForHealth(health: number): string {
   if (health <= SYSTEM_STATUS_THRESHOLDS.CORRUPTED.max) return "CORRUPTED";
@@ -43,37 +43,17 @@ function getStatusForHealth(health: number): string {
 
 /**
  * Get the total power of a player's loadout for a given type.
- * Sums hackPower for attack, defense for defense loadouts, plus level bonuses.
+ * Uses the shared stat resolution pipeline.
  */
 export async function getLoadoutPower(
   playerId: string,
   loadoutType: LoadoutType,
   client?: TxClient
 ): Promise<number> {
-  const dbQuery: DbQuery = client
-    ? (text, params) => client.query(text, params)
-    : (text, params) => query(text, params);
-
-  const res = await dbQuery(
-    `SELECT pm.module_id, pm.level FROM player_loadouts pl
-     JOIN player_modules pm ON pm.player_id = pl.player_id AND pm.module_id = pl.module_id
-     WHERE pl.player_id = $1 AND pl.loadout_type = $2`,
-    [playerId, loadoutType]
-  );
-
-  let power = 0;
+  const stats = await resolveLoadoutStats(playerId, loadoutType, client);
   const statKey = loadoutType === "defense" ? "defense" : "hackPower";
-
-  for (const mod of res.rows) {
-    const moduleId = mod.module_id as string;
-    const level = mod.level as number;
-    const def = MODULE_MAP[moduleId];
-    if (!def) continue;
-    const baseStat = (def.effects[statKey] ?? 0);
-    power += baseStat * level;
-  }
-
-  return power || PVP_DEFAULT_DEFENSE_POWER;
+  const raw = stats[statKey];
+  return raw || PVP_DEFAULT_DEFENSE_POWER;
 }
 
 /**
@@ -105,31 +85,25 @@ export async function getSystemHealthMultiplier(
   playerId: string,
   client?: TxClient
 ): Promise<number> {
-  const dbQuery: DbQuery = client
-    ? (text, params) => client.query(text, params)
-    : (text, params) => query(text, params);
-
-  const res = await dbQuery(
-    "SELECT health FROM player_systems WHERE player_id = $1",
-    [playerId]
-  );
-
-  if (res.rows.length === 0) return 1;
-  const avg = res.rows.reduce((sum, r) => sum + (r.health as number), 0) / res.rows.length;
-  return Math.max(0.1, avg / 100); // Floor at 10% so attacks aren't completely zero
+  const stats = await resolveLoadoutStats(playerId, "attack", client);
+  return stats.healthMultiplier;
 }
 
 /**
- * Generate combat narrative lines (3-5 rounds).
+ * Generate combat narrative lines with actual stat context.
  */
 export function generateCombatNarrative(
   attackerName: string,
   defenderName: string,
   rounds: number,
-  attackerWon: boolean
+  attackerWon: boolean,
+  finalAttack: number,
+  finalDefense: number,
+  winChance: number
 ): string[] {
   const lines: string[] = [];
   lines.push(`> PVP COMBAT INITIATED: ${attackerName} vs ${defenderName}`);
+  lines.push(`> Attack power: ${finalAttack} | Defense power: ${finalDefense} | Win chance: ${Math.round(winChance)}%`);
   lines.push(`> ---`);
 
   for (let i = 1; i <= rounds; i++) {
@@ -194,46 +168,42 @@ export async function resolveAttack(
   const defenderName = defender.ai_name as string;
   const defenderLevel = defender.level as number;
 
-  // Get loadout powers
-  const attackPower = await getLoadoutPower(attackerId, "attack", client);
-  const defensePower = await getLoadoutPower(defenderId, "defense", client);
+  // Resolve stats through shared pipeline (modules × level + traits + health)
+  const attackerStats = await resolveLoadoutStats(attackerId, "attack", client);
+  const defenderStats = await resolveLoadoutStats(defenderId, "defense", client);
 
-  // Get traits
-  const [attackerTraitsRes, defenderTraitsRes] = await Promise.all([
-    client.query("SELECT trait_id FROM player_traits WHERE player_id = $1", [attackerId]),
-    client.query("SELECT trait_id FROM player_traits WHERE player_id = $1", [defenderId]),
-  ]);
-  const attackerTraits = attackerTraitsRes.rows.map((r) => r.trait_id as string);
-  const defenderTraits = defenderTraitsRes.rows.map((r) => r.trait_id as string);
-
-  // Apply trait modifiers
-  const modifiedAttack = applyTraitModifiers(attackPower, "hackPower", attackerTraits);
-  const modifiedDefense = applyTraitModifiers(defensePower, "defense", defenderTraits);
-
-  // System health multiplier for attacker
-  const healthMult = await getSystemHealthMultiplier(attackerId, client);
-  const finalAttack = Math.round(modifiedAttack * healthMult);
+  const finalAttack = Math.round(attackerStats.hackPower * attackerStats.healthMultiplier)
+    || PVP_DEFAULT_DEFENSE_POWER;
+  const finalDefense = defenderStats.defense || PVP_DEFAULT_DEFENSE_POWER;
 
   // Calculate win chance
-  const rawChance = 50 + (finalAttack - modifiedDefense) / PVP_WIN_CHANCE_SCALE * 100;
+  const rawChance = 50 + (finalAttack - finalDefense) / PVP_WIN_CHANCE_SCALE * 100;
   const winChance = Math.max(PVP_WIN_CHANCE_MIN, Math.min(PVP_WIN_CHANCE_MAX, rawChance));
   const roll = randomInt(1, 100);
   const attackerWon = roll <= winChance;
 
-  // Generate narrative
+  // Generate narrative with actual power values
   const rounds = randomInt(3, 5);
-  const narrative = generateCombatNarrative(attackerName, defenderName, rounds, attackerWon);
+  const narrative = generateCombatNarrative(
+    attackerName, defenderName, rounds, attackerWon,
+    finalAttack, finalDefense, winChance
+  );
 
-  // Build combat log entries
+  // Build combat log entries reflecting actual combat math
   const combatLogEntries = [];
+  const totalDamageBudget = attackerWon ? finalAttack : finalDefense;
   for (let i = 1; i <= rounds; i++) {
+    // Distribute damage proportionally across rounds for transparency
+    const roundDamage = Math.round(totalDamageBudget / rounds);
     combatLogEntries.push({
       round: i,
       attackerAction: pick(COMBAT_ATTACK_PHRASES),
       defenderAction: pick(COMBAT_DEFEND_PHRASES),
-      damage: randomInt(5, 15),
+      damage: roundDamage,
       targetSystem: pick(SYSTEM_TYPES),
-      description: `Round ${i} of combat`,
+      description: attackerWon
+        ? `${attackerName} overpowers ${defenderName}'s defense (${finalAttack} vs ${finalDefense})`
+        : `${defenderName} holds against ${attackerName}'s attack (${finalDefense} vs ${finalAttack})`,
     });
   }
 
@@ -291,12 +261,15 @@ export async function resolveAttack(
 
 /**
  * Apply combat damage to a player's systems.
+ * Fix 3: Materializes degraded health before applying damage.
  */
 export async function applyCombatDamage(
   playerId: string,
   damageSystems: Array<{ systemType: string; damage: number }>,
   client: TxClient
 ): Promise<void> {
+  const modifierEffects = await getActiveModifierEffects();
+
   for (const { systemType, damage } of damageSystems) {
     const sysRes = await client.query(
       "SELECT * FROM player_systems WHERE player_id = $1 AND system_type = $2 FOR UPDATE",
@@ -304,7 +277,10 @@ export async function applyCombatDamage(
     );
     if (sysRes.rows.length === 0) continue;
 
-    const currentHealth = sysRes.rows[0].health as number;
+    // Materialize degraded health before applying combat damage
+    const computed = computeSystemHealth(sysRes.rows[0], modifierEffects);
+    const currentHealth = computed.health as number;
+
     const newHealth = Math.max(0, currentHealth - damage);
     const newStatus = getStatusForHealth(newHealth);
 

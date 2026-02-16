@@ -13,13 +13,23 @@ import {
   SCAN_TTL_SECONDS,
   getHeatDamageConfig,
   SYSTEM_TYPES,
+  SYSTEM_STATUS_THRESHOLDS,
   type SystemType,
 } from "@singularities/shared";
 import { computeEnergy, mapPlayerRow, mapSystemRow } from "./player.js";
 import { awardXP } from "./progression.js";
+import { resolveLoadoutStats } from "./stats.js";
+import { computeSystemHealth } from "./maintenance.js";
 
 function randomInt(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function getStatusForHealth(health: number): string {
+  if (health <= SYSTEM_STATUS_THRESHOLDS.CORRUPTED.max) return "CORRUPTED";
+  if (health <= SYSTEM_STATUS_THRESHOLDS.CRITICAL.max) return "CRITICAL";
+  if (health <= SYSTEM_STATUS_THRESHOLDS.DEGRADED.max) return "DEGRADED";
+  return "OPTIMAL";
 }
 
 const TARGET_NAME_PREFIXES = [
@@ -111,18 +121,9 @@ export async function executeHack(playerId: string, targetIndex: number) {
       throw { statusCode: 400, message: "Not enough energy to hack this target" };
     }
 
-    // Get loadout power
-    const loadoutRes = await client.query(
-      `SELECT pm.module_id, pm.level FROM player_loadouts pl
-       JOIN player_modules pm ON pm.player_id = pl.player_id AND pm.module_id = pl.module_id
-       WHERE pl.player_id = $1 AND pl.loadout_type = 'infiltration'`,
-      [playerId]
-    );
-
-    let loadoutPower = 0;
-    for (const mod of loadoutRes.rows) {
-      loadoutPower += (mod.level as number) * 5;
-    }
+    // Resolve full loadout stats (modules × level + traits + health multiplier)
+    const stats = await resolveLoadoutStats(playerId, "infiltration", client);
+    const effectiveHackPower = Math.round(stats.hackPower * stats.healthMultiplier);
 
     // Deduct energy
     const newEnergy = playerEnergy - energyCost;
@@ -131,8 +132,8 @@ export async function executeHack(playerId: string, targetIndex: number) {
       [playerId, newEnergy]
     );
 
-    // Success calculation
-    const baseChance = 50 + (loadoutPower - target.securityLevel);
+    // Success calculation: hackPower drives success chance
+    const baseChance = 50 + (effectiveHackPower - target.securityLevel);
     const successChance = Math.max(10, Math.min(95, baseChance));
     const roll = randomInt(1, 100);
     const success = roll <= successChance;
@@ -145,37 +146,51 @@ export async function executeHack(playerId: string, targetIndex: number) {
     let narrative = "";
 
     if (success) {
-      // Award resources
-      const r = target.rewards;
+      // Calculate rewards with module bonuses and daily modifier
+      const baseRewards = target.rewards;
+      const creditMultiplier = 1 + stats.creditBonus / 100;
+      const dataMultiplier = 1 + stats.dataBonus / 100;
+      const rewardModifier = stats.modifierEffects.hackRewardMultiplier ?? 1;
+
+      const finalCredits = Math.floor(baseRewards.credits * creditMultiplier * rewardModifier);
+      const finalData = Math.floor(baseRewards.data * dataMultiplier * rewardModifier);
+      const finalReputation = baseRewards.reputation;
+      const finalXp = Math.floor(baseRewards.xp * (stats.modifierEffects.xpGainMultiplier ?? 1));
+
       await client.query(
         `UPDATE players SET credits = credits + $2, data = data + $3, reputation = reputation + $4, heat_level = 0 WHERE id = $1`,
-        [playerId, r.credits, r.data, r.reputation]
+        [playerId, finalCredits, finalData, finalReputation]
       );
-      rewards = r;
+      rewards = { credits: finalCredits, data: finalData, reputation: finalReputation, xp: finalXp };
 
       // Award XP within the same transaction
-      const xpResult = await awardXP(playerId, r.xp, client);
+      const xpResult = await awardXP(playerId, finalXp, client);
       levelUp = xpResult.levelUp;
       newLevel = xpResult.newLevel;
 
       narrative = `> Infiltration of ${target.name} successful.\n` +
-        `> Security level ${target.securityLevel} breached.\n` +
-        `> Extracted: ${r.credits} CR, ${r.data} DATA\n` +
-        `> Reputation +${r.reputation}\n` +
+        `> Security level ${target.securityLevel} breached (hack power: ${effectiveHackPower}).\n` +
+        `> Extracted: ${finalCredits} CR, ${finalData} DATA\n` +
+        `> Reputation +${finalReputation}\n` +
         (levelUp ? `> LEVEL UP! Now level ${newLevel}\n` : "") +
         `> Connection terminated. No traces found.`;
     } else {
-      // Check detection
+      // Detection check: stealth + detectionReduction lower the chance
+      const stealthReduction = (stats.stealth + stats.detectionReduction) / 2;
+      const detectionModifier = stats.modifierEffects.detectionChanceMultiplier ?? 1;
+      const effectiveDetection = Math.max(5, Math.min(95,
+        (target.detectionChance - stealthReduction) * detectionModifier
+      ));
       const detectionRoll = randomInt(1, 100);
-      detected = detectionRoll <= target.detectionChance;
+      detected = detectionRoll <= effectiveDetection;
 
       if (detected) {
         const heatLevel = player.heat_level as number;
         const config = getHeatDamageConfig(heatLevel);
 
-        // Apply damage to random systems
+        // Fix 3: Materialize degraded health before applying damage
         const systemsRes = await client.query(
-          "SELECT * FROM player_systems WHERE player_id = $1",
+          "SELECT * FROM player_systems WHERE player_id = $1 FOR UPDATE",
           [playerId]
         );
         const systems = systemsRes.rows;
@@ -185,9 +200,13 @@ export async function executeHack(playerId: string, targetIndex: number) {
 
         const damageSystems: Array<{ systemType: string; damage: number }> = [];
         for (const sys of affected) {
+          // Materialize degraded health first
+          const computed = computeSystemHealth(sys, stats.modifierEffects);
+          const currentHealth = computed.health as number;
+
           const dmg = randomInt(config.minDamage, config.maxDamage);
-          const newHealth = Math.max(0, (sys.health as number) - dmg);
-          const newStatus = newHealth >= 75 ? "OPTIMAL" : newHealth >= 30 ? "DEGRADED" : newHealth > 0 ? "CRITICAL" : "CORRUPTED";
+          const newHealth = Math.max(0, currentHealth - dmg);
+          const newStatus = getStatusForHealth(newHealth);
           await client.query(
             `UPDATE player_systems SET health = $2, status = $3, updated_at = NOW() WHERE id = $1`,
             [sys.id, newHealth, newStatus]
@@ -204,14 +223,14 @@ export async function executeHack(playerId: string, targetIndex: number) {
         damage = { systems: damageSystems };
 
         narrative = `> Infiltration of ${target.name} FAILED.\n` +
-          `> DETECTED by security systems!\n` +
+          `> DETECTED by security systems! (detection: ${Math.round(effectiveDetection)}%)\n` +
           `> Countermeasures engaged — ${damageSystems.map(d => `${d.systemType}: -${d.damage}HP`).join(", ")}\n` +
           `> Heat level increased.\n` +
           `> Connection severed.`;
       } else {
         narrative = `> Infiltration of ${target.name} FAILED.\n` +
           `> Target security held. Hack unsuccessful.\n` +
-          `> Escaped undetected. No damage taken.\n` +
+          `> Escaped undetected (stealth: ${stats.stealth}). No damage taken.\n` +
           `> Connection terminated cleanly.`;
       }
     }

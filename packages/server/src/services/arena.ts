@@ -190,12 +190,32 @@ export async function executeAttack(attackerId: string, targetId: string) {
       );
       await awardXP(attackerId, xp, client);
 
-      // Damage defender's systems
+      // Enforce daily damage cap on defender before applying damage
       if (outcome.damage) {
-        await applyCombatDamage(targetId, outcome.damage.systems, client);
+        const damageKey = `pvp_damage_received:${targetId}:${dateKey}`;
+        const currentDamageStr = await redis.get(damageKey);
+        const currentDamage = currentDamageStr ? parseInt(currentDamageStr, 10) : 0;
+        const remainingAllowance = Math.max(0, PVP_DAILY_DAMAGE_CAP - currentDamage);
+
+        if (remainingAllowance > 0) {
+          // Clamp damage to remaining daily allowance
+          let totalPending = outcome.damage.systems.reduce((s, d) => s + d.damage, 0);
+          if (totalPending > remainingAllowance) {
+            const scale = remainingAllowance / totalPending;
+            for (const d of outcome.damage.systems) {
+              d.damage = Math.max(1, Math.round(d.damage * scale));
+            }
+          }
+          await applyCombatDamage(targetId, outcome.damage.systems, client);
+        } else {
+          // Cap reached — zero so logs/tracking/UI reflect reality
+          for (const d of outcome.damage.systems) {
+            d.damage = 0;
+          }
+        }
       }
     } else {
-      // Attacker loses: attacker takes damage
+      // Attacker loses: attacker takes damage (no cap for attackers — they chose to fight)
       if (outcome.damage) {
         await applyCombatDamage(attackerId, outcome.damage.systems, client);
       }
