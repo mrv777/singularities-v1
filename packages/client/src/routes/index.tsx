@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useAuthStore } from "@/stores/auth";
 import { motion } from "framer-motion";
 
@@ -8,6 +8,7 @@ export const Route = createFileRoute("/")({
 
 function HomePage() {
   const { isAuthenticated, player } = useAuthStore();
+  const navigate = useNavigate();
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-8rem)]">
@@ -45,6 +46,12 @@ function HomePage() {
                 )}
               </div>
             </div>
+            <button
+              onClick={() => navigate({ to: "/game" })}
+              className="mt-4 w-full py-2.5 border border-cyber-cyan text-cyber-cyan rounded hover:bg-cyber-cyan/10 transition-colors text-sm font-semibold tracking-wider"
+            >
+              ENTER NETWORK
+            </button>
           </motion.div>
         ) : (
           <motion.div

@@ -66,11 +66,10 @@ export function ScannerModal() {
     try {
       const target = scannedTargets[selectedTargetIndex];
       const result = await api.hack({ targetIndex: target.index });
-      setHackResult(result);
       setPlayer(result.player);
       queryClient.invalidateQueries({ queryKey: ["player"] });
 
-      // Remove the hacked target from local state
+      // Remove the hacked target from local state (this clears hackResult, so do it first)
       const remaining = scannedTargets.filter((_, i) => i !== selectedTargetIndex);
       if (remaining.length > 0) {
         setScannedTargets(remaining, useGameStore.getState().scanExpiresAt ?? "");
@@ -78,6 +77,9 @@ export function ScannerModal() {
         setScannedTargets([], "");
       }
       selectTarget(null);
+
+      // Set hack result LAST — the calls above clear it
+      setHackResult(result);
     } catch (err: any) {
       console.error("Hack failed:", err.message);
     } finally {

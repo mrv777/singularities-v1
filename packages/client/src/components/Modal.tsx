@@ -34,25 +34,33 @@ export function Modal({
             </Dialog.Overlay>
             <Dialog.Content asChild>
               <motion.div
-                className={`fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] ${maxWidth} -translate-x-1/2 -translate-y-1/2 border border-border-default bg-bg-surface rounded-lg border-glow-cyan overflow-hidden`}
-                initial={{ opacity: 0, y: 20, scale: 0.97 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 20, scale: 0.97 }}
+                className={`fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none`}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
                 transition={{ duration: 0.25, ease: "easeOut" }}
               >
-                <div className="flex items-center justify-between px-4 py-3 border-b border-border-default bg-bg-secondary">
-                  <Dialog.Title className="text-cyber-cyan text-sm font-semibold tracking-wider">
-                    {title}
-                  </Dialog.Title>
-                  <Dialog.Close asChild>
-                    <button className="text-text-muted hover:text-cyber-cyan transition-colors p-1">
-                      <X size={16} />
-                    </button>
-                  </Dialog.Close>
-                </div>
-                <div className="p-4 max-h-[70vh] overflow-y-auto">
-                  {children}
-                </div>
+                <motion.div
+                  className={`w-full ${maxWidth} border border-border-default bg-bg-surface rounded-lg border-glow-cyan overflow-hidden pointer-events-auto max-h-[calc(100vh-2rem)] flex flex-col`}
+                  initial={{ y: 20, scale: 0.97 }}
+                  animate={{ y: 0, scale: 1 }}
+                  exit={{ y: 20, scale: 0.97 }}
+                  transition={{ duration: 0.25, ease: "easeOut" }}
+                >
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-border-default bg-bg-secondary shrink-0">
+                    <Dialog.Title className="text-cyber-cyan text-sm font-semibold tracking-wider">
+                      {title}
+                    </Dialog.Title>
+                    <Dialog.Close asChild>
+                      <button className="text-text-muted hover:text-cyber-cyan transition-colors p-1">
+                        <X size={16} />
+                      </button>
+                    </Dialog.Close>
+                  </div>
+                  <div className="p-4 overflow-y-auto">
+                    {children}
+                  </div>
+                </motion.div>
               </motion.div>
             </Dialog.Content>
           </Dialog.Portal>
