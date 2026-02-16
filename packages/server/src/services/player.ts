@@ -1,6 +1,24 @@
 // Row mappers: snake_case DB rows → camelCase API shape
 // Used by both routes and services to avoid duplication
 
+import { ENERGY_BASE_REGEN_PER_HOUR } from "@singularities/shared";
+
+/**
+ * Compute current energy on read using calculate-on-read pattern.
+ * Returns the row with computed energy value.
+ */
+export function computeEnergy(row: Record<string, unknown>): Record<string, unknown> {
+  const storedEnergy = row.energy as number;
+  const energyMax = row.energy_max as number;
+  const updatedAt = new Date(row.energy_updated_at as string).getTime();
+  const now = Date.now();
+  const secondsElapsed = Math.max(0, (now - updatedAt) / 1000);
+  const regenPerSecond = ENERGY_BASE_REGEN_PER_HOUR / 3600;
+  const regenned = Math.floor(regenPerSecond * secondsElapsed);
+  const currentEnergy = Math.min(energyMax, storedEnergy + regenned);
+  return { ...row, energy: currentEnergy };
+}
+
 export function mapPlayerRow(row: Record<string, unknown>) {
   return {
     id: row.id as string,
@@ -45,5 +63,15 @@ export function mapModuleRow(row: Record<string, unknown>) {
     moduleId: row.module_id as string,
     level: row.level as number,
     purchasedAt: row.purchased_at as string,
+  };
+}
+
+export function mapLoadoutRow(row: Record<string, unknown>) {
+  return {
+    id: row.id as string,
+    playerId: row.player_id as string,
+    loadoutType: row.loadout_type as string,
+    slot: row.slot as number,
+    moduleId: (row.module_id as string) ?? null,
   };
 }

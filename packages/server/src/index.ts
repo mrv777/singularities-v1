@@ -7,6 +7,9 @@ import { redis } from "./db/redis.js";
 import { healthRoutes } from "./routes/health.js";
 import { authRoutes } from "./routes/auth.js";
 import { playerRoutes } from "./routes/player.js";
+import { scannerRoutes } from "./routes/scanner.js";
+import { moduleRoutes } from "./routes/modules.js";
+import { loadoutRoutes } from "./routes/loadouts.js";
 
 const app = Fastify({
   logger: {
@@ -40,6 +43,9 @@ declare module "@fastify/jwt" {
 await app.register(healthRoutes);
 await app.register(authRoutes);
 await app.register(playerRoutes);
+await app.register(scannerRoutes);
+await app.register(moduleRoutes);
+await app.register(loadoutRoutes);
 
 // Start
 try {

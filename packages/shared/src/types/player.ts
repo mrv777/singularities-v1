@@ -49,7 +49,7 @@ export interface PlayerModule {
   purchasedAt: string;
 }
 
-export type LoadoutType = "attack" | "defense";
+export type LoadoutType = "attack" | "defense" | "infiltration";
 
 export interface PlayerLoadout {
   id: string;

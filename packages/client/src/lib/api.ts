@@ -5,6 +5,17 @@ import type {
   AuthVerifyResponse,
   PlayerResponse,
   HealthResponse,
+  RegisterRequest,
+  RegisterResponse,
+  ScanResponse,
+  HackRequest,
+  HackResult,
+  ModulesResponse,
+  ModulePurchaseRequest,
+  ModulePurchaseResponse,
+  LoadoutResponse,
+  LoadoutUpdateRequest,
+  LoadoutUpdateResponse,
 } from "@singularities/shared";
 
 const API_BASE = "/api";
@@ -81,6 +92,50 @@ class ApiClient {
   // Player
   getMe() {
     return this.fetch<PlayerResponse>("/player/me");
+  }
+
+  // Registration
+  register(data: RegisterRequest) {
+    return this.fetch<RegisterResponse>("/players/register", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  // Scanner
+  scan() {
+    return this.fetch<ScanResponse>("/scanner/scan", { method: "POST" });
+  }
+
+  hack(data: HackRequest) {
+    return this.fetch<HackResult>("/scanner/hack", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  // Modules
+  getModules() {
+    return this.fetch<ModulesResponse>("/modules");
+  }
+
+  purchaseModule(data: ModulePurchaseRequest) {
+    return this.fetch<ModulePurchaseResponse>("/modules/purchase", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  // Loadouts
+  getLoadouts() {
+    return this.fetch<LoadoutResponse>("/loadouts");
+  }
+
+  updateLoadouts(data: LoadoutUpdateRequest) {
+    return this.fetch<LoadoutUpdateResponse>("/loadouts", {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
   }
 }
 
