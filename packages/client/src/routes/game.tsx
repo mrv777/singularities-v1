@@ -99,23 +99,23 @@ function GamePage() {
     return <Navigate to="/" />;
   }
 
-  // Show registration if no mint address
-  if (player && !player.mintAddress) {
-    return <RegistrationForm />;
-  }
-
-  // Death screen
+  // Death screen (check before mint — dead players also have null mintAddress)
   if (player && !player.isAlive) {
     return (
       <DeathScreen
         aiName={player.aiName}
         onRestart={() => {
-          // Clear mint address to show registration form for rebirth
-          setPlayer({ ...player, mintAddress: null });
+          // Optimistically mark alive locally so we transition to RegistrationForm
+          setPlayer({ ...player, isAlive: true, mintAddress: null });
           queryClient.invalidateQueries({ queryKey: ["player"] });
         }}
       />
     );
+  }
+
+  // Show registration if no mint address
+  if (player && !player.mintAddress) {
+    return <RegistrationForm />;
   }
 
   return (

@@ -55,7 +55,7 @@ export async function executeDeath(playerId: string, outerClient?: TxClient): Pr
 
     // Mark dead and clear mint so player can re-register for rebirth
     await client.query(
-      "UPDATE players SET is_alive = false, mint_address = NULL, ai_name = NULL WHERE id = $1",
+      "UPDATE players SET is_alive = false, mint_address = NULL WHERE id = $1",
       [playerId]
     );
 
