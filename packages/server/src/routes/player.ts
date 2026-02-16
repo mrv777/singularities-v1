@@ -8,7 +8,10 @@ import {
   mapModuleRow,
   mapLoadoutRow,
 } from "../services/player.js";
-import { STARTING_RESOURCES } from "@singularities/shared";
+import { STARTING_RESOURCES, getUnlockedSystems, SANDBOX_EXIT_LEVEL } from "@singularities/shared";
+import { computeSystemHealth } from "../services/maintenance.js";
+import { getActiveModifierEffects, getTodayModifier } from "../services/modifiers.js";
+import { materializePassiveIncome } from "../services/passive.js";
 
 export async function playerRoutes(app: FastifyInstance) {
   // Get current player profile (protected)
@@ -40,13 +43,33 @@ export async function playerRoutes(app: FastifyInstance) {
         });
       }
 
-      const row = computeEnergy(playerResult.rows[0]);
+      // Materialize passive income if last active > 5 min ago
+      const lastActive = new Date(playerResult.rows[0].last_active_at as string).getTime();
+      const fiveMinAgo = Date.now() - 5 * 60 * 1000;
+      const passiveIncome = lastActive < fiveMinAgo
+        ? await materializePassiveIncome(playerId)
+        : null;
+
+      // Re-read player if passive income was awarded (credits/data changed)
+      const finalPlayerResult = passiveIncome
+        ? await query("SELECT * FROM players WHERE id = $1", [playerId])
+        : playerResult;
+
+      const row = computeEnergy(finalPlayerResult.rows[0]);
+      const player = mapPlayerRow(row);
+      const [modifierEffects, activeModifier] = await Promise.all([
+        getActiveModifierEffects(),
+        getTodayModifier(),
+      ]);
 
       return {
-        player: mapPlayerRow(row),
-        systems: systemsResult.rows.map(mapSystemRow),
+        player,
+        systems: systemsResult.rows.map((r) => mapSystemRow(computeSystemHealth(r, modifierEffects))),
         modules: modulesResult.rows.map(mapModuleRow),
         loadouts: loadoutsResult.rows.map(mapLoadoutRow),
+        unlockedSystems: getUnlockedSystems(player.level, player.isInSandbox),
+        passiveIncome,
+        activeModifier,
       };
     }
   );
@@ -136,6 +159,53 @@ export async function playerRoutes(app: FastifyInstance) {
           [playerId, slot]
         );
       }
+
+      const updated = await query("SELECT * FROM players WHERE id = $1", [
+        playerId,
+      ]);
+
+      return { player: mapPlayerRow(computeEnergy(updated.rows[0])) };
+    }
+  );
+
+  // Exit sandbox mode
+  app.post(
+    "/api/players/exit-sandbox",
+    { preHandler: [authGuard] },
+    async (request, reply) => {
+      const { sub: playerId } = request.user as AuthPayload;
+
+      const result = await query("SELECT * FROM players WHERE id = $1", [
+        playerId,
+      ]);
+      if (result.rows.length === 0) {
+        return reply.code(404).send({
+          error: "Not Found",
+          message: "Player not found",
+          statusCode: 404,
+        });
+      }
+
+      const row = result.rows[0];
+      if (!(row.is_in_sandbox as boolean)) {
+        return reply.code(400).send({
+          error: "Bad Request",
+          message: "Player is not in sandbox mode",
+          statusCode: 400,
+        });
+      }
+
+      if ((row.level as number) < SANDBOX_EXIT_LEVEL) {
+        return reply.code(400).send({
+          error: "Bad Request",
+          message: `Must be level ${SANDBOX_EXIT_LEVEL} to exit sandbox`,
+          statusCode: 400,
+        });
+      }
+
+      await query("UPDATE players SET is_in_sandbox = false WHERE id = $1", [
+        playerId,
+      ]);
 
       const updated = await query("SELECT * FROM players WHERE id = $1", [
         playerId,

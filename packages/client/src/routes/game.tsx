@@ -5,6 +5,9 @@ import { NetworkMap } from "@/components/NetworkMap";
 import { ScannerModal } from "@/components/scanner/ScannerModal";
 import { TechTreeModal } from "@/components/techtree/TechTreeModal";
 import { LoadoutEditor } from "@/components/loadout/LoadoutEditor";
+import { ModifierDetailModal } from "@/components/ModifierDetailModal";
+import { SystemStatusModal } from "@/components/maintenance/SystemStatusModal";
+import { ScriptManagerModal } from "@/components/scripts/ScriptManagerModal";
 import { useState } from "react";
 import { api } from "@/lib/api";
 import { useQueryClient } from "@tanstack/react-query";
@@ -115,6 +118,9 @@ function GamePage() {
       <ScannerModal />
       <TechTreeModal />
       <LoadoutEditor />
+      <ModifierDetailModal />
+      <SystemStatusModal />
+      <ScriptManagerModal />
     </motion.div>
   );
 }

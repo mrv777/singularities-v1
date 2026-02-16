@@ -10,6 +10,10 @@ import { playerRoutes } from "./routes/player.js";
 import { scannerRoutes } from "./routes/scanner.js";
 import { moduleRoutes } from "./routes/modules.js";
 import { loadoutRoutes } from "./routes/loadouts.js";
+import { modifierRoutes } from "./routes/modifiers.js";
+import { maintenanceRoutes } from "./routes/maintenance.js";
+import { scriptRoutes } from "./routes/scripts.js";
+import { startWorker, stopWorker } from "./worker/index.js";
 
 const app = Fastify({
   logger: {
@@ -46,6 +50,9 @@ await app.register(playerRoutes);
 await app.register(scannerRoutes);
 await app.register(moduleRoutes);
 await app.register(loadoutRoutes);
+await app.register(modifierRoutes);
+await app.register(maintenanceRoutes);
+await app.register(scriptRoutes);
 
 // Start
 try {
@@ -60,6 +67,9 @@ try {
 
   await app.listen({ port: env.PORT, host: "0.0.0.0" });
   console.log(`Server running on port ${env.PORT}`);
+
+  // Start background worker after server is listening
+  startWorker();
 } catch (err) {
   app.log.error(err);
   process.exit(1);
@@ -68,6 +78,7 @@ try {
 // Graceful shutdown
 const shutdown = async () => {
   console.log("Shutting down...");
+  stopWorker();
   await app.close();
   await pool.end();
   redis.disconnect();

@@ -1,5 +1,5 @@
-import type { Player, PlayerSystem, PlayerModule, PlayerLoadout } from "./player.js";
-import type { ScanTarget, ModuleDefinition } from "../constants/index.js";
+import type { Player, PlayerSystem, PlayerModule, PlayerLoadout, PlayerScript } from "./player.js";
+import type { ScanTarget, ModuleDefinition, ModifierDefinition } from "../constants/index.js";
 
 // Auth
 export interface AuthChallengeRequest {
@@ -28,6 +28,9 @@ export interface PlayerResponse {
   systems: PlayerSystem[];
   modules: PlayerModule[];
   loadouts: PlayerLoadout[];
+  unlockedSystems: string[];
+  passiveIncome: { credits: number; data: number } | null;
+  activeModifier: ModifierDefinition | null;
 }
 
 // Registration
@@ -103,6 +106,41 @@ export interface LoadoutUpdateResponse {
 export interface HealthResponse {
   status: "ok";
   timestamp: string;
+}
+
+// Sandbox Exit
+export interface ExitSandboxResponse {
+  player: Player;
+}
+
+// Maintenance
+export interface RepairRequest {
+  systemType: string;
+}
+
+export interface RepairResponse {
+  system: PlayerSystem;
+  player: Player;
+}
+
+export interface FullScanResponse {
+  systems: PlayerSystem[];
+}
+
+// Modifiers
+export interface ModifierResponse {
+  modifier: ModifierDefinition | null;
+  date: string;
+}
+
+// Scripts
+export interface ScriptCreateRequest {
+  triggerCondition: string;
+  action: string;
+}
+
+export interface ScriptListResponse {
+  scripts: PlayerScript[];
 }
 
 // Generic error

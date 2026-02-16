@@ -14,11 +14,14 @@ export interface NodeDef {
 interface NetworkNodeProps {
   node: NodeDef;
   playerLevel: number;
+  unlockedSystems?: string[];
   onClick: (id: string) => void;
 }
 
-export function NetworkNode({ node, playerLevel, onClick }: NetworkNodeProps) {
-  const isUnlocked = playerLevel >= node.unlockLevel && !node.comingSoon;
+export function NetworkNode({ node, playerLevel, unlockedSystems, onClick }: NetworkNodeProps) {
+  const isUnlocked = unlockedSystems
+    ? unlockedSystems.includes(node.id) && !node.comingSoon
+    : playerLevel >= node.unlockLevel && !node.comingSoon;
   const isComingSoon = node.comingSoon;
 
   return (

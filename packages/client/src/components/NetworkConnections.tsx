@@ -19,6 +19,7 @@ const CONNECTIONS: ConnectionDef[] = [
 interface NetworkConnectionsProps {
   nodes: NodeDef[];
   playerLevel: number;
+  unlockedSystems?: string[];
 }
 
 function cubicPath(x1: number, y1: number, x2: number, y2: number): string {
@@ -27,7 +28,7 @@ function cubicPath(x1: number, y1: number, x2: number, y2: number): string {
   return `M ${x1} ${y1} C ${x1 + dx} ${y1 + dy}, ${x2 - dx} ${y2 - dy}, ${x2} ${y2}`;
 }
 
-export function NetworkConnections({ nodes, playerLevel }: NetworkConnectionsProps) {
+export function NetworkConnections({ nodes, playerLevel, unlockedSystems }: NetworkConnectionsProps) {
   const nodeMap = Object.fromEntries(nodes.map((n) => [n.id, n]));
 
   return (
@@ -37,11 +38,9 @@ export function NetworkConnections({ nodes, playerLevel }: NetworkConnectionsPro
         const b = nodeMap[to];
         if (!a || !b) return null;
 
-        const bothUnlocked =
-          playerLevel >= a.unlockLevel &&
-          playerLevel >= b.unlockLevel &&
-          !a.comingSoon &&
-          !b.comingSoon;
+        const bothUnlocked = unlockedSystems
+          ? unlockedSystems.includes(a.id) && unlockedSystems.includes(b.id) && !a.comingSoon && !b.comingSoon
+          : playerLevel >= a.unlockLevel && playerLevel >= b.unlockLevel && !a.comingSoon && !b.comingSoon;
 
         const path = cubicPath(a.x, a.y, b.x, b.y);
 

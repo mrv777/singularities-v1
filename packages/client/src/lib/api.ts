@@ -16,6 +16,14 @@ import type {
   LoadoutResponse,
   LoadoutUpdateRequest,
   LoadoutUpdateResponse,
+  ExitSandboxResponse,
+  RepairRequest,
+  RepairResponse,
+  FullScanResponse,
+  ModifierResponse,
+  ScriptCreateRequest,
+  ScriptListResponse,
+  PlayerScript,
 } from "@singularities/shared";
 
 const API_BASE = "/api";
@@ -135,6 +143,56 @@ class ApiClient {
     return this.fetch<LoadoutUpdateResponse>("/loadouts", {
       method: "PUT",
       body: JSON.stringify(data),
+    });
+  }
+
+  // Sandbox
+  exitSandbox() {
+    return this.fetch<ExitSandboxResponse>("/players/exit-sandbox", {
+      method: "POST",
+    });
+  }
+
+  // Maintenance
+  repairSystem(data: RepairRequest) {
+    return this.fetch<RepairResponse>("/maintenance/repair", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  fullScan() {
+    return this.fetch<FullScanResponse>("/maintenance/full-scan", {
+      method: "POST",
+    });
+  }
+
+  // Modifiers
+  getTodayModifier() {
+    return this.fetch<ModifierResponse>("/modifiers/today");
+  }
+
+  // Scripts
+  getScripts() {
+    return this.fetch<ScriptListResponse>("/scripts");
+  }
+
+  createScript(data: ScriptCreateRequest) {
+    return this.fetch<PlayerScript>("/scripts", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  activateScript(scriptId: string) {
+    return this.fetch<PlayerScript>(`/scripts/${scriptId}/activate`, {
+      method: "PUT",
+    });
+  }
+
+  deleteScript(scriptId: string) {
+    return this.fetch<{ success: boolean }>(`/scripts/${scriptId}`, {
+      method: "DELETE",
     });
   }
 }

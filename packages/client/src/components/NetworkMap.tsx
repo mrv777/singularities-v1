@@ -12,16 +12,17 @@ const NODES: NodeDef[] = [
   { id: "script_manager", label: "Scripts", x: 140, y: 400, unlockLevel: LEVEL_UNLOCKS.script_manager, icon: "A" },
   { id: "pvp_arena", label: "Arena", x: 400, y: 440, unlockLevel: LEVEL_UNLOCKS.pvp_arena, icon: "V" },
   { id: "security_center", label: "Security", x: 660, y: 400, unlockLevel: LEVEL_UNLOCKS.security_center, icon: "X" },
-  { id: "network_stats", label: "Net Stats", x: 720, y: 300, unlockLevel: LEVEL_UNLOCKS.weekly_topology, icon: "N" },
+  { id: "network_stats", label: "Net Stats", x: 720, y: 300, unlockLevel: LEVEL_UNLOCKS.network_stats, icon: "N" },
   { id: "quantum_lab", label: "???", x: 120, y: 100, unlockLevel: 99, comingSoon: true, icon: "?" },
   { id: "data_vault", label: "???", x: 680, y: 80, unlockLevel: 99, comingSoon: true, icon: "?" },
 ];
 
 interface NetworkMapProps {
   playerLevel: number;
+  unlockedSystems?: string[];
 }
 
-export function NetworkMap({ playerLevel }: NetworkMapProps) {
+export function NetworkMap({ playerLevel, unlockedSystems }: NetworkMapProps) {
   const openModal = useUIStore((s) => s.openModal);
 
   return (
@@ -33,12 +34,13 @@ export function NetworkMap({ playerLevel }: NetworkMapProps) {
           className="w-full max-w-3xl mx-auto"
           style={{ fontFamily: "var(--font-mono)" }}
         >
-          <NetworkConnections nodes={NODES} playerLevel={playerLevel} />
+          <NetworkConnections nodes={NODES} playerLevel={playerLevel} unlockedSystems={unlockedSystems} />
           {NODES.map((node) => (
             <NetworkNode
               key={node.id}
               node={node}
               playerLevel={playerLevel}
+              unlockedSystems={unlockedSystems}
               onClick={openModal}
             />
           ))}
@@ -48,7 +50,9 @@ export function NetworkMap({ playerLevel }: NetworkMapProps) {
       {/* Mobile list fallback */}
       <div className="sm:hidden space-y-2">
         {NODES.filter((n) => !n.comingSoon).map((node) => {
-          const unlocked = playerLevel >= node.unlockLevel;
+          const unlocked = unlockedSystems
+            ? unlockedSystems.includes(node.id)
+            : playerLevel >= node.unlockLevel;
           return (
             <button
               key={node.id}

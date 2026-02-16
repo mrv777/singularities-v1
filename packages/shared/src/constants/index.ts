@@ -3,3 +3,7 @@ export * from "./modules.js";
 export * from "./progression.js";
 export * from "./scanner.js";
 export * from "./game.js";
+export * from "./modifiers.js";
+export * from "./maintenance.js";
+export * from "./scripts.js";
+export * from "./passive.js";

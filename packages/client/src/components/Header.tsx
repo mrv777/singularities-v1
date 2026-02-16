@@ -4,6 +4,7 @@ import { Menu, ChevronDown } from "lucide-react";
 import { useUIStore } from "@/stores/ui";
 import { DAY_PHASE_HOURS } from "@singularities/shared";
 import { useState, useEffect } from "react";
+import { ModifierBadge } from "./ModifierBadge";
 
 function getDayPhase() {
   const hour = new Date().getHours();
@@ -80,6 +81,7 @@ export function Header() {
             <span className="text-cyber-green">{player.data} DATA</span>
             <span className="text-cyber-magenta">{player.processingPower} PP</span>
             <span className="text-text-secondary">REP {player.reputation}</span>
+            <ModifierBadge />
             <span className={`${phase.color} text-[10px]`}>
               {phase.phase} {countdown}
             </span>

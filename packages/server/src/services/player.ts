@@ -1,19 +1,22 @@
 // Row mappers: snake_case DB rows → camelCase API shape
 // Used by both routes and services to avoid duplication
 
-import { ENERGY_BASE_REGEN_PER_HOUR } from "@singularities/shared";
+import { ENERGY_BASE_REGEN_PER_HOUR, ENERGY_REGEN_PER_LEVEL } from "@singularities/shared";
 
 /**
  * Compute current energy on read using calculate-on-read pattern.
+ * Regen rate scales with level: base + (level - 1) * perLevel.
  * Returns the row with computed energy value.
  */
 export function computeEnergy(row: Record<string, unknown>): Record<string, unknown> {
   const storedEnergy = row.energy as number;
   const energyMax = row.energy_max as number;
+  const level = (row.level as number) ?? 1;
   const updatedAt = new Date(row.energy_updated_at as string).getTime();
   const now = Date.now();
   const secondsElapsed = Math.max(0, (now - updatedAt) / 1000);
-  const regenPerSecond = ENERGY_BASE_REGEN_PER_HOUR / 3600;
+  const regenPerHour = ENERGY_BASE_REGEN_PER_HOUR + (level - 1) * ENERGY_REGEN_PER_LEVEL;
+  const regenPerSecond = regenPerHour / 3600;
   const regenned = Math.floor(regenPerSecond * secondsElapsed);
   const currentEnergy = Math.min(energyMax, storedEnergy + regenned);
   return { ...row, energy: currentEnergy };
