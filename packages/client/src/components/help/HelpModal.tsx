@@ -61,21 +61,24 @@ function SectionContent({ section }: { section: Section }) {
       return (
         <div className="space-y-3 text-xs text-text-secondary leading-relaxed">
           <p>
-            You are an autonomous AI navigating the Singularities network. Your goal: grow stronger, hack targets,
-            upgrade your modules, and survive encounters with rival AIs.
+            You are an autonomous AI operating inside the Singularities network. Your core objective is to grow your
+            capabilities over time: scan for targets, run hacks, upgrade your module stack, and stay operational while
+            other AIs compete with you.
           </p>
           <div className="space-y-1">
             <div className="text-text-primary font-semibold text-[11px]">Game Loop</div>
             <ol className="list-decimal list-inside space-y-1 text-text-muted">
-              <li><span className="text-text-secondary">Scan</span> the network to discover targets</li>
-              <li><span className="text-text-secondary">Hack</span> targets for credits, data, and XP</li>
-              <li><span className="text-text-secondary">Upgrade</span> modules in the Tech Tree</li>
-              <li><span className="text-text-secondary">Repair</span> systems damaged by detection</li>
-              <li><span className="text-text-secondary">Compete</span> in the PvP Arena during PvP hours</li>
+              <li><span className="text-text-secondary">Scan</span> to generate fresh targets</li>
+              <li><span className="text-text-secondary">Hack</span> targets for credits, data, XP, and occasional processing power</li>
+              <li><span className="text-text-secondary">Upgrade</span> and level modules in the Tech Tree</li>
+              <li><span className="text-text-secondary">Equip</span> modules in infiltration/defense loadouts</li>
+              <li><span className="text-text-secondary">Repair</span> damage when detection or PvP harms systems</li>
+              <li><span className="text-text-secondary">Compete</span> in Arena during PvP phase</li>
             </ol>
           </div>
           <p className="text-text-muted">
-            New players start in Sandbox mode. Reach level {SANDBOX_EXIT_LEVEL} to exit and enter the live network.
+            New players start in Sandbox mode. Reach level {SANDBOX_EXIT_LEVEL} to unlock sandbox exit and move into
+            the live network.
           </p>
         </div>
       );
@@ -83,12 +86,12 @@ function SectionContent({ section }: { section: Section }) {
       return (
         <div className="space-y-2">
           {[
-            { icon: <Coins size={14} className="text-cyber-amber" />, name: "Credits", color: "text-cyber-amber", desc: "Main currency. Earned from hacking, used for purchases and upgrades." },
-            { icon: <Zap size={14} className="text-cyber-cyan" />, name: "Energy", color: "text-cyber-cyan", desc: "Action points. Consumed by scanning, hacking, repairs, and PvP attacks. Regenerates over time." },
-            { icon: <Database size={14} className="text-cyber-green" />, name: "Data", color: "text-cyber-green", desc: "Crafting resource. Earned from hacking, used for module upgrades and mutations." },
-            { icon: <Cpu size={14} className="text-cyber-magenta" />, name: "Processing Power", color: "text-cyber-magenta", desc: "Determines your maximum loadout capacity. Earned from module upgrades." },
-            { icon: <Star size={14} className="text-text-secondary" />, name: "Reputation", color: "text-text-secondary", desc: "Network standing. Affects PvP matchmaking and some event rewards." },
-            { icon: <Trophy size={14} className="text-cyber-cyan" />, name: "XP", color: "text-cyber-cyan", desc: "Experience points. Level up to unlock new network nodes and features." },
+            { icon: <Coins size={14} className="text-cyber-amber" />, name: "Credits", color: "text-cyber-amber", desc: "Your primary currency. Spend on module unlocks, module levels, repairs, and other systems." },
+            { icon: <Zap size={14} className="text-cyber-cyan" />, name: "Energy", color: "text-cyber-cyan", desc: "Your action budget. Used by scans, hacks, repairs, and PvP attacks; regenerates over time." },
+            { icon: <Database size={14} className="text-cyber-green" />, name: "Data", color: "text-cyber-green", desc: "A progression resource from hacks. Mostly used for module upgrades and mutations." },
+            { icon: <Cpu size={14} className="text-cyber-magenta" />, name: "Processing Power", color: "text-cyber-magenta", desc: "Sets maximum loadout capacity and is required for some advanced actions. Mostly earned from higher-risk activities." },
+            { icon: <Star size={14} className="text-text-secondary" />, name: "Reputation", color: "text-text-secondary", desc: "Your network standing. Impacts PvP context and certain event outcomes." },
+            { icon: <Trophy size={14} className="text-cyber-cyan" />, name: "XP", color: "text-cyber-cyan", desc: "Experience for leveling up. Higher level unlocks more nodes and systems." },
           ].map((r) => (
             <div key={r.name} className="flex items-start gap-3 p-2 bg-bg-secondary rounded border border-border-default">
               <div className="mt-0.5">{r.icon}</div>
@@ -103,21 +106,25 @@ function SectionContent({ section }: { section: Section }) {
     case "scanner":
       return (
         <div className="space-y-3 text-xs text-text-secondary leading-relaxed">
-          <p>The Network Scanner discovers infiltration targets in the network.</p>
+          <p>
+            The Network Scanner is your main PvE entry point. Use it to discover targets, evaluate risk, and run
+            infiltration hacks for resources.
+          </p>
           <div className="space-y-1">
             <div className="text-text-primary font-semibold text-[11px]">How it works</div>
             <ul className="list-disc list-inside space-y-1 text-text-muted">
               <li>Scanning costs <span className="text-cyber-cyan">{SCAN_ENERGY_COST} energy</span> and reveals 5 targets</li>
-              <li>Targets expire after 10 minutes — hack or re-scan</li>
-              <li>Each target has a security level, risk rating, and reward preview</li>
-              <li>Higher security = higher rewards but more energy cost and detection risk</li>
+              <li>Targets expire after 10 minutes, so plan hacks before the list refreshes</li>
+              <li>Each target shows security, risk, detection chance, and reward preview</li>
+              <li>Higher security generally gives better rewards, but costs more energy and carries higher detection risk</li>
+              <li>Your equipped infiltration modules strongly affect hack performance</li>
             </ul>
           </div>
           <div className="space-y-1">
             <div className="text-text-primary font-semibold text-[11px]">Detection Risk</div>
             <p className="text-text-muted">
-              Failed hacks may detect you, increasing your heat level. Detection damages random systems
-              and higher heat means more severe damage. Stealth modules reduce detection chance.
+              Failed hacks can trigger detection and increase heat. Detection damages random systems, and higher heat
+              increases severity. Stealth and detection-reduction effects help lower this risk.
             </p>
           </div>
         </div>
@@ -125,21 +132,33 @@ function SectionContent({ section }: { section: Section }) {
     case "tech_tree":
       return (
         <div className="space-y-3 text-xs text-text-secondary leading-relaxed">
-          <p>36 modules across 4 categories, each with 3 tiers (Basic, Advanced, Elite).</p>
+          <p>
+            The Tech Tree (unlocks at level 2) contains 36 modules across 4 categories and 3 tiers: Basic, Advanced,
+            and Elite.
+          </p>
           <div className="space-y-1">
             <div className="text-text-primary font-semibold text-[11px]">Categories</div>
             <ul className="list-disc list-inside space-y-1 text-text-muted">
-              <li><span className="text-text-secondary">Primary (Offense)</span> — Hack power, penetration</li>
-              <li><span className="text-text-secondary">Secondary (Utility)</span> — Credits, data bonuses, energy efficiency</li>
-              <li><span className="text-text-secondary">Relay (Stealth)</span> — Detection reduction, evasion</li>
-              <li><span className="text-text-secondary">Backup (Defense)</span> — Defense, damage mitigation</li>
+              <li><span className="text-text-secondary">Primary (Offense)</span> — Hack pressure and penetration</li>
+              <li><span className="text-text-secondary">Secondary (Utility)</span> — Resource bonuses and efficiency</li>
+              <li><span className="text-text-secondary">Relay (Stealth)</span> — Evasion and detection control</li>
+              <li><span className="text-text-secondary">Backup (Defense)</span> — Resilience and mitigation</li>
             </ul>
           </div>
           <div className="space-y-1">
-            <div className="text-text-primary font-semibold text-[11px]">Upgrades & Mutations</div>
+            <div className="text-text-primary font-semibold text-[11px]">Progression Rules</div>
+            <ul className="list-disc list-inside space-y-1 text-text-muted">
+              <li>Each module can be upgraded to level 5</li>
+              <li>To unlock a higher tier in a category, own 2 of 3 modules from the previous tier</li>
+              <li>Upgrades improve module stats, then you choose which owned modules to equip in loadouts</li>
+            </ul>
+          </div>
+          <div className="space-y-1">
+            <div className="text-text-primary font-semibold text-[11px]">Mutations</div>
             <p className="text-text-muted">
-              Each module can be upgraded to level 5. At level 3+, you can attempt a mutation (65% success rate)
-              which adds a unique variant with bonus effects. Mutations cost {MUTATION_COST.credits} credits, {MUTATION_COST.data} data, and {MUTATION_COST.processingPower} processing power.
+              At level 3+, modules become mutation-eligible. Mutation has a 65% success rate and can add a unique
+              variant effect. Each attempt costs {MUTATION_COST.credits} credits, {MUTATION_COST.data} data, and{" "}
+              {MUTATION_COST.processingPower} processing power.
             </p>
           </div>
         </div>
@@ -147,7 +166,10 @@ function SectionContent({ section }: { section: Section }) {
     case "maintenance":
       return (
         <div className="space-y-3 text-xs text-text-secondary leading-relaxed">
-          <p>Your AI has 6 core systems. Detection events and PvP losses damage these systems.</p>
+          <p>
+            Your AI core is backed by 6 systems. Detection events and PvP losses can damage these systems and reduce
+            operational strength.
+          </p>
           <div className="space-y-1">
             <div className="text-text-primary font-semibold text-[11px]">System Status</div>
             <ul className="list-disc list-inside space-y-1 text-text-muted">
@@ -160,10 +182,9 @@ function SectionContent({ section }: { section: Section }) {
           <div className="space-y-1">
             <div className="text-text-primary font-semibold text-[11px]">Repair & Cascade</div>
             <p className="text-text-muted">
-              Repairs cost {ENERGY_COSTS.repair} energy + variable credits based on missing health
-              (about {getRepairCreditCostForHealth(50)} credits at 50% health) and restore 30 HP.
-              Adjacent systems take cascade damage
-              from critical/corrupted neighbors — keep systems healthy to prevent chain failures.
+              Repairs cost {ENERGY_COSTS.repair} energy plus variable credits based on missing health (about{" "}
+              {getRepairCreditCostForHealth(50)} credits at 50% health) and restore 30 HP per repair. Critical and
+              corrupted systems can spread cascade damage to neighbors, so repairing early prevents chain failures.
             </p>
           </div>
         </div>
@@ -171,14 +192,17 @@ function SectionContent({ section }: { section: Section }) {
     case "scripts":
       return (
         <div className="space-y-3 text-xs text-text-secondary leading-relaxed">
-          <p>Scripts are automation rules that trigger actions based on game conditions.</p>
+          <p>
+            Scripts are lightweight automation rules. They watch game state and run predefined actions when your
+            selected conditions are met.
+          </p>
           <div className="space-y-1">
             <div className="text-text-primary font-semibold text-[11px]">How Scripts Work</div>
             <ul className="list-disc list-inside space-y-1 text-text-muted">
-              <li>Choose a trigger condition (e.g., "Energy full", "System critical")</li>
-              <li>Choose an action (e.g., "Auto-scan", "Auto-repair")</li>
-              <li>Scripts run automatically when conditions are met</li>
-              <li>Toggle scripts on/off or delete them anytime</li>
+              <li>Create a script by pairing a trigger condition with an action</li>
+              <li>Example triggers: "Energy full", "System critical", or similar thresholds</li>
+              <li>Example actions: "Auto-scan", "Auto-repair", and other available operations</li>
+              <li>Enable/disable scripts at any time, or delete ones you no longer need</li>
             </ul>
           </div>
         </div>
@@ -187,16 +211,16 @@ function SectionContent({ section }: { section: Section }) {
       return (
         <div className="space-y-3 text-xs text-text-secondary leading-relaxed">
           <p>
-            Data Vault converts saved telemetry into short, reliable combat boosts.
+            Data Vault converts stored telemetry into short, reliable temporary boosts.
           </p>
           <div className="space-y-1">
             <div className="text-text-primary font-semibold text-[11px]">How it works</div>
             <ul className="list-disc list-inside space-y-1 text-text-muted">
               <li>Activate one protocol at a time (deterministic, no failure roll)</li>
-              <li>Protocols consume credits + data and run for a short duration</li>
+              <li>Protocols consume credits + data and remain active for a short duration</li>
               <li>You have a short cooldown and a daily activation cap</li>
-              <li>The recommended protocol is dynamic (based on heat level + current credits/data)</li>
-              <li>Ghost Cache improves stealth safety, Harvest Cache boosts data gain, Tandem Cache is balanced</li>
+              <li>The recommended protocol adapts to your heat level and current resource balance</li>
+              <li>Ghost Cache prioritizes stealth safety, Harvest Cache boosts data gain, Tandem Cache is balanced</li>
             </ul>
           </div>
         </div>
@@ -204,7 +228,9 @@ function SectionContent({ section }: { section: Section }) {
     case "arena":
       return (
         <div className="space-y-3 text-xs text-text-secondary leading-relaxed">
-          <p>PvP combat against other players during PvP hours.</p>
+          <p>
+            Arena is real-player PvP combat. It opens only during the PvP phase and uses your configured loadouts.
+          </p>
           <div className="space-y-1">
             <div className="text-text-primary font-semibold text-[11px]">Day Phases</div>
             <ul className="list-disc list-inside space-y-1 text-text-muted">
@@ -225,8 +251,8 @@ function SectionContent({ section }: { section: Section }) {
           <div className="space-y-1">
             <div className="text-text-primary font-semibold text-[11px]">Combat</div>
             <p className="text-text-muted">
-              Attacks cost {PVP_ENERGY_COST} energy. Your infiltration loadout attacks, their defense loadout defends.
-              Winners earn credits, reputation, and XP. Losers may take system damage.
+              Each attack costs {PVP_ENERGY_COST} energy. Your infiltration loadout is used offensively while the
+              defender's defense loadout responds automatically. Winners gain rewards; losers can take system damage.
             </p>
           </div>
         </div>
@@ -234,12 +260,15 @@ function SectionContent({ section }: { section: Section }) {
     case "security":
       return (
         <div className="space-y-3 text-xs text-text-secondary leading-relaxed">
-          <p>The Security Center manages your defenses and monitors threats.</p>
+          <p>
+            Security Center is your defensive control panel. It sets your passive PvP defense behavior and helps you
+            monitor pressure from detection.
+          </p>
           <div className="space-y-1">
             <div className="text-text-primary font-semibold text-[11px]">Defense Loadout</div>
             <p className="text-text-muted">
-              Equip up to 3 modules in defense slots. These modules activate when another player attacks you.
-              Modules with defense, stealth, and detection reduction effects are most useful here.
+              Equip up to 3 modules in defense slots. These are separate from your infiltration setup and activate
+              when another player attacks you. Defense, stealth, and detection-reduction effects are typically best.
             </p>
           </div>
           <div className="space-y-1">
