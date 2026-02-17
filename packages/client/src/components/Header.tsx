@@ -19,6 +19,7 @@ import { DAY_PHASE_HOURS, XP_THRESHOLDS, getXPForNextLevel } from "@singularitie
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ModifierBadge } from "./ModifierBadge";
+import { TopologyBadge } from "./TopologyBadge";
 import { AlignmentIndicator } from "./alignment/AlignmentIndicator";
 import { useUITier } from "@/hooks/useUITier";
 
@@ -192,7 +193,10 @@ export function Header() {
 
             {/* Status Group */}
             <div className="flex items-center gap-3 px-3 h-full">
-              <ModifierBadge />
+              <div className="flex flex-col gap-1">
+                <ModifierBadge />
+                <TopologyBadge />
+              </div>
               <div className={`hud-box flex items-center gap-2 px-2 h-10 rounded-sm border-none ${phase.color} font-bold group cursor-help`} title={`Current World Phase: ${phase.phase}`}>
                 <div className={`hud-corner hud-corner-tl border-current`} />
                 <div className={`hud-corner hud-corner-br border-current`} />
@@ -323,6 +327,7 @@ export function Header() {
               <div className="col-span-2 pt-2 border-t border-border-default flex items-center justify-between">
                 <AlignmentIndicator />
                 <ModifierBadge />
+                <TopologyBadge />
                 <div className={`${phase.color} text-[10px] font-bold flex items-center gap-1`}>
                   {phase.icon} {phase.phase} {countdown}
                 </div>

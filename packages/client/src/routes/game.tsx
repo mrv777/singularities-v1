@@ -6,6 +6,7 @@ import { ScannerModal } from "@/components/scanner/ScannerModal";
 import { TechTreeModal } from "@/components/techtree/TechTreeModal";
 import { LoadoutEditor } from "@/components/loadout/LoadoutEditor";
 import { ModifierDetailModal } from "@/components/ModifierDetailModal";
+import { TopologyDetailModal } from "@/components/TopologyDetailModal";
 import { SystemStatusModal } from "@/components/maintenance/SystemStatusModal";
 import { ScriptManagerModal } from "@/components/scripts/ScriptManagerModal";
 import { ArenaModal } from "@/components/arena/ArenaModal";
@@ -180,6 +181,7 @@ function GamePage() {
       <TechTreeModal />
       <LoadoutEditor />
       <ModifierDetailModal />
+      <TopologyDetailModal />
       <SystemStatusModal />
       <ScriptManagerModal />
       <ArenaModal />
