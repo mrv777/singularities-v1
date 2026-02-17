@@ -32,7 +32,7 @@ export function Modal({
                 transition={{ duration: 0.2 }}
               />
             </Dialog.Overlay>
-            <Dialog.Content asChild>
+            <Dialog.Content aria-describedby={undefined} asChild>
               <motion.div
                 className={`fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none`}
                 initial={{ opacity: 0 }}

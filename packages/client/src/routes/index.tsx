@@ -33,7 +33,7 @@ function HomePage() {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.5 }}
             onClick={() => {
-              const DEV_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIzODg0N2E1Yi0xZjFkLTQ0N2EtYmNiYS01NWY3YjlhZGNkMjYiLCJ3YWxsZXQiOiI4Zm9oRWFRZldmNFhHOUxjWGprM1pCYXJ4cUgzNzdud2lCdHNVQkR0MlNEdCIsImlhdCI6MTc3MTI4MDI5MiwiZXhwIjoxNzcxODg1MDkyfQ.34HJpXDV9PW9vKB4xnxW-STy_OiojAlzfvE3FwVdFvg";
+              const DEV_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIzODg0N2E1Yi0xZjFkLTQ0N2EtYmNiYS01NWY3YjlhZGNkMjYiLCJ3YWxsZXQiOiI4Zm9oRWFRZldmNFhHOUxjWGprM1pCYXJ4cUgzNzdud2lCdHNVQkR0MlNEdCIsImlhdCI6MTc3MTI4ODM2MCwiZXhwIjoxODAyODI0MzYwfQ.2DlqiTIgJ2GIprtt_ASlLv7OMkUBsk67H9hl2IP7Q9g";
               api.setToken(DEV_TOKEN);
               api.getMe().then(({ player }) => {
                 useAuthStore.getState().setPlayer(player);
