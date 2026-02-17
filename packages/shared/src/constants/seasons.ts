@@ -8,8 +8,8 @@ export const SEASON_STIPEND = {
 export const LEGACY_MODULE_PENALTY = 0.10;
 
 export const CATCH_UP_BASE = {
-  xpMultiplierPerLevelBehind: 0.05,
-  maxXpMultiplier: 0.50,
-  lateJoinMaxXpBoost: 1.0,
-  resourceBoostFactor: 0.6,
+  xpMultiplierPerLevelBehind: 0.25,
+  maxXpMultiplier: 2.2,
+  lateJoinMaxXpBoost: 1.8,
+  resourceBoostFactor: 0.75,
 } as const;

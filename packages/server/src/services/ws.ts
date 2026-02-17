@@ -64,9 +64,11 @@ export function handleConnection(
 
   // Send channel history
   const playerActivity = activityHistory.get(playerId) ?? [];
-  const history = [...globalHistory, ...eventsHistory, ...playerActivity]
-    .sort((a, b) => a.timestamp.localeCompare(b.timestamp))
-    .slice(-MAX_HISTORY);
+  const history = [
+    ...globalHistory.slice(-30),
+    ...eventsHistory.slice(-20),
+    ...playerActivity.slice(-50),
+  ].sort((a, b) => a.timestamp.localeCompare(b.timestamp));
 
   send(socket, { action: "history", messages: history });
 

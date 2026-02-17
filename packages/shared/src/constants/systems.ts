@@ -30,3 +30,4 @@ export const SYSTEM_STATUS_THRESHOLDS: Record<
 
 export const CASCADE_THRESHOLD = 30; // Below this, cascade begins
 export const DEATH_CORRUPTED_COUNT = 3; // 3+ corrupted systems = death
+export const DEATH_MODULE_RECOVERY_CHANCE = 0.65;

@@ -9,6 +9,7 @@ import {
   PROGRESSION_BALANCE,
   SCANNER_BALANCE,
   getBaseReward,
+  getEnergyAfterLevelUp,
   getHackEnergyCost,
   getLevelForXP,
 } from "@singularities/shared";
@@ -199,7 +200,7 @@ function runSingle(seed: number, profile: BalanceProfile): ProfileResult {
     if (nextLevel > state.level) {
       state.level = nextLevel;
       state.energyMax = ENERGY_BASE_MAX + (state.level - 1) * ENERGY_MAX_PER_LEVEL;
-      state.energy = Math.min(state.energyMax, state.energy);
+      state.energy = getEnergyAfterLevelUp(state.energy, state.energyMax);
       if (state.level >= 5 && level5At < 0) level5At = state.minutes;
       if (state.level >= 6 && level6At < 0) level6At = state.minutes;
       if (state.level >= 7 && level7At < 0) level7At = state.minutes;

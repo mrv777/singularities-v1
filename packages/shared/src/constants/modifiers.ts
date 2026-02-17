@@ -67,7 +67,7 @@ export const MODIFIER_POOL: ModifierDefinition[] = [
     name: "System Overload",
     description: "Critical infrastructure strain doubles degradation but boosts XP.",
     severity: "major",
-    effects: { degradationRateMultiplier: 2.0, xpGainMultiplier: 1.5 },
+    effects: { degradationRateMultiplier: 1.5, xpGainMultiplier: 1.75 },
   },
   {
     id: "blackout_protocol",
@@ -81,7 +81,7 @@ export const MODIFIER_POOL: ModifierDefinition[] = [
     name: "Harvest Moon",
     description: "Maximum resource extraction window. Everything pays more.",
     severity: "major",
-    effects: { hackRewardMultiplier: 1.4, passiveIncomeMultiplier: 1.5 },
+    effects: { hackRewardMultiplier: 1.25, passiveIncomeMultiplier: 1.2, degradationRateMultiplier: 1.3 },
   },
   {
     id: "corrosion_storm",
@@ -95,7 +95,7 @@ export const MODIFIER_POOL: ModifierDefinition[] = [
     name: "Neural Resonance",
     description: "AI alignment event. XP gains and passive income surge.",
     severity: "major",
-    effects: { xpGainMultiplier: 1.75, passiveIncomeMultiplier: 1.3 },
+    effects: { xpGainMultiplier: 1.5, passiveIncomeMultiplier: 1.2, energyCostMultiplier: 1.15 },
   },
 ];
 

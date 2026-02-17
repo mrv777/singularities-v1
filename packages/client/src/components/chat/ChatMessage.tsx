@@ -35,7 +35,7 @@ export function ChatMessage({ msg }: { msg: ServerChatMessage }) {
 
   // activity
   return (
-    <div className="text-xs leading-relaxed">
+    <div className="text-[11px] leading-snug">
       <span className="text-text-muted">{formatTime(msg.timestamp)}</span>{" "}
       <span className="text-cyber-cyan">[LOG]</span>{" "}
       <span className="text-text-secondary">{msg.content}</span>

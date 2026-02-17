@@ -19,10 +19,12 @@ import {
   getLevelForXP,
   getRepairCreditCostForHealth,
 } from "@singularities/shared";
-import { Rng, average, parseCliOptions } from "./lib.js";
+import { Rng, average, parseCliOptions, percentile, printGuardrails } from "./lib.js";
+
+type ArchetypeId = "cautious_pve" | "mixed" | "aggressive_pvp" | "idle_logger" | "marathon_grinder";
 
 interface Archetype {
-  id: "cautious_pve" | "mixed" | "aggressive_pvp";
+  id: ArchetypeId;
   hacksPerHour: number;
   pvpMatchesPerDay: number;
   winBias: number;
@@ -48,6 +50,8 @@ interface EconomyResult {
   dataPerHour: number;
   processingPowerPerDay: number;
   mutationDay: number | null;
+  repairCostPerHour: number;
+  netCreditsPerHour: number;
 }
 
 interface EconomyProfile {
@@ -65,6 +69,8 @@ const ARCHETYPES: Archetype[] = [
   { id: "cautious_pve", hacksPerHour: 6, pvpMatchesPerDay: 0, winBias: 0, profitBias: 0.3 },
   { id: "mixed", hacksPerHour: 5, pvpMatchesPerDay: 6, winBias: 0.05, profitBias: 0.55 },
   { id: "aggressive_pvp", hacksPerHour: 3, pvpMatchesPerDay: 12, winBias: 0.12, profitBias: 0.8 },
+  { id: "idle_logger", hacksPerHour: 3, pvpMatchesPerDay: 0, winBias: 0, profitBias: 0.2 },
+  { id: "marathon_grinder", hacksPerHour: 10, pvpMatchesPerDay: 4, winBias: 0.08, profitBias: 0.6 },
 ];
 const DATA_VAULT_RECOMMENDED_PROTOCOL =
   DATA_VAULT_PROTOCOLS.find((p) => p.recommended) ?? DATA_VAULT_PROTOCOLS[0];
@@ -219,6 +225,7 @@ function runSingle(
   const startCredits = state.credits;
   const startData = state.data;
   const startPP = state.processingPower;
+  let totalRepairCost = 0;
 
   for (let hour = 0; hour < totalHours; hour++) {
     if (hour % 24 === 0) {
@@ -315,7 +322,9 @@ function runSingle(
     const totalRepairs = repairEvents + (rng.chance(0.35) ? 1 : 0);
     for (let i = 0; i < totalRepairs; i++) {
       const health = rng.int(35, 85);
-      state.credits -= getRepairCreditCostForHealth(health);
+      const cost = getRepairCreditCostForHealth(health);
+      state.credits -= cost;
+      totalRepairCost += cost;
     }
 
     state.level = getLevelForXP(state.xp);
@@ -330,12 +339,29 @@ function runSingle(
     }
   }
 
+  const grossCreditsPerHour = (state.credits - startCredits + totalRepairCost) / totalHours;
+  const repairCostPerHour = totalRepairCost / totalHours;
+
   return {
-    creditsPerHour: (state.credits - startCredits) / totalHours,
+    creditsPerHour: grossCreditsPerHour,
     dataPerHour: (state.data - startData) / totalHours,
     processingPowerPerDay: (state.processingPower - startPP) / Math.max(1, days),
     mutationDay: state.firstMutationHour === null ? null : state.firstMutationHour / 24,
+    repairCostPerHour,
+    netCreditsPerHour: grossCreditsPerHour - repairCostPerHour,
   };
+}
+
+function parseLevelBand(argv: string[]): [number, number] | null {
+  for (const arg of argv) {
+    if (arg.startsWith("--level-band=")) {
+      const parts = arg.slice("--level-band=".length).split("-").map(Number);
+      if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+        return [parts[0], parts[1]];
+      }
+    }
+  }
+  return null;
 }
 
 function main() {
@@ -345,8 +371,13 @@ function main() {
   const profile = ECONOMY_PROFILES[parseProfile(argv)];
   const dataVaultMode = parseDataVaultMode(argv);
   const dataVaultEnabled = dataVaultMode === "on";
+  const levelBand = parseLevelBand(argv);
   console.log("=== Economy Simulation ===");
   console.log(`runs=${opts.runs} days=${opts.days} seed=${opts.seed} catchup=${catchUpMode} profile=${profile.name} data_vault=${dataVaultMode}`);
+
+  const guardrails: Array<{ name: string; pass: boolean; detail: string }> = [];
+  let anyNegativeNet = false;
+  let maxNetCreditsPerHour = 0;
 
   for (const archetype of ARCHETYPES) {
     const results: EconomyResult[] = [];
@@ -357,8 +388,16 @@ function main() {
     }
 
     const mutationDays = results.map((r) => r.mutationDay).filter((v): v is number => v !== null);
+    const avgNet = average(results.map((r) => r.netCreditsPerHour));
+    const avgGross = average(results.map((r) => r.creditsPerHour));
+    const avgRepair = average(results.map((r) => r.repairCostPerHour));
+    const repairRatio = avgGross > 0 ? avgRepair / avgGross : 0;
+
     console.log(`\n[${archetype.id}]`);
-    console.log(`credits/hour avg: ${average(results.map((r) => r.creditsPerHour)).toFixed(2)}`);
+    console.log(`gross credits/hour avg: ${avgGross.toFixed(2)}`);
+    console.log(`repair cost/hour avg: ${avgRepair.toFixed(2)}`);
+    console.log(`net credits/hour avg: ${avgNet.toFixed(2)}`);
+    console.log(`repair/income ratio: ${(repairRatio * 100).toFixed(1)}%`);
     console.log(`data/hour avg: ${average(results.map((r) => r.dataPerHour)).toFixed(2)}`);
     console.log(`processing power/day avg: ${average(results.map((r) => r.processingPowerPerDay)).toFixed(2)}`);
     if (mutationDays.length === 0) {
@@ -366,7 +405,46 @@ function main() {
     } else {
       console.log(`mutation readiness avg day: ${average(mutationDays).toFixed(2)}`);
     }
+
+    if (avgNet < 0) anyNegativeNet = true;
+    maxNetCreditsPerHour = Math.max(maxNetCreditsPerHour, avgNet);
+
+    const maxRepairRatio = archetype.id === "idle_logger" ? 0.55 : 0.5;
+    guardrails.push({
+      name: `${archetype.id} repair costs <= ${(maxRepairRatio * 100).toFixed(0)}% of income`,
+      pass: repairRatio <= maxRepairRatio,
+      detail: `${(repairRatio * 100).toFixed(1)}%`,
+    });
+
+    // Mutation reachable within 14 days for cautious_pve
+    if (archetype.id === "cautious_pve" && opts.days >= 14) {
+      const reachedMutation = mutationDays.length > 0 && average(mutationDays) <= 14;
+      guardrails.push({
+        name: "Mutation reachable within 14 days (cautious_pve)",
+        pass: reachedMutation,
+        detail: mutationDays.length > 0
+          ? `avg day ${average(mutationDays).toFixed(1)}`
+          : "not reached",
+      });
+    }
   }
+
+  guardrails.push({
+    name: "Net income positive for all archetypes",
+    pass: !anyNegativeNet,
+    detail: anyNegativeNet ? "some archetypes have negative net income" : "all positive",
+  });
+
+  if (opts.days >= 30) {
+    guardrails.push({
+      name: "No archetype exceeds conservative inflation ceiling",
+      pass: maxNetCreditsPerHour <= 165,
+      detail: `max net=${maxNetCreditsPerHour.toFixed(1)} c/hr (need ≤165 c/hr)`,
+    });
+  }
+
+  const allPass = printGuardrails("sim:economy", guardrails);
+  if (!allPass) process.exit(1);
 }
 
 main();

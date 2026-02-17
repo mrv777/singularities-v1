@@ -47,14 +47,14 @@ export interface ArenaBotProfile {
 }
 
 const TIER_BASE_REWARD_MULTIPLIER: Record<ArenaBotTier, number> = {
-  novice: 0.35,
-  adaptive: 0.45,
-  elite: 0.55,
+  novice: 0.52,
+  adaptive: 0.62,
+  elite: 0.72,
 };
 
 const TIER_BASE_DEFENSE_BONUS: Record<ArenaBotTier, number> = {
-  novice: -4,
-  adaptive: 0,
+  novice: -18,
+  adaptive: -2,
   elite: 4,
 };
 
@@ -113,8 +113,8 @@ function createArenaBotProfile(
   const rewardVariance = seededInt(seed, -4, 4, "reward_variance") / 100;
   const rewardMultiplier = clamp(
     TIER_BASE_REWARD_MULTIPLIER[tier] + rewardVariance,
-    0.25,
-    0.65
+    0.35,
+    0.80
   );
   const defensePower = Math.max(
     PVP_DEFAULT_DEFENSE_POWER,

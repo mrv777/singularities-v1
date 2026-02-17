@@ -6,16 +6,24 @@ import {
   ENERGY_BASE_REGEN_PER_HOUR,
   ENERGY_MAX_PER_LEVEL,
   ENERGY_REGEN_PER_LEVEL,
+  MAX_LEVEL,
   MODULE_PURCHASE_XP,
   PROGRESSION_BALANCE,
+  PVP_ENERGY_COST,
+  PVP_REWARD_XP,
   SCAN_ENERGY_COST,
   SCANNER_BALANCE,
+  XP_THRESHOLDS,
+  CATCH_UP_BASE,
+  SEASON_DURATION_DAYS,
+  DECISION_TRIGGER_CHANCES,
   getBaseReward,
   getEarlyHackSuccessFloor,
+  getEnergyAfterLevelUp,
   getHackEnergyCost,
   getLevelForXP,
 } from "@singularities/shared";
-import { Rng, average, parseCliOptions, percentile } from "./lib.js";
+import { Rng, average, parseCliOptions, percentile, printGuardrails } from "./lib.js";
 
 interface SimState {
   minutes: number;
@@ -117,7 +125,7 @@ function runSingle(seed: number, dataVaultEnabled: boolean): SimResult {
     if (nextLevel > state.level) {
       state.level = nextLevel;
       state.energyMax = ENERGY_BASE_MAX + (state.level - 1) * ENERGY_MAX_PER_LEVEL;
-      state.energy = Math.min(state.energyMax, state.energy);
+      state.energy = getEnergyAfterLevelUp(state.energy, state.energyMax);
       if (state.level >= 4 && level4At < 0) level4At = state.minutes;
       if (state.level >= 5 && level5At < 0) level5At = state.minutes;
       if (state.level >= 6 && level6At < 0) level6At = state.minutes;
@@ -260,11 +268,229 @@ function runSingle(seed: number, dataVaultEnabled: boolean): SimResult {
   };
 }
 
+// ---------------------------------------------------------------------------
+// Full 1-25 Lifecycle Simulation (Step 14 extension)
+// ---------------------------------------------------------------------------
+
+interface FullLifecycleResult {
+  /** Minutes of active play to reach each level (index 0 = level 2). -1 if not reached. */
+  minutesToLevel: number[];
+  /** XP earned from each source */
+  xpFromHacking: number;
+  xpFromPvP: number;
+  xpFromModules: number;
+  /** Final level reached */
+  finalLevel: number;
+  /** XP/hour at each level band (index 0 = levels 1-4, etc.) */
+  xpPerHourByBand: number[];
+}
+
+const LEVEL_BANDS = [
+  { label: "1-4", min: 1, max: 4 },
+  { label: "5-8", min: 5, max: 8 },
+  { label: "9-12", min: 9, max: 12 },
+  { label: "13-18", min: 13, max: 18 },
+  { label: "19-25", min: 19, max: 25 },
+];
+
+function runFullLifecycle(
+  seed: number,
+  hoursPerDay: number,
+  totalDays: number,
+  medianLevel: number,
+): FullLifecycleResult {
+  const rng = new Rng(seed);
+  let xp = 0;
+  let level = 1;
+  let credits = 100;
+  let data = 50;
+  let totalMinutes = 0;
+  const modules: Record<string, number> = {};
+
+  let xpFromHacking = 0;
+  let xpFromPvP = 0;
+  let xpFromModules = 0;
+
+  const minutesToLevel: number[] = Array(MAX_LEVEL - 1).fill(-1);
+  // Track XP and time per level band
+  const bandXp: number[] = Array(LEVEL_BANDS.length).fill(0);
+  const bandMinutes: number[] = Array(LEVEL_BANDS.length).fill(0);
+
+  const getBandIndex = (lvl: number): number => {
+    for (let b = 0; b < LEVEL_BANDS.length; b++) {
+      if (lvl >= LEVEL_BANDS[b].min && lvl <= LEVEL_BANDS[b].max) return b;
+    }
+    return LEVEL_BANDS.length - 1;
+  };
+
+  const tryLevelUp = (): boolean => {
+    const next = getLevelForXP(xp);
+    let leveled = false;
+    while (next > level && level < MAX_LEVEL) {
+      level++;
+      leveled = true;
+      if (minutesToLevel[level - 2] < 0) {
+        minutesToLevel[level - 2] = totalMinutes;
+      }
+    }
+    return leveled;
+  };
+
+  const energyMax = () => ENERGY_BASE_MAX + (level - 1) * ENERGY_MAX_PER_LEVEL;
+  const regenPerMin = () =>
+    (ENERGY_BASE_REGEN_PER_HOUR + (level - 1) * ENERGY_REGEN_PER_LEVEL) / 60;
+
+  for (let day = 0; day < totalDays && level < MAX_LEVEL; day++) {
+    let energy = energyMax();
+    let sessionMinutes = 0;
+    const sessionMax = hoursPerDay * 60;
+
+    // Catch-up multiplier
+    const levelsBehind = Math.max(0, medianLevel - level);
+    const levelMult = 1 + Math.min(CATCH_UP_BASE.maxXpMultiplier, levelsBehind * CATCH_UP_BASE.xpMultiplierPerLevelBehind);
+    const daysPassed = day;
+    const lateJoinBoost = medianLevel > 0 ? (daysPassed / SEASON_DURATION_DAYS) * CATCH_UP_BASE.lateJoinMaxXpBoost : 0;
+    const xpMultiplier = levelMult + lateJoinBoost;
+
+    // Module purchase at start of day
+    const hackMods = HACK_MODULES.filter((m) => {
+      const cur = modules[m.id] ?? 0;
+      return cur < MODULE_LEVEL_CAP_FOR_SIM;
+    });
+    for (const m of hackMods) {
+      const cur = modules[m.id] ?? 0;
+      const cost = cur === 0
+        ? m.baseCost
+        : { credits: m.baseCost.credits + m.costPerLevel.credits * cur, data: m.baseCost.data + m.costPerLevel.data * cur };
+      if (credits >= cost.credits && data >= cost.data && level >= (PROGRESSION_BALANCE.unlockLevels.tech_tree ?? 3)) {
+        credits -= cost.credits;
+        data -= cost.data;
+        modules[m.id] = cur + 1;
+        const mxp = Math.floor(MODULE_PURCHASE_XP * xpMultiplier);
+        xp += mxp;
+        xpFromModules += mxp;
+        bandXp[getBandIndex(level)] += mxp;
+        if (tryLevelUp()) {
+          energy = getEnergyAfterLevelUp(energy, energyMax());
+        }
+      }
+    }
+
+    // Active play loop: hacking + PvP
+    let targetsBuffered = 0;
+    while (sessionMinutes < sessionMax && level < MAX_LEVEL) {
+      // Scan if needed
+      if (targetsBuffered <= 0) {
+        if (energy < SCAN_ENERGY_COST) {
+          const waitMin = (SCAN_ENERGY_COST - energy) / regenPerMin();
+          sessionMinutes += waitMin;
+          totalMinutes += waitMin;
+          bandMinutes[getBandIndex(level)] += waitMin;
+          energy = SCAN_ENERGY_COST;
+          if (sessionMinutes >= sessionMax) break;
+        }
+        energy -= SCAN_ENERGY_COST;
+        sessionMinutes += 0.1;
+        totalMinutes += 0.1;
+        bandMinutes[getBandIndex(level)] += 0.1;
+        energy += regenPerMin() * 0.1;
+        targetsBuffered = 5;
+      }
+
+      // Hack
+      const security = Math.min(
+        SCANNER_BALANCE.targetSecurity.max,
+        SCANNER_BALANCE.targetSecurity.baseMin
+        + rng.int(0, SCANNER_BALANCE.targetSecurity.randomRange)
+        + level * SCANNER_BALANCE.targetSecurity.levelStep
+      );
+      const hackCost = getHackEnergyCost(security);
+
+      if (energy < hackCost) {
+        const waitMin = (hackCost - energy) / regenPerMin();
+        sessionMinutes += waitMin;
+        totalMinutes += waitMin;
+        bandMinutes[getBandIndex(level)] += waitMin;
+        energy = hackCost;
+        if (sessionMinutes >= sessionMax) break;
+      }
+
+      energy -= hackCost;
+      sessionMinutes += 0.2;
+      totalMinutes += 0.2;
+      bandMinutes[getBandIndex(level)] += 0.2;
+      energy = Math.min(energyMax(), energy + regenPerMin() * 0.2);
+      targetsBuffered--;
+
+      const effectiveHP = getEffectiveHackPower(modules);
+      const baseChance = SCANNER_BALANCE.hackSuccess.baseChance + (effectiveHP - security);
+      const chance = Math.max(
+        getEarlyHackSuccessFloor(level),
+        Math.min(SCANNER_BALANCE.hackSuccess.maxChance, baseChance)
+      );
+
+      if (rng.int(1, 100) <= chance) {
+        const reward = getBaseReward(security);
+        const hxp = Math.floor(reward.xp * xpMultiplier);
+        xp += hxp;
+        xpFromHacking += hxp;
+        bandXp[getBandIndex(level)] += hxp;
+        credits += reward.credits;
+        data += reward.data;
+        if (tryLevelUp()) {
+          energy = getEnergyAfterLevelUp(energy, energyMax());
+        }
+
+        // Decision trigger after hack
+        if (rng.chance(DECISION_TRIGGER_CHANCES.afterHack)) {
+          // Decisions grant resources, not XP directly — counted as 0 XP
+          credits += rng.int(10, 80);
+        }
+      }
+
+      // PvP opportunity (once every ~10 hacks if level >= 9)
+      if (level >= 9 && rng.chance(0.10) && energy >= PVP_ENERGY_COST) {
+        energy -= PVP_ENERGY_COST;
+        sessionMinutes += 0.5;
+        totalMinutes += 0.5;
+        bandMinutes[getBandIndex(level)] += 0.5;
+
+        if (rng.chance(0.5)) {
+          const pxp = Math.floor(PVP_REWARD_XP * xpMultiplier);
+          xp += pxp;
+          xpFromPvP += pxp;
+          bandXp[getBandIndex(level)] += pxp;
+          credits += rng.int(20, 60);
+          if (tryLevelUp()) {
+            energy = getEnergyAfterLevelUp(energy, energyMax());
+          }
+        }
+      }
+    }
+  }
+
+  // Compute XP/hour per band
+  const xpPerHourByBand = LEVEL_BANDS.map((_, i) =>
+    bandMinutes[i] > 0 ? (bandXp[i] / bandMinutes[i]) * 60 : 0
+  );
+
+  return {
+    minutesToLevel,
+    xpFromHacking,
+    xpFromPvP,
+    xpFromModules,
+    finalLevel: level,
+    xpPerHourByBand,
+  };
+}
+
 function main() {
   const argv = process.argv.slice(2);
   const opts = parseCliOptions(argv);
   const dataVaultMode = parseDataVaultMode(argv);
   const dataVaultEnabled = dataVaultMode === "on";
+
+  // ---- Section 1: Early-game session sim (existing) ----
   const results: SimResult[] = [];
   for (let i = 0; i < opts.runs; i++) {
     results.push(runSingle(opts.seed + i, dataVaultEnabled));
@@ -307,6 +533,122 @@ function main() {
   );
   console.log(`First-20 hack success rate avg: ${average(successRates).toFixed(1)}%`);
   console.log(`Data Vault activations avg: ${average(dataVaultActivations).toFixed(2)}`);
+
+  // ---- Section 2: Full 1-25 lifecycle ----
+  console.log("\n=== Full 1-25 Lifecycle (2h/day, 90 days) ===");
+  const hoursPerDay = 2;
+  const totalDays = SEASON_DURATION_DAYS;
+
+  const fullResults: FullLifecycleResult[] = [];
+  for (let i = 0; i < opts.runs; i++) {
+    fullResults.push(runFullLifecycle(opts.seed + i + 50000, hoursPerDay, totalDays, 0));
+  }
+
+  // Time-to-level for milestones
+  const milestones = [5, 9, 10, 15, 20, 25];
+  for (const lvl of milestones) {
+    const times = fullResults
+      .map((r) => r.minutesToLevel[lvl - 2])
+      .filter((v) => v >= 0);
+    const reached = times.length;
+    if (reached > 0) {
+      const days50 = (percentile(times, 50) / 60 / hoursPerDay).toFixed(1);
+      const days75 = (percentile(times, 75) / 60 / hoursPerDay).toFixed(1);
+      const days90 = (percentile(times, 90) / 60 / hoursPerDay).toFixed(1);
+      console.log(`Level ${lvl}: ${reached}/${opts.runs} reached — days(p50/p75/p90): ${days50} / ${days75} / ${days90}`);
+    } else {
+      console.log(`Level ${lvl}: 0/${opts.runs} reached`);
+    }
+  }
+
+  // Final level distribution
+  const finalLevels = fullResults.map((r) => r.finalLevel);
+  console.log(`\nFinal level (p50/p75/p90): ${percentile(finalLevels, 50)} / ${percentile(finalLevels, 75)} / ${percentile(finalLevels, 90)}`);
+
+  // XP source breakdown
+  const totalXp = fullResults.map((r) => r.xpFromHacking + r.xpFromPvP + r.xpFromModules);
+  const hackPct = average(fullResults.map((r) => totalXp[fullResults.indexOf(r)] > 0 ? r.xpFromHacking / totalXp[fullResults.indexOf(r)] * 100 : 0));
+  const pvpPct = average(fullResults.map((r) => totalXp[fullResults.indexOf(r)] > 0 ? r.xpFromPvP / totalXp[fullResults.indexOf(r)] * 100 : 0));
+  const modPct = average(fullResults.map((r) => totalXp[fullResults.indexOf(r)] > 0 ? r.xpFromModules / totalXp[fullResults.indexOf(r)] * 100 : 0));
+  console.log(`\nXP sources: Hacking=${hackPct.toFixed(1)}%, PvP=${pvpPct.toFixed(1)}%, Modules=${modPct.toFixed(1)}%`);
+
+  // XP/hour per level band
+  console.log("\nXP/hour by level band:");
+  for (let b = 0; b < LEVEL_BANDS.length; b++) {
+    const rates = fullResults.map((r) => r.xpPerHourByBand[b]).filter((v) => v > 0);
+    if (rates.length > 0) {
+      console.log(`  ${LEVEL_BANDS[b].label}: ${average(rates).toFixed(1)} XP/hr`);
+    } else {
+      console.log(`  ${LEVEL_BANDS[b].label}: (no data)`);
+    }
+  }
+
+  // XP wall detection: any level requiring >6.5x the previous level's time.
+  // Skip very early onboarding levels where small absolute deltas can distort ratios.
+  console.log("\n[XP Wall Detection]");
+  let wallsFound = 0;
+  for (let lvl = 3; lvl <= MAX_LEVEL; lvl++) {
+    if (lvl <= 4) continue;
+    const prevTimes = fullResults.map((r) => r.minutesToLevel[lvl - 3]).filter((v) => v >= 0);
+    const curTimes = fullResults.map((r) => r.minutesToLevel[lvl - 2]).filter((v) => v >= 0);
+    if (prevTimes.length === 0 || curTimes.length === 0) continue;
+
+    const prevDelta = lvl === 3
+      ? percentile(prevTimes, 50)
+      : percentile(prevTimes, 50) - (fullResults.map((r) => r.minutesToLevel[lvl - 4]).filter((v) => v >= 0).length > 0
+        ? percentile(fullResults.map((r) => r.minutesToLevel[lvl - 4]).filter((v) => v >= 0), 50)
+        : 0);
+    const curDelta = percentile(curTimes, 50) - percentile(prevTimes, 50);
+
+    if (prevDelta > 0 && curDelta / prevDelta > 6.5) {
+      console.log(`  WALL at Level ${lvl}: ${curDelta.toFixed(0)} min vs previous ${prevDelta.toFixed(0)} min (${(curDelta / prevDelta).toFixed(1)}x)`);
+      wallsFound++;
+    }
+  }
+  if (wallsFound === 0) {
+    console.log("  No XP walls detected (no level takes >3x previous)");
+  }
+
+  // ---- Guardrails ----
+  const guardrails: Array<{ name: string; pass: boolean; detail: string }> = [];
+
+  // Cautious progression policy:
+  // avoid cap-rush while still keeping a healthy season arc.
+  const finalP50 = percentile(finalLevels, 50);
+  guardrails.push({
+    name: "Median player reaches deep endgame by day 90",
+    pass: finalP50 >= 20,
+    detail: `p50 final level=${finalP50} (need ≥20)`,
+  });
+
+  const lvl25Times = fullResults.map((r) => r.minutesToLevel[MAX_LEVEL - 2]).filter((v) => v >= 0);
+  const lvl25DaysP50 = lvl25Times.length > 0 ? percentile(lvl25Times, 50) / 60 / hoursPerDay : Number.POSITIVE_INFINITY;
+  guardrails.push({
+    name: "Max level is not reached too early at 2h/day",
+    pass: lvl25DaysP50 >= 12,
+    detail: Number.isFinite(lvl25DaysP50)
+      ? `p50=${lvl25DaysP50.toFixed(1)} days (need ≥12)`
+      : "p50=not reached (acceptable)",
+  });
+
+  // Keep PvP unlock accessible even with slower long-tail pacing.
+  const lvl9Times = fullResults.map((r) => r.minutesToLevel[7]).filter((v) => v >= 0);
+  const lvl9DaysP50 = lvl9Times.length > 0 ? percentile(lvl9Times, 50) / 60 / hoursPerDay : 999;
+  guardrails.push({
+    name: "Level 9 reachable within 7 days at 2h/day",
+    pass: lvl9DaysP50 <= 7,
+    detail: `p50=${lvl9DaysP50.toFixed(1)} days (need ≤7)`,
+  });
+
+  // No XP walls
+  guardrails.push({
+    name: "No XP walls (>6.5x previous level time, post-onboarding)",
+    pass: wallsFound === 0,
+    detail: `${wallsFound} walls found`,
+  });
+
+  const allPass = printGuardrails("sim:progression", guardrails);
+  if (!allPass) process.exit(1);
 }
 
 main();

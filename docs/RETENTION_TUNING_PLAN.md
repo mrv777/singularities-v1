@@ -68,3 +68,5 @@ This plan is intentionally incremental: improve UX and retention without creatin
 2. Measure for 1-2 weeks.
 3. Then ship economy-impacting changes one at a time behind config flags.
 4. Re-run progression/economy sims before each balance change merge.
+
+Simulation command and guardrail reference: `docs/BALANCE_SIMULATION_RUNBOOK.md`.

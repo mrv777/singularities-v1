@@ -21,7 +21,7 @@ export const SYSTEM_DESCRIPTIONS: Record<SystemType, string> = {
 };
 
 // Degradation: health points lost per hour (before modifiers)
-export const DEGRADATION_RATE_PER_HOUR = 1.5;
+export const DEGRADATION_RATE_PER_HOUR = 1.15;
 
 // Cascade: damage dealt to adjacent systems when a system is CRITICAL
-export const CASCADE_DAMAGE_PER_TICK = 5; // per adjacent system per 30-min tick
+export const CASCADE_DAMAGE_PER_TICK = 3; // per adjacent system per 30-min tick

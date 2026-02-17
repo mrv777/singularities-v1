@@ -1,18 +1,19 @@
 export const PROGRESSION_BALANCE = {
-  sandboxExitLevel: 9,
+  sandboxExitLevel: 8,
   unlockLevels: {
     scanner: 1,
-    tech_tree: 3,
-    system_maintenance: 5,
-    script_manager: 6,
-    data_vault: 7,
-    quantum_lab: 9,
-    pvp_arena: 9,
-    security_center: 9,
-    daily_modifiers: 9,
-    network_stats: 9,
+    tech_tree: 2,
+    system_maintenance: 3,
+    script_manager: 5,
+    data_vault: 6,
+    quantum_lab: 8,
+    pvp_arena: 8,
+    security_center: 8,
+    daily_modifiers: 8,
+    network_stats: 8,
   },
-  modulePurchaseXp: 30,
+  modulePurchaseXp: 6,
+  levelUpEnergyRefillFloorPct: 0.35,
 } as const;
 
 export const SCANNER_BALANCE = {
@@ -23,26 +24,26 @@ export const SCANNER_BALANCE = {
     max: 95,
   },
   hackSuccess: {
-    baseChance: 62,
-    minChance: 24,
+    baseChance: 58,
+    minChance: 22,
     maxChance: 95,
-    earlyFloorBase: 41,
+    earlyFloorBase: 36,
     earlyFloorDropPerLevel: 3,
     earlyFloorUntilLevel: 4,
   },
   hackCost: {
-    base: 4,
-    securityDivisor: 9,
+    base: 3,
+    securityDivisor: 14,
   },
   rewards: {
-    creditsBase: 12,
-    creditsPerSecurity: 1.4,
-    dataBase: 6,
-    dataPerSecurity: 0.75,
+    creditsBase: 9,
+    creditsPerSecurity: 0.95,
+    dataBase: 5,
+    dataPerSecurity: 0.58,
     reputationBase: 1,
     reputationPerSecurity: 0.1,
-    xpBase: 14,
-    xpPerSecurity: 0.65,
+    xpBase: 9,
+    xpPerSecurity: 0.22,
   },
   highRiskProcessingPower: {
     securityThreshold: 65,
@@ -52,17 +53,17 @@ export const SCANNER_BALANCE = {
 } as const;
 
 export const REPAIR_BALANCE = {
-  creditsBase: 8,
-  creditsPerMissingHealth: 0.7,
+  creditsBase: 6,
+  creditsPerMissingHealth: 0.52,
 } as const;
 
 export const PVP_BALANCE = {
   rewardCredits: {
-    baseMin: 35,
-    baseMax: 80,
-    levelBonusPerLevel: 4,
-    stealPctMin: 0.06,
-    stealPctMax: 0.14,
+    baseMin: 26,
+    baseMax: 58,
+    levelBonusPerLevel: 2,
+    stealPctMin: 0.04,
+    stealPctMax: 0.10,
   },
   rewardProcessingPower: {
     min: 1,

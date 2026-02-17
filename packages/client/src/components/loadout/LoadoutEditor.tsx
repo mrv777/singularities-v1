@@ -1,8 +1,8 @@
 import { Modal } from "@/components/Modal";
+import { ModuleSlotPicker } from "@/components/loadout/ModuleSlotPicker";
 import { useUIStore } from "@/stores/ui";
 import { useGameStore } from "@/stores/game";
 import { api } from "@/lib/api";
-import { MODULE_MAP } from "@singularities/shared";
 import { useState, useEffect } from "react";
 
 export function LoadoutEditor() {
@@ -56,45 +56,16 @@ export function LoadoutEditor() {
           Assign modules to your infiltration loadout. 3 slots available.
         </p>
 
-        {[0, 1, 2].map((i) => {
-          const selected = editSlots[i];
-          const def = selected ? MODULE_MAP[selected] : null;
-          const owned = selected
-            ? ownedModules.find((m) => m.moduleId === selected)
-            : null;
-
-          return (
-            <div
-              key={i}
-              className="border border-border-default bg-bg-secondary rounded p-3"
-            >
-              <div className="text-text-muted text-[10px] mb-1">SLOT {i + 1}</div>
-              <select
-                value={selected ?? ""}
-                onChange={(e) =>
-                  handleSlotChange(i, e.target.value || null)
-                }
-                className="w-full bg-bg-primary border border-border-default rounded px-2 py-1.5 min-h-[44px] text-xs text-text-primary"
-              >
-                <option value="">-- Empty --</option>
-                {ownedModules.map((m) => {
-                  const d = MODULE_MAP[m.moduleId];
-                  if (!d) return null;
-                  return (
-                    <option key={m.moduleId} value={m.moduleId}>
-                      {d.name} (LV {m.level})
-                    </option>
-                  );
-                })}
-              </select>
-              {def && owned && (
-                <div className="mt-1 text-[10px] text-text-muted">
-                  {def.description} — LV {owned.level}
-                </div>
-              )}
-            </div>
-          );
-        })}
+        {[0, 1, 2].map((i) => (
+          <ModuleSlotPicker
+            key={i}
+            slotIndex={i}
+            selectedModuleId={editSlots[i]}
+            ownedModules={ownedModules}
+            onChange={(moduleId) => handleSlotChange(i, moduleId)}
+            label="SLOT"
+          />
+        ))}
 
         <button
           onClick={handleSave}

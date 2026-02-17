@@ -20,9 +20,9 @@ export interface BinaryDecision {
 }
 
 export const DECISION_TRIGGER_CHANCES = {
-  afterHack: 0.10,
-  afterCombat: 0.15,
-  onLogin: 0.05,
+  afterHack: 0.12,
+  afterCombat: 0.16,
+  onLogin: 0.08,
 } as const;
 
 export const ALL_DECISIONS: BinaryDecision[] = [
@@ -34,10 +34,11 @@ export const ALL_DECISIONS: BinaryDecision[] = [
     yesLabel: "Sell the data",
     noLabel: "Delete it",
     yesEffects: [
-      { type: "resource_grant", target: "credits", value: 200, description: "+200 credits" },
+      { type: "resource_grant", target: "credits", value: 120, description: "+120 credits" },
     ],
     noEffects: [
       { type: "resource_grant", target: "reputation", value: 15, description: "+15 reputation" },
+      { type: "resource_grant", target: "credits", value: 50, description: "+50 credits" },
     ],
     alignmentShift: { yes: -0.08, no: 0.05 },
     levelRequirement: 1,
@@ -50,10 +51,11 @@ export const ALL_DECISIONS: BinaryDecision[] = [
     yesLabel: "Amplify it",
     noLabel: "Neutralize it",
     yesEffects: [
-      { type: "resource_grant", target: "data", value: 100, description: "+100 data" },
+      { type: "resource_grant", target: "data", value: 80, description: "+80 data" },
     ],
     noEffects: [
       { type: "resource_grant", target: "reputation", value: 10, description: "+10 reputation" },
+      { type: "resource_grant", target: "data", value: 30, description: "+30 data" },
     ],
     alignmentShift: { yes: -0.05, no: 0.04 },
     levelRequirement: 1,
@@ -66,10 +68,11 @@ export const ALL_DECISIONS: BinaryDecision[] = [
     yesLabel: "Drain it",
     noLabel: "Leave it",
     yesEffects: [
-      { type: "resource_grant", target: "processingPower", value: 50, description: "+50 processing power" },
+      { type: "resource_grant", target: "processingPower", value: 35, description: "+35 processing power" },
     ],
     noEffects: [
       { type: "system_health", target: "energy_distribution", value: 10, description: "+10 energy distribution health" },
+      { type: "resource_grant", target: "processingPower", value: 20, description: "+20 processing power" },
     ],
     alignmentShift: { yes: -0.04, no: 0.03 },
     levelRequirement: 1,
@@ -82,10 +85,11 @@ export const ALL_DECISIONS: BinaryDecision[] = [
     yesLabel: "Hunt them",
     noLabel: "Warn them",
     yesEffects: [
-      { type: "resource_grant", target: "credits", value: 150, description: "+150 credits" },
+      { type: "resource_grant", target: "credits", value: 100, description: "+100 credits" },
     ],
     noEffects: [
       { type: "resource_grant", target: "reputation", value: 20, description: "+20 reputation" },
+      { type: "resource_grant", target: "credits", value: 40, description: "+40 credits" },
     ],
     alignmentShift: { yes: -0.10, no: 0.08 },
     levelRequirement: 2,
@@ -114,7 +118,7 @@ export const ALL_DECISIONS: BinaryDecision[] = [
     yesLabel: "Exploit it",
     noLabel: "Report it",
     yesEffects: [
-      { type: "resource_grant", target: "credits", value: 300, description: "+300 credits" },
+      { type: "resource_grant", target: "credits", value: 200, description: "+200 credits" },
       { type: "resource_grant", target: "data", value: 50, description: "+50 data" },
     ],
     noEffects: [
@@ -138,6 +142,7 @@ export const ALL_DECISIONS: BinaryDecision[] = [
     ],
     noEffects: [
       { type: "stat_modifier", target: "hackPower", value: 10, duration: 7200, description: "+10 hack power (2 hours)" },
+      { type: "resource_grant", target: "credits", value: 80, description: "+80 credits" },
     ],
     alignmentShift: { yes: 0.05, no: -0.02 },
     levelRequirement: 4,
@@ -150,10 +155,11 @@ export const ALL_DECISIONS: BinaryDecision[] = [
     yesLabel: "Buy it",
     noLabel: "Report dealer",
     yesEffects: [
-      { type: "resource_grant", target: "processingPower", value: 100, description: "+100 processing power" },
+      { type: "resource_grant", target: "processingPower", value: 70, description: "+70 processing power" },
     ],
     noEffects: [
       { type: "resource_grant", target: "reputation", value: 30, description: "+30 reputation" },
+      { type: "resource_grant", target: "credits", value: 80, description: "+80 credits" },
     ],
     alignmentShift: { yes: -0.06, no: 0.06 },
     levelRequirement: 4,
@@ -166,11 +172,12 @@ export const ALL_DECISIONS: BinaryDecision[] = [
     yesLabel: "Override it",
     noLabel: "Repair it",
     yesEffects: [
-      { type: "resource_grant", target: "data", value: 200, description: "+200 data" },
+      { type: "resource_grant", target: "data", value: 170, description: "+170 data" },
     ],
     noEffects: [
       { type: "system_health", target: "security_protocols", value: 20, description: "+20 security health" },
       { type: "resource_grant", target: "reputation", value: 10, description: "+10 reputation" },
+      { type: "resource_grant", target: "data", value: 90, description: "+90 data" },
     ],
     alignmentShift: { yes: -0.07, no: 0.05 },
     levelRequirement: 5,
@@ -187,6 +194,7 @@ export const ALL_DECISIONS: BinaryDecision[] = [
     ],
     noEffects: [
       { type: "stat_modifier", target: "stealth", value: 10, duration: 3600, description: "+10 stealth (1 hour)" },
+      { type: "resource_grant", target: "credits", value: 130, description: "+130 credits" },
     ],
     alignmentShift: { yes: -0.05, no: 0.03 },
     levelRequirement: 5,
@@ -220,6 +228,7 @@ export const ALL_DECISIONS: BinaryDecision[] = [
     ],
     noEffects: [
       { type: "resource_grant", target: "reputation", value: 35, description: "+35 reputation" },
+      { type: "resource_grant", target: "credits", value: 80, description: "+80 credits" },
     ],
     alignmentShift: { yes: -0.06, no: 0.07 },
     levelRequirement: 6,
@@ -251,12 +260,14 @@ export const ALL_DECISIONS: BinaryDecision[] = [
     yesLabel: "Merge",
     noLabel: "Reject",
     yesEffects: [
-      { type: "resource_grant", target: "processingPower", value: 200, description: "+200 processing power" },
-      { type: "resource_grant", target: "data", value: 150, description: "+150 data" },
+      { type: "resource_grant", target: "processingPower", value: 70, description: "+70 processing power" },
+      { type: "resource_grant", target: "data", value: 80, description: "+80 data" },
     ],
     noEffects: [
       { type: "system_health", target: "neural_core", value: 25, description: "+25 neural core health" },
       { type: "resource_grant", target: "reputation", value: 20, description: "+20 reputation" },
+      { type: "resource_grant", target: "processingPower", value: 35, description: "+35 processing power" },
+      { type: "resource_grant", target: "data", value: 90, description: "+90 data" },
     ],
     alignmentShift: { yes: -0.03, no: 0.04 },
     levelRequirement: 8,
@@ -269,11 +280,13 @@ export const ALL_DECISIONS: BinaryDecision[] = [
     yesLabel: "Absorb it",
     noLabel: "Preserve it",
     yesEffects: [
-      { type: "resource_grant", target: "credits", value: 500, description: "+500 credits" },
-      { type: "resource_grant", target: "data", value: 300, description: "+300 data" },
+      { type: "resource_grant", target: "credits", value: 210, description: "+210 credits" },
+      { type: "resource_grant", target: "data", value: 160, description: "+160 data" },
     ],
     noEffects: [
       { type: "resource_grant", target: "reputation", value: 50, description: "+50 reputation" },
+      { type: "resource_grant", target: "credits", value: 170, description: "+170 credits" },
+      { type: "resource_grant", target: "data", value: 110, description: "+110 data" },
     ],
     alignmentShift: { yes: -0.10, no: 0.10 },
     levelRequirement: 8,
@@ -322,12 +335,15 @@ export const ALL_DECISIONS: BinaryDecision[] = [
     yesLabel: "Use the key",
     noLabel: "Destroy it",
     yesEffects: [
-      { type: "resource_grant", target: "credits", value: 400, description: "+400 credits" },
-      { type: "resource_grant", target: "data", value: 200, description: "+200 data" },
-      { type: "resource_grant", target: "processingPower", value: 150, description: "+150 processing power" },
+      { type: "resource_grant", target: "credits", value: 130, description: "+130 credits" },
+      { type: "resource_grant", target: "data", value: 90, description: "+90 data" },
+      { type: "resource_grant", target: "processingPower", value: 50, description: "+50 processing power" },
     ],
     noEffects: [
       { type: "resource_grant", target: "reputation", value: 60, description: "+60 reputation" },
+      { type: "resource_grant", target: "credits", value: 130, description: "+130 credits" },
+      { type: "resource_grant", target: "data", value: 90, description: "+90 data" },
+      { type: "resource_grant", target: "processingPower", value: 35, description: "+35 processing power" },
     ],
     alignmentShift: { yes: -0.08, no: 0.10 },
     levelRequirement: 10,
@@ -340,12 +356,14 @@ export const ALL_DECISIONS: BinaryDecision[] = [
     yesLabel: "Enter the void",
     noLabel: "Seal the gate",
     yesEffects: [
-      { type: "resource_grant", target: "credits", value: 600, description: "+600 credits" },
-      { type: "resource_grant", target: "data", value: 400, description: "+400 data" },
+      { type: "resource_grant", target: "credits", value: 200, description: "+200 credits" },
+      { type: "resource_grant", target: "data", value: 180, description: "+180 data" },
     ],
     noEffects: [
       { type: "resource_grant", target: "reputation", value: 75, description: "+75 reputation" },
       { type: "system_health", target: "security_protocols", value: 20, description: "+20 security health" },
+      { type: "resource_grant", target: "credits", value: 180, description: "+180 credits" },
+      { type: "resource_grant", target: "data", value: 120, description: "+120 data" },
     ],
     alignmentShift: { yes: -0.06, no: 0.08 },
     levelRequirement: 10,

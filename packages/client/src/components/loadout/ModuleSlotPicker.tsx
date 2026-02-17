@@ -1,20 +1,22 @@
-import { MODULE_MAP, type PlayerModule, type ModuleDefinition } from "@singularities/shared";
+import { MODULE_MAP, type PlayerModule } from "@singularities/shared";
 import { ChevronDown, Check } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 
-interface DefenseSlotPickerProps {
+interface ModuleSlotPickerProps {
   slotIndex: number;
   selectedModuleId: string | null;
   ownedModules: PlayerModule[];
   onChange: (moduleId: string | null) => void;
+  label?: string;
 }
 
-export function DefenseSlotPicker({
+export function ModuleSlotPicker({
   slotIndex,
   selectedModuleId,
   ownedModules,
   onChange,
-}: DefenseSlotPickerProps) {
+  label = "SLOT",
+}: ModuleSlotPickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -36,7 +38,7 @@ export function DefenseSlotPicker({
   return (
     <div ref={ref} className="border border-border-default bg-bg-secondary rounded p-3">
       <div className="text-text-muted text-[10px] mb-1.5 uppercase tracking-wider">
-        DEFENSE SLOT {slotIndex + 1}
+        {label} {slotIndex + 1}
       </div>
 
       {/* Trigger button */}

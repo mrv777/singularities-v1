@@ -9,9 +9,9 @@ export const LEVEL_UNLOCKS: Record<string, number> = {
 // Systems that are blocked while in sandbox mode
 const SANDBOX_BLOCKED: string[] = ["pvp_arena", "security_center"];
 
-export const ENERGY_BASE_MAX = 100;
-export const ENERGY_BASE_REGEN_PER_HOUR = 180; // 3/min
-export const ENERGY_REGEN_PER_LEVEL = 9; // +0.15/min per level
+export const ENERGY_BASE_MAX = 130;
+export const ENERGY_BASE_REGEN_PER_HOUR = 420; // 7/min
+export const ENERGY_REGEN_PER_LEVEL = 10; // +0.17/min per level
 
 export function getUnlockedSystems(level: number, inSandbox: boolean): string[] {
   const unlocked: string[] = [];

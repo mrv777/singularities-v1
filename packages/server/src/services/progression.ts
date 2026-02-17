@@ -1,10 +1,9 @@
 import { query, type TxClient } from "../db/pool.js";
 import {
-  XP_THRESHOLDS,
-  MAX_LEVEL,
   getLevelForXP,
   ENERGY_BASE_MAX,
   ENERGY_MAX_PER_LEVEL,
+  getEnergyAfterLevelUp,
 } from "@singularities/shared";
 import { computeEnergy, mapPlayerRow } from "./player.js";
 import { getSeasonCatchUpMultiplier, applySeasonXPBoost } from "./seasons.js";
@@ -33,6 +32,8 @@ export async function awardXP(
   // Get current player
   const res = await dbQuery("SELECT * FROM players WHERE id = $1", [playerId]);
   const row = res.rows[0];
+  const computed = computeEnergy(row);
+  const currentEnergy = computed.energy as number;
   const currentLevel = row.level as number;
   const currentXP = row.xp as number;
   const newXP = currentXP + boostedAmount;
@@ -41,9 +42,16 @@ export async function awardXP(
 
   if (levelUp) {
     const newEnergyMax = ENERGY_BASE_MAX + (newLevel - 1) * ENERGY_MAX_PER_LEVEL;
+    const newEnergy = getEnergyAfterLevelUp(currentEnergy, newEnergyMax);
     await dbQuery(
-      `UPDATE players SET xp = $2, level = $3, energy_max = $4 WHERE id = $1`,
-      [playerId, newXP, newLevel, newEnergyMax]
+      `UPDATE players
+         SET xp = $2,
+             level = $3,
+             energy_max = $4,
+             energy = $5,
+             energy_updated_at = NOW()
+       WHERE id = $1`,
+      [playerId, newXP, newLevel, newEnergyMax, newEnergy]
     );
     // Broadcast level up
     const nameRes = await dbQuery("SELECT ai_name FROM players WHERE id = $1", [playerId]);

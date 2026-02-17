@@ -2,7 +2,7 @@ import { PVP_BALANCE } from "./balance.js";
 
 // PvP Combat Constants
 
-export const PVP_ENERGY_COST = 25;
+export const PVP_ENERGY_COST = 18;
 
 // Daily damage cap: 240 HP total (40% of 600 total HP across 6 systems at 100 each)
 export const PVP_DAILY_DAMAGE_CAP = 240;
@@ -16,14 +16,14 @@ export const PVP_LEVEL_RANGE = 5;
 // Win chance calculation: 50% + (attackPower - defensePower) / scaleFactor
 export const PVP_WIN_CHANCE_MIN = 15;
 export const PVP_WIN_CHANCE_MAX = 85;
-export const PVP_WIN_CHANCE_SCALE = 50;
+export const PVP_WIN_CHANCE_SCALE = 125;
 
 // Winner rewards (scaled by defender level)
 export const PVP_REWARD_CREDITS_MIN = PVP_BALANCE.rewardCredits.baseMin;
 export const PVP_REWARD_CREDITS_MAX = PVP_BALANCE.rewardCredits.baseMax;
 export const PVP_REWARD_REPUTATION_MIN = 20;
 export const PVP_REWARD_REPUTATION_MAX = 30;
-export const PVP_REWARD_XP = 50;
+export const PVP_REWARD_XP = 30;
 export const PVP_REWARD_CREDITS_STEAL_PCT_MIN = PVP_BALANCE.rewardCredits.stealPctMin;
 export const PVP_REWARD_CREDITS_STEAL_PCT_MAX = PVP_BALANCE.rewardCredits.stealPctMax;
 export const PVP_REWARD_CREDITS_LEVEL_BONUS = PVP_BALANCE.rewardCredits.levelBonusPerLevel;
@@ -37,7 +37,7 @@ export const PVP_LOSER_SYSTEMS_MIN = 1;
 export const PVP_LOSER_SYSTEMS_MAX = 2;
 
 // Default defense power when no loadout configured
-export const PVP_DEFAULT_DEFENSE_POWER = 5;
+export const PVP_DEFAULT_DEFENSE_POWER = 8;
 
 // Combat narrative templates
 export const COMBAT_ATTACK_PHRASES = [

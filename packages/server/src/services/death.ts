@@ -1,6 +1,7 @@
 import { query, withTransaction, type TxClient } from "../db/pool.js";
 import {
   DEATH_CORRUPTED_COUNT,
+  DEATH_MODULE_RECOVERY_CHANCE,
   ALL_TRAITS,
   REBIRTH_TRAIT_COUNT_MIN,
   REBIRTH_TRAIT_COUNT_MAX,
@@ -10,8 +11,19 @@ import {
 } from "@singularities/shared";
 import { broadcastSystem } from "./ws.js";
 
+interface CarryoverModuleRecord {
+  moduleId: string;
+  level: number;
+}
+
 function randomInt(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function normalizeModuleLevel(raw: unknown): number {
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed) || parsed < 1) return 1;
+  return Math.floor(parsed);
 }
 
 /**
@@ -70,16 +82,21 @@ export async function executeDeath(playerId: string, outerClient?: TxClient): Pr
     );
 
     let guaranteedModuleId: string | null = null;
-    const recoveredModules: string[] = [];
+    const recoveredModules: CarryoverModuleRecord[] = [];
 
     if (modulesRes.rows.length > 0) {
       // Highest-level module is guaranteed carryover
       guaranteedModuleId = modulesRes.rows[0].module_id as string;
+      const guaranteedModuleLevel = normalizeModuleLevel(modulesRes.rows[0].level);
+      recoveredModules.push({ moduleId: guaranteedModuleId, level: guaranteedModuleLevel });
 
-      // Roll 50% for each other module
+      // Roll for each other module
       for (let i = 1; i < modulesRes.rows.length; i++) {
-        if (Math.random() < 0.5) {
-          recoveredModules.push(modulesRes.rows[i].module_id as string);
+        if (Math.random() < DEATH_MODULE_RECOVERY_CHANCE) {
+          recoveredModules.push({
+            moduleId: modulesRes.rows[i].module_id as string,
+            level: normalizeModuleLevel(modulesRes.rows[i].level),
+          });
         }
       }
     }
@@ -115,7 +132,7 @@ export async function executeDeath(playerId: string, outerClient?: TxClient): Pr
  */
 export async function getCarryoverForWallet(
   walletAddress: string
-): Promise<{ guaranteedModuleId: string | null; recoveredModules: string[]; deathsCount: number } | null> {
+): Promise<{ guaranteedModuleId: string | null; recoveredModules: CarryoverModuleRecord[]; deathsCount: number } | null> {
   const res = await query(
     "SELECT * FROM wallet_carryovers WHERE wallet_address = $1",
     [walletAddress]
@@ -124,9 +141,37 @@ export async function getCarryoverForWallet(
   if (res.rows.length === 0) return null;
 
   const row = res.rows[0];
+  const guaranteedModuleId = (row.guaranteed_module_id as string) ?? null;
+  const recoveredRaw = row.recovered_modules as unknown;
+  const moduleLevels = new Map<string, number>();
+
+  if (Array.isArray(recoveredRaw)) {
+    for (const entry of recoveredRaw) {
+      if (typeof entry === "string") {
+        moduleLevels.set(entry, Math.max(moduleLevels.get(entry) ?? 0, 1));
+        continue;
+      }
+      if (entry && typeof entry === "object") {
+        const obj = entry as Record<string, unknown>;
+        const moduleIdRaw = obj.moduleId ?? obj.module_id;
+        if (typeof moduleIdRaw !== "string" || moduleIdRaw.length === 0) continue;
+        const level = normalizeModuleLevel(obj.level);
+        moduleLevels.set(moduleIdRaw, Math.max(moduleLevels.get(moduleIdRaw) ?? 0, level));
+      }
+    }
+  }
+
+  if (guaranteedModuleId) {
+    moduleLevels.set(guaranteedModuleId, Math.max(moduleLevels.get(guaranteedModuleId) ?? 0, 1));
+  }
+
+  const recoveredModules: CarryoverModuleRecord[] = Array.from(moduleLevels.entries()).map(
+    ([moduleId, level]) => ({ moduleId, level })
+  );
+
   return {
-    guaranteedModuleId: (row.guaranteed_module_id as string) ?? null,
-    recoveredModules: (row.recovered_modules as string[]) ?? [],
+    guaranteedModuleId,
+    recoveredModules,
     deathsCount: row.deaths_count as number,
   };
 }
@@ -143,19 +188,25 @@ export async function processRebirth(
   const carryover = await getCarryoverForWallet(walletAddress);
   if (!carryover) return { recoveredModules: [], traitIds: [] };
 
-  const allModules: string[] = [];
-  if (carryover.guaranteedModuleId) {
-    allModules.push(carryover.guaranteedModuleId);
+  const moduleLevels = new Map<string, number>();
+  for (const m of carryover.recoveredModules) {
+    moduleLevels.set(m.moduleId, Math.max(moduleLevels.get(m.moduleId) ?? 0, normalizeModuleLevel(m.level)));
   }
-  allModules.push(...carryover.recoveredModules);
+  if (carryover.guaranteedModuleId) {
+    moduleLevels.set(
+      carryover.guaranteedModuleId,
+      Math.max(moduleLevels.get(carryover.guaranteedModuleId) ?? 0, 1)
+    );
+  }
 
-  // Grant modules (level 1 each)
-  for (const moduleId of allModules) {
+  // Grant recovered modules and keep the recovered level.
+  for (const [moduleId, level] of moduleLevels.entries()) {
     await client.query(
       `INSERT INTO player_modules (player_id, module_id, level)
-       VALUES ($1, $2, 1)
-       ON CONFLICT (player_id, module_id) DO NOTHING`,
-      [playerId, moduleId]
+       VALUES ($1, $2, $3)
+       ON CONFLICT (player_id, module_id) DO UPDATE SET
+         level = GREATEST(player_modules.level, EXCLUDED.level)`,
+      [playerId, moduleId, level]
     );
   }
 
@@ -180,7 +231,7 @@ export async function processRebirth(
   );
 
   return {
-    recoveredModules: allModules,
+    recoveredModules: Array.from(moduleLevels.keys()),
     traitIds: selectedTraits.map((t) => t.id),
   };
 }

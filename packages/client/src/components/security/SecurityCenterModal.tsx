@@ -5,7 +5,7 @@ import { useAuthStore } from "@/stores/auth";
 import { api } from "@/lib/api";
 import { MODULE_MAP, HEAT_DAMAGE } from "@singularities/shared";
 import type { SecurityOverviewResponse } from "@singularities/shared";
-import { DefenseSlotPicker } from "./DefenseSlotPicker";
+import { ModuleSlotPicker } from "@/components/loadout/ModuleSlotPicker";
 import { useState, useEffect } from "react";
 import { Shield, AlertTriangle, BarChart3, Wrench } from "lucide-react";
 
@@ -100,12 +100,13 @@ export function SecurityCenterModal() {
               Configure your defense loadout. These modules protect you from PvP attacks.
             </p>
             {[0, 1, 2].map((i) => (
-              <DefenseSlotPicker
+              <ModuleSlotPicker
                 key={i}
                 slotIndex={i}
                 selectedModuleId={editSlots[i]}
                 ownedModules={ownedModules}
                 onChange={(moduleId) => handleSlotChange(i, moduleId)}
+                label="DEFENSE SLOT"
               />
             ))}
             <button

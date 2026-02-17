@@ -172,41 +172,43 @@ function GamePage() {
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.4 }}
-      className="space-y-6 py-4 px-2"
-    >
-      <WorldEventBanner />
+    <>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.4 }}
+        className="space-y-6 py-4 px-2"
+      >
+        <WorldEventBanner />
 
-      <div className="text-center mb-2">
-        <p className="text-text-secondary text-xs">
-          {player?.aiName ?? "AI"} — Systems online. Select a node to begin.
-        </p>
-      </div>
+        <div className="text-center mb-2">
+          <p className="text-text-secondary text-xs">
+            {player?.aiName ?? "AI"} — Systems online. Select a node to begin.
+          </p>
+        </div>
 
-      <NetworkMap
-        playerLevel={player?.level ?? 1}
-        isInSandbox={player?.isInSandbox}
-      />
+        <NetworkMap
+          playerLevel={player?.level ?? 1}
+          isInSandbox={player?.isInSandbox}
+        />
 
-      {/* Modals */}
-      <ScannerModal />
-      <TechTreeModal />
-      <LoadoutEditor />
-      <ModifierDetailModal />
-      <TopologyDetailModal />
-      <SystemStatusModal />
-      <ScriptManagerModal />
-      <DataVaultModal />
-      <ArenaModal />
-      <SecurityCenterModal />
-      <NetStatsModal />
-      <SandboxExitModal />
-      <DecisionModal />
-      <HelpModal />
+        {/* Modals */}
+        <ScannerModal />
+        <TechTreeModal />
+        <LoadoutEditor />
+        <ModifierDetailModal />
+        <TopologyDetailModal />
+        <SystemStatusModal />
+        <ScriptManagerModal />
+        <DataVaultModal />
+        <ArenaModal />
+        <SecurityCenterModal />
+        <NetStatsModal />
+        <SandboxExitModal />
+        <DecisionModal />
+        <HelpModal />
+      </motion.div>
       <ChatPanel />
-    </motion.div>
+    </>
   );
 }
