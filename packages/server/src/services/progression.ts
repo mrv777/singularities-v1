@@ -7,6 +7,7 @@ import {
   ENERGY_MAX_PER_LEVEL,
 } from "@singularities/shared";
 import { computeEnergy, mapPlayerRow } from "./player.js";
+import { getSeasonCatchUpMultiplier, applySeasonXPBoost } from "./seasons.js";
 
 type DbQuery = (text: string, params?: unknown[]) => Promise<{ rows: Record<string, unknown>[] }>;
 
@@ -19,12 +20,21 @@ export async function awardXP(
     ? (text, params) => client.query(text, params)
     : (text, params) => query(text, params);
 
+  // Phase 4: Apply season catch-up multiplier
+  let boostedAmount = amount;
+  try {
+    const multiplier = await getSeasonCatchUpMultiplier(playerId);
+    boostedAmount = applySeasonXPBoost(amount, multiplier);
+  } catch {
+    // Non-critical — use base amount if season service fails
+  }
+
   // Get current player
   const res = await dbQuery("SELECT * FROM players WHERE id = $1", [playerId]);
   const row = res.rows[0];
   const currentLevel = row.level as number;
   const currentXP = row.xp as number;
-  const newXP = currentXP + amount;
+  const newXP = currentXP + boostedAmount;
   const newLevel = getLevelForXP(newXP);
   const levelUp = newLevel > currentLevel;
 

@@ -11,23 +11,33 @@ export interface NodeDef {
   icon: string;
 }
 
+export interface TopologyStyle {
+  glow?: string;
+  tint?: string;
+  tooltip?: string;
+}
+
 interface NetworkNodeProps {
   node: NodeDef;
   playerLevel: number;
   unlockedSystems?: string[];
   onClick: (id: string) => void;
+  topologyStyle?: TopologyStyle;
 }
 
-export function NetworkNode({ node, playerLevel, unlockedSystems, onClick }: NetworkNodeProps) {
+export function NetworkNode({ node, playerLevel, unlockedSystems, onClick, topologyStyle }: NetworkNodeProps) {
   const isUnlocked = unlockedSystems
     ? unlockedSystems.includes(node.id) && !node.comingSoon
     : playerLevel >= node.unlockLevel && !node.comingSoon;
   const isComingSoon = node.comingSoon;
 
+  const hasTopo = isUnlocked && topologyStyle?.tint;
+
   return (
     <g
       className={isUnlocked ? "cursor-pointer" : "cursor-default"}
       onClick={() => isUnlocked && onClick(node.id)}
+      style={hasTopo && topologyStyle?.glow ? { filter: topologyStyle.glow } : undefined}
     >
       {/* Glow effect for active nodes */}
       {isUnlocked && (
@@ -36,7 +46,7 @@ export function NetworkNode({ node, playerLevel, unlockedSystems, onClick }: Net
           cy={node.y}
           r={32}
           fill="none"
-          stroke="var(--color-cyber-cyan)"
+          stroke={hasTopo ? topologyStyle.tint : "var(--color-cyber-cyan)"}
           strokeWidth={1}
           opacity={0.3}
           animate={{ r: [32, 36, 32], opacity: [0.3, 0.15, 0.3] }}
@@ -54,7 +64,7 @@ export function NetworkNode({ node, playerLevel, unlockedSystems, onClick }: Net
           isComingSoon
             ? "var(--color-border-default)"
             : isUnlocked
-              ? "var(--color-cyber-cyan)"
+              ? (hasTopo ? topologyStyle.tint! : "var(--color-cyber-cyan)")
               : "var(--color-border-default)"
         }
         strokeWidth={isUnlocked ? 2 : 1}
@@ -72,7 +82,7 @@ export function NetworkNode({ node, playerLevel, unlockedSystems, onClick }: Net
           isComingSoon
             ? "var(--color-text-muted)"
             : isUnlocked
-              ? "var(--color-cyber-cyan)"
+              ? (hasTopo ? topologyStyle.tint! : "var(--color-cyber-cyan)")
               : "var(--color-text-muted)"
         }
         opacity={isUnlocked ? 1 : 0.4}
@@ -92,6 +102,21 @@ export function NetworkNode({ node, playerLevel, unlockedSystems, onClick }: Net
       >
         {isComingSoon ? "???" : node.label}
       </text>
+
+      {/* Topology tooltip */}
+      {hasTopo && topologyStyle?.tooltip && (
+        <text
+          x={node.x}
+          y={node.y + 56}
+          textAnchor="middle"
+          fontSize={7}
+          fontFamily="var(--font-mono)"
+          fill={topologyStyle.tint}
+          opacity={0.8}
+        >
+          {topologyStyle.tooltip}
+        </text>
+      )}
 
       {/* Lock / level badge */}
       {!isUnlocked && !isComingSoon && (

@@ -5,6 +5,7 @@ import { useUIStore } from "@/stores/ui";
 import { DAY_PHASE_HOURS, XP_THRESHOLDS, getXPForNextLevel } from "@singularities/shared";
 import { useState, useEffect } from "react";
 import { ModifierBadge } from "./ModifierBadge";
+import { AlignmentIndicator } from "./alignment/AlignmentIndicator";
 
 function getDayPhase() {
   const hour = new Date().getHours();
@@ -101,6 +102,7 @@ export function Header() {
             <span className="text-cyber-magenta">{player.processingPower} PP</span>
             <span className="text-text-secondary">REP {player.reputation}</span>
             <ModifierBadge />
+            <AlignmentIndicator />
             <span className={`${phase.color} text-[10px]`}>
               {phase.phase} {countdown}
             </span>

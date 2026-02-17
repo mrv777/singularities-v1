@@ -5,6 +5,9 @@ import { runDailyModifierRotation } from "./jobs/dailyModifierRotation.js";
 import { runArenaReset } from "./jobs/arenaReset.js";
 import { runDeathCheck } from "./jobs/deathCheck.js";
 import { runNftTransferCheck } from "./jobs/nftTransferCheck.js";
+import { runWeeklyTopologyRotation } from "./jobs/weeklyTopologyRotation.js";
+import { runWorldEventGeneration } from "./jobs/worldEventGeneration.js";
+import { runSeasonCheck } from "./jobs/seasonCheck.js";
 
 const intervals: NodeJS.Timeout[] = [];
 
@@ -40,8 +43,11 @@ export function startWorker(): void {
   scheduleJob("arenaReset", runArenaReset, 60 * 60 * 1000);                       // Every hour
   scheduleJob("deathCheck", runDeathCheck, 30 * 60 * 1000);                       // Every 30 min
   scheduleJob("nftTransferCheck", runNftTransferCheck, 60 * 60 * 1000);           // Every hour
+  scheduleJob("weeklyTopologyRotation", runWeeklyTopologyRotation, 60 * 60 * 1000); // Every hour
+  scheduleJob("worldEventGeneration", runWorldEventGeneration, 60 * 60 * 1000);     // Every hour
+  scheduleJob("seasonCheck", runSeasonCheck, 60 * 60 * 1000);                       // Every hour
 
-  console.log("[worker] Background worker started with 7 jobs.");
+  console.log("[worker] Background worker started with 10 jobs.");
 }
 
 export function stopWorker(): void {

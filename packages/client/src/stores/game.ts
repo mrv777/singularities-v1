@@ -1,6 +1,6 @@
 import { create } from "zustand";
-import type { ScanTarget, PlayerLoadout, PlayerModule, CombatLog } from "@singularities/shared";
-import type { ArenaOpponent, ArenaAttackResponse } from "@singularities/shared";
+import type { ScanTarget, PlayerLoadout, PlayerModule, CombatLog, WeeklyTopology, WorldEvent, PendingDecisionResponse } from "@singularities/shared";
+import type { ArenaOpponent, ArenaAttackResponse, DecisionChooseResponse } from "@singularities/shared";
 
 interface GameState {
   // Scanner
@@ -24,6 +24,12 @@ interface GameState {
   isAttacking: boolean;
   isEnteringArena: boolean;
 
+  // Phase 4: World systems
+  pendingDecision: PendingDecisionResponse["decision"] | null;
+  decisionResult: DecisionChooseResponse | null;
+  topology: WeeklyTopology | null;
+  worldEvents: WorldEvent[];
+
   // Actions
   setScannedTargets: (targets: ScanTarget[], expiresAt: string) => void;
   clearScan: () => void;
@@ -39,6 +45,10 @@ interface GameState {
   setCombatLogs: (logs: CombatLog[]) => void;
   setIsAttacking: (v: boolean) => void;
   setIsEnteringArena: (v: boolean) => void;
+  setPendingDecision: (d: PendingDecisionResponse["decision"] | null) => void;
+  setDecisionResult: (r: DecisionChooseResponse | null) => void;
+  setTopology: (t: WeeklyTopology | null) => void;
+  setWorldEvents: (e: WorldEvent[]) => void;
 }
 
 export const useGameStore = create<GameState>((set) => ({
@@ -55,6 +65,10 @@ export const useGameStore = create<GameState>((set) => ({
   combatLogs: [],
   isAttacking: false,
   isEnteringArena: false,
+  pendingDecision: null,
+  decisionResult: null,
+  topology: null,
+  worldEvents: [],
 
   setScannedTargets: (targets, expiresAt) =>
     set({ scannedTargets: targets, scanExpiresAt: expiresAt, selectedTargetIndex: null, hackResult: null }),
@@ -72,4 +86,8 @@ export const useGameStore = create<GameState>((set) => ({
   setCombatLogs: (logs) => set({ combatLogs: logs }),
   setIsAttacking: (v) => set({ isAttacking: v }),
   setIsEnteringArena: (v) => set({ isEnteringArena: v }),
+  setPendingDecision: (d) => set({ pendingDecision: d }),
+  setDecisionResult: (r) => set({ decisionResult: r }),
+  setTopology: (t) => set({ topology: t }),
+  setWorldEvents: (e) => set({ worldEvents: e }),
 }));

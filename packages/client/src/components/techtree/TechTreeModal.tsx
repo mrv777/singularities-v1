@@ -27,6 +27,7 @@ export function TechTreeModal() {
   const [activeTab, setActiveTab] = useState<ModuleCategory>("primary");
   const [ownedModules, setOwnedModules] = useState<PlayerModule[]>([]);
   const [processing, setProcessing] = useState<string | null>(null);
+  const [mutating, setMutating] = useState<string | null>(null);
 
   const open = activeModal === "tech_tree";
 
@@ -80,6 +81,21 @@ export function TechTreeModal() {
       console.error("Purchase failed:", err.message);
     } finally {
       setProcessing(null);
+    }
+  };
+
+  const handleMutate = async (moduleId: string) => {
+    setMutating(moduleId);
+    try {
+      const result = await api.mutateModule({ moduleId });
+      setPlayer(result.player);
+      const modules = await api.getModules();
+      setOwnedModules(modules.owned);
+      queryClient.invalidateQueries({ queryKey: ["player"] });
+    } catch (err: any) {
+      console.error("Mutation failed:", err.message);
+    } finally {
+      setMutating(null);
     }
   };
 
@@ -143,7 +159,9 @@ export function TechTreeModal() {
                         : undefined
                     }
                     onPurchase={() => handlePurchase(def.id)}
+                    onMutate={() => handleMutate(def.id)}
                     isProcessing={processing === def.id}
+                    isMutating={mutating === def.id}
                   />
                 ))}
               </div>

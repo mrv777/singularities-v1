@@ -7,6 +7,11 @@ import {
 } from "@singularities/shared";
 import { getActiveModifierEffects } from "./modifiers.js";
 import { computeSystemHealth } from "./maintenance.js";
+import { applyAlignmentToStats } from "./alignment.js";
+import { getCurrentTopology, getTopologyEffects } from "./topology.js";
+import { getWorldEventEffects } from "./worldEvents.js";
+import { getMutationEffect } from "./mutations.js";
+import { getActiveDecisionBuffs } from "./decisions.js";
 
 type DbQuery = (
   text: string,
@@ -54,7 +59,7 @@ export async function resolveLoadoutStats(
 
   // 1. Load equipped modules for the loadout
   const modRes = await dbq(
-    `SELECT pm.module_id, pm.level FROM player_loadouts pl
+    `SELECT pm.module_id, pm.level, pm.mutation FROM player_loadouts pl
      JOIN player_modules pm ON pm.player_id = pl.player_id AND pm.module_id = pl.module_id
      WHERE pl.player_id = $1 AND pl.loadout_type = $2`,
     [playerId, loadoutType]
@@ -78,6 +83,15 @@ export async function resolveLoadoutStats(
     const level = row.level as number;
     for (const key of Object.keys(raw) as (keyof typeof raw)[]) {
       raw[key] += (def.effects[key] ?? 0) * level;
+    }
+
+    // Phase 4: Add mutation bonuses
+    const mutation = row.mutation as string | null;
+    if (mutation) {
+      const mutEffects = getMutationEffect(mutation);
+      for (const key of Object.keys(raw) as (keyof typeof raw)[]) {
+        raw[key] += mutEffects[key] ?? 0;
+      }
     }
   }
 
@@ -115,8 +129,44 @@ export async function resolveLoadoutStats(
     healthMultiplier = Math.max(0.1, avg / 100);
   }
 
+  // Phase 4: Apply alignment perks at extreme values
+  const playerRes = await dbq("SELECT alignment FROM players WHERE id = $1", [playerId]);
+  const alignment = playerRes.rows.length > 0 ? (playerRes.rows[0].alignment as number) : 0;
+  const aligned = applyAlignmentToStats(alignment, raw);
+
+  // Phase 4: Apply temporary decision buffs
+  const decisionBuffs = await getActiveDecisionBuffs(playerId);
+  for (const [key, value] of Object.entries(decisionBuffs)) {
+    if (key in aligned) aligned[key as keyof typeof aligned] += value;
+  }
+
+  // Phase 4: Factor in topology and world event effects into modifier effects
+  try {
+    const [topology, worldEffects] = await Promise.all([
+      getCurrentTopology(),
+      getWorldEventEffects(),
+    ]);
+    const topoEffects = getTopologyEffects(topology);
+
+    // Merge topology and world event effects into modifier effects (multiplicative)
+    for (const [key, value] of Object.entries(topoEffects)) {
+      if (key in modifierEffects) {
+        (modifierEffects as Record<string, number>)[key] =
+          ((modifierEffects as Record<string, number>)[key] ?? 1) * value;
+      }
+    }
+    for (const [key, value] of Object.entries(worldEffects)) {
+      if (key in modifierEffects) {
+        (modifierEffects as Record<string, number>)[key] =
+          ((modifierEffects as Record<string, number>)[key] ?? 1) * value;
+      }
+    }
+  } catch {
+    // Non-critical — topology/events may not be available
+  }
+
   return {
-    ...raw,
+    ...aligned,
     healthMultiplier,
     modifierEffects,
   };

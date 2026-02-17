@@ -47,6 +47,7 @@ export interface PlayerModule {
   playerId: string;
   moduleId: string;
   level: number; // 1-5
+  mutation: string | null;
   purchasedAt: string;
 }
 

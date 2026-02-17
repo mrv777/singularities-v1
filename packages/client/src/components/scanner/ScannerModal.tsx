@@ -31,6 +31,7 @@ export function ScannerModal() {
     setIsHacking,
     setLoadout,
     setOwnedModules,
+    setPendingDecision,
   } = useGameStore();
 
   const [error, setError] = useState("");
@@ -83,6 +84,11 @@ export function ScannerModal() {
 
       // Set hack result LAST — the calls above clear it
       setHackResult(result);
+
+      // Check for pending binary decision triggered by the hack
+      api.getPendingDecision().then((r) => {
+        if (r.decision) setPendingDecision(r.decision);
+      }).catch(() => {});
     } catch (err: any) {
       const msg = err.message ?? "Hack failed";
       // If scan expired, clear stale targets so user can re-scan

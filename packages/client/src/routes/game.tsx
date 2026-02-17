@@ -12,10 +12,13 @@ import { ArenaModal } from "@/components/arena/ArenaModal";
 import { SecurityCenterModal } from "@/components/security/SecurityCenterModal";
 import { SandboxExitModal } from "@/components/SandboxExitModal";
 import { NetStatsModal } from "@/components/stats/NetStatsModal";
+import { DecisionModal } from "@/components/decisions/DecisionModal";
+import { WorldEventBanner } from "@/components/world/WorldEventBanner";
 import { DeathScreen } from "@/components/death/DeathScreen";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { api } from "@/lib/api";
 import { useQueryClient } from "@tanstack/react-query";
+import { useGameStore } from "@/stores/game";
 
 export const Route = createFileRoute("/game")({
   component: GamePage,
@@ -95,6 +98,19 @@ function RegistrationForm() {
 function GamePage() {
   const { isAuthenticated, player, setPlayer } = useAuthStore();
   const queryClient = useQueryClient();
+  const setWorldEvents = useGameStore((s) => s.setWorldEvents);
+  const setPendingDecision = useGameStore((s) => s.setPendingDecision);
+
+  // Load world events on mount
+  useEffect(() => {
+    if (player?.isAlive) {
+      api.getWorldEvents().then((r) => setWorldEvents(r.events)).catch(() => {});
+      // Check for pending decisions (e.g. from login trigger)
+      api.getPendingDecision().then((r) => {
+        if (r.decision) setPendingDecision(r.decision);
+      }).catch(() => {});
+    }
+  }, [player?.isAlive, setWorldEvents, setPendingDecision]);
 
   if (!isAuthenticated) {
     return <Navigate to="/" />;
@@ -126,6 +142,8 @@ function GamePage() {
       transition={{ duration: 0.4 }}
       className="space-y-6 py-4 px-2"
     >
+      <WorldEventBanner />
+
       <div className="text-center mb-2">
         <p className="text-text-secondary text-xs">
           {player?.aiName ?? "AI"} — Systems online. Select a node to begin.
@@ -148,6 +166,7 @@ function GamePage() {
       <SecurityCenterModal />
       <NetStatsModal />
       <SandboxExitModal />
+      <DecisionModal />
     </motion.div>
   );
 }

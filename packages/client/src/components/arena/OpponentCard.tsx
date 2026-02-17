@@ -29,6 +29,11 @@ export function OpponentCard({ opponent, onAttack, isAttacking }: OpponentCardPr
         <div className="flex items-center gap-3 mt-1 text-[10px] text-text-muted">
           <span>LVL {opponent.level}</span>
           <span>REP {opponent.reputation}</span>
+          {opponent.alignment > 0.3 ? (
+            <span className="text-cyber-green">Benevolent</span>
+          ) : opponent.alignment < -0.3 ? (
+            <span className="text-cyber-red">Domination</span>
+          ) : null}
         </div>
       </div>
       <button

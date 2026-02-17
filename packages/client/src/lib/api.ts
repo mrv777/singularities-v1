@@ -31,6 +31,17 @@ import type {
   ArenaCombatLogsResponse,
   SecurityOverviewResponse,
   LoadoutType,
+  TopologyResponse,
+  WorldEventsResponse,
+  NetworkStatsResponse,
+  PendingDecisionResponse,
+  DecisionChooseRequest,
+  DecisionChooseResponse,
+  DecisionHistoryResponse,
+  MutateModuleRequest,
+  MutateModuleResponse,
+  CurrentSeasonResponse,
+  SeasonLeaderboardResponse,
 } from "@singularities/shared";
 
 const API_BASE = "/api";
@@ -241,6 +252,52 @@ class ApiClient {
       method: "PUT",
       body: JSON.stringify({ type, slots }),
     });
+  }
+
+  // World / Topology
+  getTopology() {
+    return this.fetch<TopologyResponse>("/world/topology");
+  }
+
+  getWorldEvents() {
+    return this.fetch<WorldEventsResponse>("/world/events");
+  }
+
+  getNetworkStats() {
+    return this.fetch<NetworkStatsResponse>("/world/stats");
+  }
+
+  // Decisions
+  getPendingDecision() {
+    return this.fetch<PendingDecisionResponse>("/decisions/pending");
+  }
+
+  submitDecision(data: DecisionChooseRequest) {
+    return this.fetch<DecisionChooseResponse>("/decisions/choose", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  getDecisionHistory() {
+    return this.fetch<DecisionHistoryResponse>("/decisions/history");
+  }
+
+  // Mutations
+  mutateModule(data: MutateModuleRequest) {
+    return this.fetch<MutateModuleResponse>("/modules/mutate", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  // Seasons
+  getCurrentSeason() {
+    return this.fetch<CurrentSeasonResponse>("/seasons/current");
+  }
+
+  getSeasonLeaderboard() {
+    return this.fetch<SeasonLeaderboardResponse>("/seasons/leaderboard");
   }
 }
 

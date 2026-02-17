@@ -1,6 +1,7 @@
 import type { Player, PlayerSystem, PlayerModule, PlayerLoadout, PlayerScript, PlayerTrait, LoadoutType } from "./player.js";
 import type { CombatLog } from "./combat.js";
-import type { ScanTarget, ModuleDefinition, ModifierDefinition, GeneticTrait } from "../constants/index.js";
+import type { WeeklyTopology, WorldEvent, PendingDecision, SeasonLeaderboardEntry, NetworkStats, MutationResult, Season } from "./world.js";
+import type { ScanTarget, ModuleDefinition, ModifierDefinition, GeneticTrait, BinaryDecision } from "../constants/index.js";
 
 // Auth
 export interface AuthChallengeRequest {
@@ -157,6 +158,7 @@ export interface ArenaOpponent {
   level: number;
   reputation: number;
   playstyle: string;
+  alignment: number;
 }
 
 export interface ArenaAvailableResponse {
@@ -217,6 +219,68 @@ export interface RebirthResponse {
 // Traits
 export interface PlayerTraitResponse {
   traits: Array<PlayerTrait & { definition: GeneticTrait }>;
+}
+
+// Topology
+export interface TopologyResponse {
+  topology: WeeklyTopology | null;
+}
+
+// World Events
+export interface WorldEventsResponse {
+  events: WorldEvent[];
+}
+
+// Network Stats
+export interface NetworkStatsResponse {
+  stats: NetworkStats;
+}
+
+// Decisions
+export interface PendingDecisionResponse {
+  decision: (PendingDecision & { definition: BinaryDecision }) | null;
+}
+
+export interface DecisionChooseRequest {
+  decisionId: string;
+  choice: "yes" | "no";
+}
+
+export interface DecisionChooseResponse {
+  effects: Array<{ description: string }>;
+  alignmentShift: number;
+  player: Player;
+}
+
+export interface DecisionHistoryResponse {
+  decisions: Array<{
+    decisionId: string;
+    choice: "yes" | "no";
+    effects: Record<string, unknown> | null;
+    createdAt: string;
+  }>;
+}
+
+// Mutations
+export interface MutateModuleRequest {
+  moduleId: string;
+}
+
+export interface MutateModuleResponse {
+  result: MutationResult;
+  player: Player;
+  module: PlayerModule;
+}
+
+// Seasons
+export interface CurrentSeasonResponse {
+  season: Season | null;
+  daysRemaining: number;
+}
+
+export interface SeasonLeaderboardResponse {
+  leaderboard: SeasonLeaderboardEntry[];
+  playerRank: number | null;
 }
 
 // Generic error

@@ -20,6 +20,9 @@ import { computeEnergy, mapPlayerRow, mapSystemRow } from "./player.js";
 import { awardXP } from "./progression.js";
 import { resolveLoadoutStats } from "./stats.js";
 import { computeSystemHealth } from "./maintenance.js";
+import { triggerDecision } from "./decisions.js";
+import { shiftAlignment } from "./alignment.js";
+import { ALIGNMENT_SHIFTS } from "@singularities/shared";
 
 function randomInt(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -276,6 +279,18 @@ export async function executeHack(playerId: string, targetIndex: number) {
     await redis.set(key, JSON.stringify(remaining), "EX", SCAN_TTL_SECONDS);
   } else {
     await redis.del(key);
+  }
+
+  // Phase 4: Post-hack alignment shifts and decision triggers (fire-and-forget)
+  try {
+    // Civilian target types shift alignment negatively
+    if (["database", "research", "infrastructure"].includes(target.type)) {
+      await shiftAlignment(playerId, ALIGNMENT_SHIFTS.hackCivilian);
+    }
+    // 10% chance to trigger a binary decision
+    await triggerDecision(playerId, "afterHack");
+  } catch {
+    // Non-critical — don't fail the hack
   }
 
   return result;

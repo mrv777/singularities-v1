@@ -1,8 +1,12 @@
 import { LEVEL_UNLOCKS, SANDBOX_EXIT_LEVEL } from "@singularities/shared";
+import type { WeeklyTopology } from "@singularities/shared";
 import { NetworkNode, type NodeDef } from "./NetworkNode";
 import { NetworkConnections } from "./NetworkConnections";
 import { useUIStore } from "@/stores/ui";
+import { useGameStore } from "@/stores/game";
 import { Lock, LogOut } from "lucide-react";
+import { useEffect } from "react";
+import { api } from "@/lib/api";
 
 // Carefully positioned nodes on 800x600 viewport
 const NODES: NodeDef[] = [
@@ -25,7 +29,32 @@ interface NetworkMapProps {
 
 export function NetworkMap({ playerLevel, unlockedSystems, isInSandbox }: NetworkMapProps) {
   const openModal = useUIStore((s) => s.openModal);
+  const topology = useGameStore((s) => s.topology);
+  const setTopology = useGameStore((s) => s.setTopology);
   const showSandboxExit = isInSandbox && playerLevel >= SANDBOX_EXIT_LEVEL;
+
+  useEffect(() => {
+    api.getTopology().then((r) => setTopology(r.topology)).catch(() => {});
+  }, [setTopology]);
+
+  function getNodeStyle(nodeId: string): { glow?: string; tint?: string; tooltip?: string } {
+    if (!topology) return {};
+    if (topology.boostedNode === nodeId) {
+      return {
+        glow: "drop-shadow(0 0 6px #00ff88)",
+        tint: "#00ff88",
+        tooltip: topology.boostEffect ? `${topology.boostEffect.label}: ${topology.boostEffect.description}` : "Boosted",
+      };
+    }
+    if (topology.hinderedNode === nodeId) {
+      return {
+        glow: "drop-shadow(0 0 4px #ffaa00)",
+        tint: "#ffaa00",
+        tooltip: topology.hindranceEffect ? `${topology.hindranceEffect.label}: ${topology.hindranceEffect.description}` : "Hindered",
+      };
+    }
+    return {};
+  }
 
   return (
     <>
@@ -44,6 +73,7 @@ export function NetworkMap({ playerLevel, unlockedSystems, isInSandbox }: Networ
               playerLevel={playerLevel}
               unlockedSystems={unlockedSystems}
               onClick={openModal}
+              topologyStyle={getNodeStyle(node.id)}
             />
           ))}
         </svg>

@@ -66,6 +66,7 @@ export function mapModuleRow(row: Record<string, unknown>) {
     playerId: row.player_id as string,
     moduleId: row.module_id as string,
     level: row.level as number,
+    mutation: (row.mutation as string) ?? null,
     purchasedAt: row.purchased_at as string,
   };
 }

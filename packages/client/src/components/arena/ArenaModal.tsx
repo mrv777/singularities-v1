@@ -26,6 +26,7 @@ export function ArenaModal() {
     setIsAttacking,
     isEnteringArena,
     setIsEnteringArena,
+    setPendingDecision,
   } = useGameStore();
 
   const [tab, setTab] = useState<Tab>("arena");
@@ -68,6 +69,11 @@ export function ArenaModal() {
       const result = await api.attackPlayer({ targetId });
       setCombatResult(result);
       setPlayer(result.player);
+
+      // Check for pending binary decision triggered by combat
+      api.getPendingDecision().then((r) => {
+        if (r.decision) setPendingDecision(r.decision);
+      }).catch(() => {});
     } catch (err: any) {
       setError(err.message ?? "Attack failed");
     } finally {

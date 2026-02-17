@@ -1,5 +1,5 @@
 import type { ModuleDefinition, PlayerModule } from "@singularities/shared";
-import { MAX_MODULE_LEVEL } from "@singularities/shared";
+import { MAX_MODULE_LEVEL, MUTATION_MIN_LEVEL, MUTATION_VARIANT_MAP } from "@singularities/shared";
 
 interface ModuleCardProps {
   definition: ModuleDefinition;
@@ -8,7 +8,9 @@ interface ModuleCardProps {
   isLocked: boolean;
   lockReason?: string;
   onPurchase: () => void;
+  onMutate?: () => void;
   isProcessing: boolean;
+  isMutating?: boolean;
 }
 
 export function ModuleCard({
@@ -18,7 +20,9 @@ export function ModuleCard({
   isLocked,
   lockReason,
   onPurchase,
+  onMutate,
   isProcessing,
+  isMutating,
 }: ModuleCardProps) {
   const currentLevel = owned?.level ?? 0;
   const isMaxLevel = currentLevel >= MAX_MODULE_LEVEL;
@@ -40,15 +44,22 @@ export function ModuleCard({
       className={`border rounded p-3 transition-all ${
         isLocked
           ? "border-border-default bg-bg-primary opacity-40"
-          : isOwned
-            ? "border-cyber-cyan/30 bg-bg-elevated"
-            : "border-border-default bg-bg-secondary hover:border-border-bright"
+          : owned?.mutation
+            ? "border-cyber-magenta/40 bg-bg-elevated"
+            : isOwned
+              ? "border-cyber-cyan/30 bg-bg-elevated"
+              : "border-border-default bg-bg-secondary hover:border-border-bright"
       }`}
     >
       <div className="flex items-center justify-between mb-1">
         <span className="text-xs font-semibold text-text-primary truncate">
           {definition.name}
         </span>
+        {owned?.mutation && (
+          <span className="text-[9px] px-1.5 py-0.5 bg-cyber-magenta/10 border border-cyber-magenta/30 rounded text-cyber-magenta">
+            {MUTATION_VARIANT_MAP[owned.mutation]?.name ?? owned.mutation}
+          </span>
+        )}
       </div>
 
       {/* Level dots */}
@@ -97,6 +108,17 @@ export function ModuleCard({
             : isOwned
               ? `Upgrade LV${currentLevel + 1} (${cost.credits}CR ${cost.data}D)`
               : `Purchase (${cost.credits}CR ${cost.data}D)`}
+        </button>
+      )}
+
+      {/* Mutate button */}
+      {isOwned && !owned?.mutation && currentLevel >= MUTATION_MIN_LEVEL && onMutate && (
+        <button
+          onClick={onMutate}
+          disabled={isMutating}
+          className="w-full mt-1 text-[10px] py-1.5 border border-cyber-magenta/50 text-cyber-magenta rounded hover:bg-cyber-magenta/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+        >
+          {isMutating ? "Mutating..." : "MUTATE (500CR 200D 100PP)"}
         </button>
       )}
     </div>

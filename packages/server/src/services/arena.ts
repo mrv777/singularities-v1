@@ -12,6 +12,9 @@ import { resolveAttack, applyCombatDamage, type CombatOutcome } from "./combat.j
 import { computeEnergy, mapPlayerRow, mapCombatLogRow } from "./player.js";
 import { awardXP } from "./progression.js";
 import { checkDeath } from "./death.js";
+import { shiftAlignment } from "./alignment.js";
+import { triggerDecision } from "./decisions.js";
+import { ALIGNMENT_SHIFTS } from "@singularities/shared";
 
 function getTodayKey(): string {
   return new Date().toISOString().slice(0, 10); // YYYY-MM-DD
@@ -34,7 +37,7 @@ export async function getAvailableOpponents(playerId: string, playerLevel: numbe
   const dateKey = getTodayKey();
 
   const res = await query(
-    `SELECT id, ai_name, level, reputation FROM players
+    `SELECT id, ai_name, level, reputation, alignment FROM players
      WHERE in_pvp_arena = true
        AND is_alive = true
        AND is_in_sandbox = false
@@ -61,6 +64,7 @@ export async function getAvailableOpponents(playerId: string, playerLevel: numbe
       level: row.level as number,
       reputation: row.reputation as number,
       playstyle,
+      alignment: row.alignment as number,
     });
   }
 
@@ -126,7 +130,7 @@ export async function executeAttack(attackerId: string, targetId: string) {
     throw { statusCode: 400, message: "PvP attacks only during PvP hours (12:00-24:00 UTC)" };
   }
 
-  return withTransaction(async (client) => {
+  const txResult = await withTransaction(async (client) => {
     // Lock both players (consistent ordering to prevent deadlocks)
     const ids = [attackerId, targetId].sort();
     const p1 = await client.query("SELECT * FROM players WHERE id = $1 FOR UPDATE", [ids[0]]);
@@ -257,6 +261,21 @@ export async function executeAttack(attackerId: string, targetId: string) {
     const loserId = outcome.result === "attacker_win" ? targetId : attackerId;
     await checkDeath(loserId, client);
 
+    // Phase 4: Alignment shifts based on outcome
+    try {
+      if (outcome.result === "attacker_win") {
+        if (attackerLevel > defenderLevel) {
+          await shiftAlignment(attackerId, ALIGNMENT_SHIFTS.attackWeaker, client);
+        } else {
+          await shiftAlignment(attackerId, ALIGNMENT_SHIFTS.attackStronger, client);
+        }
+      } else {
+        await shiftAlignment(defenderRow.id as string, ALIGNMENT_SHIFTS.pvpDefenseWin, client);
+      }
+    } catch {
+      // Non-critical
+    }
+
     // Get final attacker state
     const finalRes = await client.query("SELECT * FROM players WHERE id = $1", [attackerId]);
     const finalPlayer = computeEnergy(finalRes.rows[0]);
@@ -270,6 +289,15 @@ export async function executeAttack(attackerId: string, targetId: string) {
       combatLog: mapCombatLogRow(logRes.rows[0]),
     };
   });
+
+  // Phase 4: Trigger decision after combat (fire-and-forget, outside transaction)
+  try {
+    await triggerDecision(attackerId, "afterCombat");
+  } catch {
+    // Non-critical
+  }
+
+  return txResult;
 }
 
 /**

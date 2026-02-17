@@ -15,6 +15,10 @@ import { maintenanceRoutes } from "./routes/maintenance.js";
 import { scriptRoutes } from "./routes/scripts.js";
 import { arenaRoutes } from "./routes/arena.js";
 import { securityRoutes } from "./routes/security.js";
+import { worldRoutes } from "./routes/world.js";
+import { decisionRoutes } from "./routes/decisions.js";
+import { mutationRoutes } from "./routes/mutations.js";
+import { seasonRoutes } from "./routes/seasons.js";
 import { startWorker, stopWorker } from "./worker/index.js";
 
 const app = Fastify({
@@ -57,6 +61,10 @@ await app.register(maintenanceRoutes);
 await app.register(scriptRoutes);
 await app.register(arenaRoutes);
 await app.register(securityRoutes);
+await app.register(worldRoutes);
+await app.register(decisionRoutes);
+await app.register(mutationRoutes);
+await app.register(seasonRoutes);
 
 // Start
 try {
