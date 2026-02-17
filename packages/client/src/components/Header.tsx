@@ -1,6 +1,19 @@
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { useAuthStore } from "@/stores/auth";
-import { Menu, ChevronDown, Volume2, VolumeX } from "lucide-react";
+import { 
+  Menu, 
+  ChevronDown, 
+  Volume2, 
+  VolumeX, 
+  Zap, 
+  Database, 
+  Cpu, 
+  Shield, 
+  Coins, 
+  Star,
+  Activity,
+  Timer
+} from "lucide-react";
 import { useUIStore } from "@/stores/ui";
 import { DAY_PHASE_HOURS, XP_THRESHOLDS, getXPForNextLevel } from "@singularities/shared";
 import { useState, useEffect } from "react";
@@ -12,9 +25,9 @@ import { useUITier } from "@/hooks/useUITier";
 function getDayPhase() {
   const hour = new Date().getHours();
   if (hour >= DAY_PHASE_HOURS.pve.start && hour < DAY_PHASE_HOURS.pve.end) {
-    return { phase: "PvE", color: "text-cyber-green" };
+    return { phase: "PvE", color: "text-cyber-green", icon: <Activity size={14} className="text-cyber-green" /> };
   }
-  return { phase: "PvP", color: "text-cyber-magenta" };
+  return { phase: "PvP", color: "text-cyber-magenta", icon: <Shield size={14} className="text-cyber-magenta" /> };
 }
 
 function getPhaseCountdown() {
@@ -51,148 +64,268 @@ export function Header() {
   const energyPercent = player ? Math.round((player.energy / player.energyMax) * 100) : 0;
 
   return (
-    <header className="h-14 border-b border-border-default bg-bg-secondary flex items-center px-4 gap-4 relative">
+    <header className="h-16 border-b border-border-default bg-bg-secondary/80 backdrop-blur-md flex items-center px-4 gap-4 relative z-50">
       <button
         onClick={toggleSidebar}
-        className="text-text-secondary hover:text-cyber-cyan transition-colors lg:hidden min-w-[44px] min-h-[44px] flex items-center justify-center"
+        className="text-text-secondary hover:text-cyber-cyan transition-colors lg:hidden min-w-[40px] min-h-[40px] flex items-center justify-center border border-border-default rounded bg-bg-surface/50"
         aria-label="Toggle sidebar"
       >
         <Menu size={20} />
       </button>
 
-      <div className="flex items-center gap-2">
-        <span className={`text-cyber-cyan font-bold text-sm tracking-wider ${tier === 1 ? "" : "glow-cyan"}`}>
+      <div className="flex flex-col">
+        <span className={`text-cyber-cyan font-bold text-sm tracking-widest leading-none ${tier === 1 ? "" : "glow-cyan"}`}>
           SINGULARITIES
         </span>
+        <span className="text-[8px] text-text-muted tracking-[0.2em] font-mono mt-0.5">NEURAL_NETWORK_OS v2.0</span>
       </div>
 
       <div className="flex-1" />
 
       {isAuthenticated && player && (
         <>
-          {/* Desktop resources */}
-          <div className="hidden md:flex items-center gap-4 text-xs">
-            <span className="text-cyber-green">{player.aiName}</span>
-            <span className="text-text-muted flex items-center gap-1">
-              LVL {player.level}
-              {(() => {
-                const nextXP = getXPForNextLevel(player.level);
-                if (!nextXP) return null;
-                const prevXP = XP_THRESHOLDS[player.level - 1] ?? 0;
-                const progress = ((player.xp - prevXP) / (nextXP - prevXP)) * 100;
-                return (
-                  <span className="inline-flex items-center gap-1" title={`${player.xp} / ${nextXP} XP`}>
-                    <span className="inline-block w-16 h-1.5 bg-bg-primary rounded-full overflow-hidden">
-                      <span
-                        className="block h-full bg-cyber-magenta rounded-full transition-all"
-                        style={{ width: `${Math.max(0, Math.min(progress, 100))}%` }}
+          {/* Desktop HUD */}
+          <div className="hidden lg:flex items-center gap-2 xl:gap-4 h-full py-2">
+            
+            {/* Profile Group */}
+            <div className="hud-box flex items-center gap-3 px-3 h-10 rounded-sm">
+              <div className="hud-corner hud-corner-tl" />
+              <div className="hud-corner hud-corner-tr" />
+              <div className="hud-corner hud-corner-bl" />
+              <div className="hud-corner hud-corner-br" />
+              <div className="flex flex-col items-end">
+                <span className="text-cyber-green text-[10px] font-bold leading-none tracking-tight uppercase">{player.aiName}</span>
+                <span className="text-[9px] text-text-muted mt-1 font-mono">
+                  LVL_{player.level.toString().padStart(2, '0')}
+                </span>
+              </div>
+              <div className="flex flex-col gap-1 w-20">
+                {(() => {
+                  const nextXP = getXPForNextLevel(player.level);
+                  if (!nextXP) return null;
+                  const prevXP = XP_THRESHOLDS[player.level - 1] ?? 0;
+                  const progress = ((player.xp - prevXP) / (nextXP - prevXP)) * 100;
+                  return (
+                    <>
+                      <div className="w-full h-1 bg-bg-primary/50 rounded-full overflow-hidden border border-white/5">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${Math.max(0, Math.min(progress, 100))}%` }}
+                          className="h-full bg-cyber-magenta shadow-[0_0_5px_var(--color-cyber-magenta)]"
+                        />
+                      </div>
+                      <div className="flex justify-between text-[7px] text-text-muted leading-none font-mono">
+                        <span>XP_PRG</span>
+                        <span>{Math.round(progress)}%</span>
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+            </div>
+
+            {/* Resources Group */}
+            <div className="hud-box flex items-center gap-4 px-3 h-10 rounded-sm">
+              <div className="hud-corner hud-corner-tl border-cyber-amber" />
+              <div className="hud-corner hud-corner-tr border-cyber-amber" />
+              <div className="hud-corner hud-corner-bl border-cyber-amber" />
+              <div className="hud-corner hud-corner-br border-cyber-amber" />
+              <div className="flex items-center gap-2 group cursor-help" title="Credits (Main Currency)">
+                <Coins size={12} className="text-cyber-amber group-hover:scale-110 transition-transform" />
+                <div className="flex flex-col">
+                  <span className="text-cyber-amber text-[10px] font-bold leading-none font-mono">{player.credits.toLocaleString()}</span>
+                  <span className="text-[7px] text-text-muted mt-0.5 tracking-tighter">CREDITS</span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 group cursor-help" title="Energy (Action Points)">
+                <Zap size={12} className="text-cyber-cyan group-hover:scale-110 transition-transform" />
+                <div className="flex flex-col">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-cyber-cyan text-[10px] font-bold leading-none font-mono">{player.energy}/{player.energyMax}</span>
+                    <div className="w-10 h-1 bg-bg-primary/50 rounded-full overflow-hidden border border-white/5">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${energyPercent}%` }}
+                        className="h-full bg-cyber-cyan shadow-[0_0_5px_var(--color-cyber-cyan)]"
                       />
-                    </span>
-                    <span className="text-[10px] text-text-muted">{player.xp}/{nextXP}</span>
+                    </div>
+                  </div>
+                  <span className="text-[7px] text-text-muted mt-0.5 tracking-tighter">ENERGY_RES</span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 group cursor-help" title="Data (Crafting & Upgrades)">
+                <Database size={12} className="text-cyber-green group-hover:scale-110 transition-transform" />
+                <div className="flex flex-col">
+                  <span className="text-cyber-green text-[10px] font-bold leading-none font-mono">{player.data}</span>
+                  <span className="text-[7px] text-text-muted mt-0.5 tracking-tighter">DATA_STR</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Systems Group */}
+            <div className="hud-box flex items-center gap-4 px-3 h-10 rounded-sm">
+              <div className="hud-corner hud-corner-tl border-cyber-magenta" />
+              <div className="hud-corner hud-corner-tr border-cyber-magenta" />
+              <div className="hud-corner hud-corner-bl border-cyber-magenta" />
+              <div className="hud-corner hud-corner-br border-cyber-magenta" />
+              <div className="flex items-center gap-2 group cursor-help" title="Processing Power (Max Loadout Capacity)">
+                <Cpu size={12} className="text-cyber-magenta group-hover:scale-110 transition-transform" />
+                <div className="flex flex-col">
+                  <span className="text-cyber-magenta text-[10px] font-bold leading-none font-mono">{player.processingPower}</span>
+                  <span className="text-[7px] text-text-muted mt-0.5 tracking-tighter">CPU_LOAD</span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 group cursor-help" title="Reputation (Faction Standing)">
+                <Star size={12} className="text-text-secondary group-hover:scale-110 transition-transform" />
+                <div className="flex flex-col">
+                  <span className="text-text-secondary text-[10px] font-bold leading-none font-mono">{player.reputation}</span>
+                  <span className="text-[7px] text-text-muted mt-0.5 tracking-tighter">REP_STAT</span>
+                </div>
+              </div>
+              
+              <div className="h-6 w-px bg-border-default mx-1" />
+              <AlignmentIndicator />
+            </div>
+
+            {/* Status Group */}
+            <div className="flex items-center gap-3 px-3 h-full">
+              <ModifierBadge />
+              <div className={`hud-box flex items-center gap-2 px-2 h-10 rounded-sm border-none ${phase.color} font-bold group cursor-help`} title={`Current World Phase: ${phase.phase}`}>
+                <div className={`hud-corner hud-corner-tl border-current`} />
+                <div className={`hud-corner hud-corner-br border-current`} />
+                {phase.icon}
+                <div className="flex flex-col">
+                  <span className="text-[10px] uppercase tracking-wider">{phase.phase}_OPS</span>
+                  <span className="text-[8px] text-text-muted flex items-center gap-1 font-mono">
+                    <Timer size={8} /> {countdown}
                   </span>
-                );
-              })()}
-            </span>
-            <span className="text-cyber-amber">{player.credits} CR</span>
-            <span className="text-cyber-cyan flex items-center gap-1">
-              {player.energy}/{player.energyMax} EN
-              <span className="inline-block w-12 h-1.5 bg-bg-primary rounded-full overflow-hidden">
-                <span
-                  className="block h-full bg-cyber-cyan rounded-full transition-all"
-                  style={{ width: `${energyPercent}%` }}
-                />
-              </span>
-            </span>
-            <span className="text-cyber-green">{player.data} DATA</span>
-            <span className="text-cyber-magenta">{player.processingPower} PP</span>
-            <span className="text-text-secondary">REP {player.reputation}</span>
-            <ModifierBadge />
-            <AlignmentIndicator />
-            <span className={`${phase.color} text-xs`}>
-              {phase.phase} {countdown}
-            </span>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Mobile: compact + expandable */}
           <button
             onClick={() => setShowResources(!showResources)}
-            className="md:hidden flex items-center gap-1 text-xs text-text-secondary min-w-[44px] min-h-[44px]"
+            className="lg:hidden flex items-center gap-2 px-3 py-1 bg-bg-surface/50 border border-border-default rounded text-xs text-text-secondary transition-colors hover:border-cyber-cyan"
           >
-            <span className="text-cyber-green">{player.aiName}</span>
-            <ChevronDown size={12} className={`transition-transform ${showResources ? "rotate-180" : ""}`} />
+            <div className="w-2 h-2 rounded-full bg-cyber-green animate-pulse" />
+            <span className="text-cyber-green font-bold uppercase tracking-wider">{player.aiName}</span>
+            <ChevronDown size={14} className={`transition-transform duration-300 ${showResources ? "rotate-180" : ""}`} />
           </button>
         </>
       )}
 
-      <button
-        onClick={toggleSound}
-        className="text-text-secondary hover:text-cyber-cyan transition-colors p-1"
-        aria-label={soundEnabled ? "Mute sounds" : "Enable sounds"}
-        title={soundEnabled ? "Mute sounds" : "Enable sounds"}
-      >
-        {soundEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
-      </button>
+      <div className="flex items-center gap-2">
+        <button
+          onClick={toggleSound}
+          className="text-text-secondary hover:text-cyber-cyan transition-colors p-2 rounded bg-bg-surface/50 border border-border-default"
+          aria-label={soundEnabled ? "Mute sounds" : "Enable sounds"}
+          title={soundEnabled ? "Mute sounds" : "Enable sounds"}
+        >
+          {soundEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
+        </button>
 
-      <WalletMultiButton
-        style={{
-          height: "32px",
-          fontSize: "12px",
-          fontFamily: "var(--font-mono)",
-          backgroundColor: "var(--color-bg-elevated)",
-          borderRadius: "4px",
-        }}
-      />
+        <WalletMultiButton
+          style={{
+            height: "36px",
+            fontSize: "11px",
+            fontWeight: "bold",
+            letterSpacing: "0.1em",
+            fontFamily: "var(--font-mono)",
+            backgroundColor: "rgba(34, 34, 46, 0.5)",
+            borderRadius: "4px",
+            border: "1px solid var(--color-border-default)",
+            paddingLeft: "16px",
+            paddingRight: "16px",
+          }}
+        />
+      </div>
 
       {/* Mobile resource panel */}
       <AnimatePresence>
         {isAuthenticated && player && showResources && (
           <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.2 }}
-            className="absolute top-14 left-0 right-0 bg-bg-secondary border-b border-border-default p-3 md:hidden z-40"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="absolute top-16 left-0 right-0 bg-bg-secondary/95 backdrop-blur-xl border-b border-border-default p-4 lg:hidden z-40 shadow-2xl overflow-hidden"
           >
-            <div className="grid grid-cols-3 gap-2 text-xs">
-              <div>
-                <span className="text-text-muted">LVL</span>{" "}
-                <span className="text-text-primary">{player.level}</span>
-                {(() => {
-                  const nextXP = getXPForNextLevel(player.level);
-                  if (!nextXP) return null;
-                  return <span className="text-text-muted ml-1">({player.xp}/{nextXP} XP)</span>;
-                })()}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded bg-bg-surface flex items-center justify-center border border-border-default">
+                    <Star size={16} className="text-cyber-magenta" />
+                  </div>
+                  <div>
+                    <div className="text-[10px] text-text-muted uppercase">Level {player.level}</div>
+                    <div className="text-sm font-bold">{player.xp} <span className="text-text-muted text-[10px]">XP</span></div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded bg-bg-surface flex items-center justify-center border border-border-default">
+                    <Coins size={16} className="text-cyber-amber" />
+                  </div>
+                  <div>
+                    <div className="text-[10px] text-text-muted uppercase">Credits</div>
+                    <div className="text-sm font-bold text-cyber-amber">{player.credits.toLocaleString()}</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded bg-bg-surface flex items-center justify-center border border-border-default">
+                    <Zap size={16} className="text-cyber-cyan" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-[10px] text-text-muted uppercase">Energy</div>
+                    <div className="flex items-center gap-2">
+                      <div className="text-sm font-bold text-cyber-cyan">{player.energy}/{player.energyMax}</div>
+                      <div className="flex-1 h-1 bg-bg-primary rounded-full overflow-hidden">
+                        <div className="h-full bg-cyber-cyan" style={{ width: `${energyPercent}%` }} />
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div>
-                <span className="text-text-muted">CR</span>{" "}
-                <span className="text-cyber-amber">{player.credits}</span>
+
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded bg-bg-surface flex items-center justify-center border border-border-default">
+                    <Database size={16} className="text-cyber-green" />
+                  </div>
+                  <div>
+                    <div className="text-[10px] text-text-muted uppercase">Data</div>
+                    <div className="text-sm font-bold text-cyber-green">{player.data}</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded bg-bg-surface flex items-center justify-center border border-border-default">
+                    <Cpu size={16} className="text-cyber-magenta" />
+                  </div>
+                  <div>
+                    <div className="text-[10px] text-text-muted uppercase">Power</div>
+                    <div className="text-sm font-bold text-cyber-magenta">{player.processingPower}</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded bg-bg-surface flex items-center justify-center border border-border-default">
+                    <Shield size={16} className="text-text-secondary" />
+                  </div>
+                  <div>
+                    <div className="text-[10px] text-text-muted uppercase">Reputation</div>
+                    <div className="text-sm font-bold text-text-secondary">{player.reputation}</div>
+                  </div>
+                </div>
               </div>
-              <div>
-                <span className="text-text-muted">EN</span>{" "}
-                <span className="text-cyber-cyan">
-                  {player.energy}/{player.energyMax}
-                </span>
-              </div>
-              <div>
-                <span className="text-text-muted">DATA</span>{" "}
-                <span className="text-cyber-green">{player.data}</span>
-              </div>
-              <div>
-                <span className="text-text-muted">PP</span>{" "}
-                <span className="text-cyber-magenta">{player.processingPower}</span>
-              </div>
-              <div>
-                <span className="text-text-muted">REP</span>{" "}
-                <span className="text-text-primary">{player.reputation}</span>
-              </div>
-              <div className="col-span-2 flex items-center gap-2">
+
+              <div className="col-span-2 pt-2 border-t border-border-default flex items-center justify-between">
                 <AlignmentIndicator />
                 <ModifierBadge />
-              </div>
-              <div>
-                <span className={`${phase.color}`}>
-                  {phase.phase} {countdown}
-                </span>
+                <div className={`${phase.color} text-[10px] font-bold flex items-center gap-1`}>
+                  {phase.icon} {phase.phase} {countdown}
+                </div>
               </div>
             </div>
           </motion.div>
