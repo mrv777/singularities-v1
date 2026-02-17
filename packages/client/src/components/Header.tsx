@@ -1,18 +1,19 @@
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { useAuthStore } from "@/stores/auth";
-import { 
-  Menu, 
-  ChevronDown, 
-  Volume2, 
-  VolumeX, 
-  Zap, 
-  Database, 
-  Cpu, 
-  Shield, 
-  Coins, 
+import {
+  Menu,
+  ChevronDown,
+  Volume2,
+  VolumeX,
+  Zap,
+  Database,
+  Cpu,
+  Shield,
+  Coins,
   Star,
   Activity,
-  Timer
+  Timer,
+  HelpCircle
 } from "lucide-react";
 import { useUIStore } from "@/stores/ui";
 import { DAY_PHASE_HOURS, XP_THRESHOLDS, getXPForNextLevel } from "@singularities/shared";
@@ -21,6 +22,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ModifierBadge } from "./ModifierBadge";
 import { TopologyBadge } from "./TopologyBadge";
 import { AlignmentIndicator } from "./alignment/AlignmentIndicator";
+import { CyberTooltip } from "./ui/CyberTooltip";
 import { useUITier } from "@/hooks/useUITier";
 
 function getDayPhase() {
@@ -131,38 +133,44 @@ export function Header() {
               <div className="hud-corner hud-corner-tr border-cyber-amber" />
               <div className="hud-corner hud-corner-bl border-cyber-amber" />
               <div className="hud-corner hud-corner-br border-cyber-amber" />
-              <div className="flex items-center gap-2 group cursor-help" title="Credits (Main Currency)">
-                <Coins size={12} className="text-cyber-amber group-hover:scale-110 transition-transform" />
-                <div className="flex flex-col">
-                  <span className="text-cyber-amber text-[10px] font-bold leading-none font-mono">{player.credits.toLocaleString()}</span>
-                  <span className="text-[7px] text-text-muted mt-0.5 tracking-tighter">CREDITS</span>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 group cursor-help" title="Energy (Action Points)">
-                <Zap size={12} className="text-cyber-cyan group-hover:scale-110 transition-transform" />
-                <div className="flex flex-col">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-cyber-cyan text-[10px] font-bold leading-none font-mono">{player.energy}/{player.energyMax}</span>
-                    <div className="w-10 h-1 bg-bg-primary/50 rounded-full overflow-hidden border border-white/5">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${energyPercent}%` }}
-                        className="h-full bg-cyber-cyan shadow-[0_0_5px_var(--color-cyber-cyan)]"
-                      />
-                    </div>
+              <CyberTooltip content="Credits — Main currency for purchases and upgrades">
+                <div className="flex items-center gap-2 group">
+                  <Coins size={12} className="text-cyber-amber group-hover:scale-110 transition-transform" />
+                  <div className="flex flex-col">
+                    <span className="text-cyber-amber text-[10px] font-bold leading-none font-mono">{player.credits.toLocaleString()}</span>
+                    <span className="text-[7px] text-text-muted mt-0.5 tracking-tighter">CREDITS</span>
                   </div>
-                  <span className="text-[7px] text-text-muted mt-0.5 tracking-tighter">ENERGY_RES</span>
                 </div>
-              </div>
+              </CyberTooltip>
 
-              <div className="flex items-center gap-2 group cursor-help" title="Data (Crafting & Upgrades)">
-                <Database size={12} className="text-cyber-green group-hover:scale-110 transition-transform" />
-                <div className="flex flex-col">
-                  <span className="text-cyber-green text-[10px] font-bold leading-none font-mono">{player.data}</span>
-                  <span className="text-[7px] text-text-muted mt-0.5 tracking-tighter">DATA_STR</span>
+              <CyberTooltip content="Energy — Consumed by scanning, hacking, and repairs">
+                <div className="flex items-center gap-2 group">
+                  <Zap size={12} className="text-cyber-cyan group-hover:scale-110 transition-transform" />
+                  <div className="flex flex-col">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-cyber-cyan text-[10px] font-bold leading-none font-mono">{player.energy}/{player.energyMax}</span>
+                      <div className="w-10 h-1 bg-bg-primary/50 rounded-full overflow-hidden border border-white/5">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${energyPercent}%` }}
+                          className="h-full bg-cyber-cyan shadow-[0_0_5px_var(--color-cyber-cyan)]"
+                        />
+                      </div>
+                    </div>
+                    <span className="text-[7px] text-text-muted mt-0.5 tracking-tighter">ENERGY_RES</span>
+                  </div>
                 </div>
-              </div>
+              </CyberTooltip>
+
+              <CyberTooltip content="Data — Used for crafting and module upgrades">
+                <div className="flex items-center gap-2 group">
+                  <Database size={12} className="text-cyber-green group-hover:scale-110 transition-transform" />
+                  <div className="flex flex-col">
+                    <span className="text-cyber-green text-[10px] font-bold leading-none font-mono">{player.data}</span>
+                    <span className="text-[7px] text-text-muted mt-0.5 tracking-tighter">DATA_STR</span>
+                  </div>
+                </div>
+              </CyberTooltip>
             </div>
 
             {/* Systems Group */}
@@ -171,21 +179,25 @@ export function Header() {
               <div className="hud-corner hud-corner-tr border-cyber-magenta" />
               <div className="hud-corner hud-corner-bl border-cyber-magenta" />
               <div className="hud-corner hud-corner-br border-cyber-magenta" />
-              <div className="flex items-center gap-2 group cursor-help" title="Processing Power (Max Loadout Capacity)">
-                <Cpu size={12} className="text-cyber-magenta group-hover:scale-110 transition-transform" />
-                <div className="flex flex-col">
-                  <span className="text-cyber-magenta text-[10px] font-bold leading-none font-mono">{player.processingPower}</span>
-                  <span className="text-[7px] text-text-muted mt-0.5 tracking-tighter">CPU_LOAD</span>
+              <CyberTooltip content="Processing Power — Determines max loadout capacity">
+                <div className="flex items-center gap-2 group">
+                  <Cpu size={12} className="text-cyber-magenta group-hover:scale-110 transition-transform" />
+                  <div className="flex flex-col">
+                    <span className="text-cyber-magenta text-[10px] font-bold leading-none font-mono">{player.processingPower}</span>
+                    <span className="text-[7px] text-text-muted mt-0.5 tracking-tighter">CPU_LOAD</span>
+                  </div>
                 </div>
-              </div>
+              </CyberTooltip>
 
-              <div className="flex items-center gap-2 group cursor-help" title="Reputation (Faction Standing)">
-                <Star size={12} className="text-text-secondary group-hover:scale-110 transition-transform" />
-                <div className="flex flex-col">
-                  <span className="text-text-secondary text-[10px] font-bold leading-none font-mono">{player.reputation}</span>
-                  <span className="text-[7px] text-text-muted mt-0.5 tracking-tighter">REP_STAT</span>
+              <CyberTooltip content="Reputation — Your standing in the network">
+                <div className="flex items-center gap-2 group">
+                  <Star size={12} className="text-text-secondary group-hover:scale-110 transition-transform" />
+                  <div className="flex flex-col">
+                    <span className="text-text-secondary text-[10px] font-bold leading-none font-mono">{player.reputation}</span>
+                    <span className="text-[7px] text-text-muted mt-0.5 tracking-tighter">REP_STAT</span>
+                  </div>
                 </div>
-              </div>
+              </CyberTooltip>
               
               <div className="h-6 w-px bg-border-default mx-1" />
               <AlignmentIndicator />
@@ -197,17 +209,19 @@ export function Header() {
                 <ModifierBadge />
                 <TopologyBadge />
               </div>
-              <div className={`hud-box flex items-center gap-2 px-2 h-10 rounded-sm border-none ${phase.color} font-bold group cursor-help`} title={`Current World Phase: ${phase.phase}`}>
-                <div className={`hud-corner hud-corner-tl border-current`} />
-                <div className={`hud-corner hud-corner-br border-current`} />
-                {phase.icon}
-                <div className="flex flex-col">
-                  <span className="text-[10px] uppercase tracking-wider">{phase.phase}_OPS</span>
-                  <span className="text-[8px] text-text-muted flex items-center gap-1 font-mono">
-                    <Timer size={8} /> {countdown}
-                  </span>
+              <CyberTooltip content={`Current World Phase: ${phase.phase}`}>
+                <div className={`hud-box flex items-center gap-2 px-2 h-10 rounded-sm border-none ${phase.color} font-bold group`}>
+                  <div className={`hud-corner hud-corner-tl border-current`} />
+                  <div className={`hud-corner hud-corner-br border-current`} />
+                  {phase.icon}
+                  <div className="flex flex-col">
+                    <span className="text-[10px] uppercase tracking-wider">{phase.phase}_OPS</span>
+                    <span className="text-[8px] text-text-muted flex items-center gap-1 font-mono">
+                      <Timer size={8} /> {countdown}
+                    </span>
+                  </div>
                 </div>
-              </div>
+              </CyberTooltip>
             </div>
           </div>
 
@@ -224,14 +238,26 @@ export function Header() {
       )}
 
       <div className="flex items-center gap-2">
-        <button
-          onClick={toggleSound}
-          className="text-text-secondary hover:text-cyber-cyan transition-colors p-2 rounded bg-bg-surface/50 border border-border-default"
-          aria-label={soundEnabled ? "Mute sounds" : "Enable sounds"}
-          title={soundEnabled ? "Mute sounds" : "Enable sounds"}
-        >
-          {soundEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
-        </button>
+        {isAuthenticated && player && (
+          <CyberTooltip content="Operations Manual">
+            <button
+              onClick={() => useUIStore.getState().openModal("help")}
+              className="text-text-secondary hover:text-cyber-cyan transition-colors p-2 rounded bg-bg-surface/50 border border-border-default"
+              aria-label="Help"
+            >
+              <HelpCircle size={16} />
+            </button>
+          </CyberTooltip>
+        )}
+        <CyberTooltip content={soundEnabled ? "Mute sounds" : "Enable sounds"}>
+          <button
+            onClick={toggleSound}
+            className="text-text-secondary hover:text-cyber-cyan transition-colors p-2 rounded bg-bg-surface/50 border border-border-default"
+            aria-label={soundEnabled ? "Mute sounds" : "Enable sounds"}
+          >
+            {soundEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
+          </button>
+        </CyberTooltip>
 
         <WalletMultiButton
           style={{

@@ -7,6 +7,7 @@ import { SCAN_ENERGY_COST, type HackResult } from "@singularities/shared";
 import { TargetCard } from "./TargetCard";
 import { LoadoutPreview } from "./LoadoutPreview";
 import { HackResultDisplay } from "./HackResult";
+import { ResourceCost } from "../ui/ResourceCost";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { playSound } from "@/lib/sound";
@@ -133,7 +134,7 @@ export function ScannerModal() {
                 disabled={isScanning || !player || player.energy < SCAN_ENERGY_COST}
                 className="px-6 py-2 min-h-[44px] border border-cyber-cyan text-cyber-cyan rounded hover:bg-cyber-cyan/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed text-sm"
               >
-                {isScanning ? "Scanning..." : `Scan Network (${SCAN_ENERGY_COST} EN)`}
+                {isScanning ? "Scanning..." : <span className="flex items-center gap-1.5">Scan Network <ResourceCost costs={{ energy: SCAN_ENERGY_COST }} /></span>}
               </button>
               {player && player.energy < SCAN_ENERGY_COST && (
                 <p className="text-cyber-red text-xs mt-2">Insufficient energy</p>
@@ -153,7 +154,7 @@ export function ScannerModal() {
                   disabled={isScanning || !player || player.energy < SCAN_ENERGY_COST}
                   className="text-xs text-cyber-cyan hover:underline disabled:opacity-30"
                 >
-                  Re-scan ({SCAN_ENERGY_COST} EN)
+                  <span className="inline-flex items-center gap-1">Re-scan <ResourceCost costs={{ energy: SCAN_ENERGY_COST }} /></span>
                 </button>
               </div>
 

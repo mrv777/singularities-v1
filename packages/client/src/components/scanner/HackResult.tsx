@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import type { HackResult as HackResultType } from "@singularities/shared";
+import { Coins, Database, Star, Trophy } from "lucide-react";
 import { useEffect, useState } from "react";
 import { playSound } from "@/lib/sound";
 import { useUITier } from "@/hooks/useUITier";
@@ -79,21 +80,21 @@ export function HackResultDisplay({ result, onDone }: HackResultProps) {
           animate={{ opacity: 1, y: 0 }}
           className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs text-center"
         >
-          <div className="bg-bg-secondary rounded p-2">
+          <div className="bg-bg-secondary rounded p-2 flex flex-col items-center gap-1">
+            <Coins size={14} className="text-cyber-amber" />
             <div className="text-cyber-amber font-bold">+{result.rewards.credits}</div>
-            <div className="text-text-muted">CR</div>
           </div>
-          <div className="bg-bg-secondary rounded p-2">
+          <div className="bg-bg-secondary rounded p-2 flex flex-col items-center gap-1">
+            <Database size={14} className="text-cyber-green" />
             <div className="text-cyber-green font-bold">+{result.rewards.data}</div>
-            <div className="text-text-muted">DATA</div>
           </div>
-          <div className="bg-bg-secondary rounded p-2">
+          <div className="bg-bg-secondary rounded p-2 flex flex-col items-center gap-1">
+            <Star size={14} className="text-text-secondary" />
             <div className="text-text-primary font-bold">+{result.rewards.reputation}</div>
-            <div className="text-text-muted">REP</div>
           </div>
-          <div className="bg-bg-secondary rounded p-2">
+          <div className="bg-bg-secondary rounded p-2 flex flex-col items-center gap-1">
+            <Trophy size={14} className="text-cyber-cyan" />
             <div className="text-cyber-cyan font-bold">+{result.rewards.xp}</div>
-            <div className="text-text-muted">XP</div>
           </div>
         </motion.div>
       )}

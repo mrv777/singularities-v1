@@ -1,5 +1,6 @@
 import type { ModuleDefinition, PlayerModule } from "@singularities/shared";
-import { MAX_MODULE_LEVEL, MUTATION_MIN_LEVEL, MUTATION_VARIANT_MAP } from "@singularities/shared";
+import { MAX_MODULE_LEVEL, MUTATION_MIN_LEVEL, MUTATION_COST, MUTATION_VARIANT_MAP } from "@singularities/shared";
+import { ResourceCost } from "../ui/ResourceCost";
 
 interface ModuleCardProps {
   definition: ModuleDefinition;
@@ -11,6 +12,7 @@ interface ModuleCardProps {
   onMutate?: () => void;
   isProcessing: boolean;
   isMutating?: boolean;
+  playerResources?: { credits: number; data: number; processingPower: number };
 }
 
 export function ModuleCard({
@@ -23,6 +25,7 @@ export function ModuleCard({
   onMutate,
   isProcessing,
   isMutating,
+  playerResources,
 }: ModuleCardProps) {
   const currentLevel = owned?.level ?? 0;
   const isMaxLevel = currentLevel >= MAX_MODULE_LEVEL;
@@ -101,13 +104,14 @@ export function ModuleCard({
         <button
           onClick={onPurchase}
           disabled={!canPurchase || isProcessing}
-          className="w-full text-[10px] py-1.5 min-h-[44px] border border-cyber-cyan/50 text-cyber-cyan rounded hover:bg-cyber-cyan/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+          className="w-full text-[10px] py-1.5 min-h-[44px] border border-cyber-cyan/50 text-cyber-cyan rounded hover:bg-cyber-cyan/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
         >
           {isProcessing
             ? "..."
-            : isOwned
-              ? `Upgrade LV${currentLevel + 1} (${cost.credits}CR ${cost.data}D)`
-              : `Purchase (${cost.credits}CR ${cost.data}D)`}
+            : <>
+                {isOwned ? `Upgrade LV${currentLevel + 1}` : "Purchase"}
+                <ResourceCost costs={cost} available={playerResources} />
+              </>}
         </button>
       )}
 
@@ -116,9 +120,9 @@ export function ModuleCard({
         <button
           onClick={onMutate}
           disabled={isMutating}
-          className="w-full mt-1 text-[10px] py-1.5 min-h-[44px] border border-cyber-magenta/50 text-cyber-magenta rounded hover:bg-cyber-magenta/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+          className="w-full mt-1 text-[10px] py-1.5 min-h-[44px] border border-cyber-magenta/50 text-cyber-magenta rounded hover:bg-cyber-magenta/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
         >
-          {isMutating ? "Mutating..." : "MUTATE (500CR 200D 100PP)"}
+          {isMutating ? "Mutating..." : <>MUTATE <ResourceCost costs={MUTATION_COST} available={playerResources} /></>}
         </button>
       )}
     </div>

@@ -164,6 +164,7 @@ export function TechTreeModal() {
                     onMutate={() => handleMutate(def.id)}
                     isProcessing={processing === def.id}
                     isMutating={mutating === def.id}
+                    playerResources={player ? { credits: player.credits, data: player.data, processingPower: player.processingPower } : undefined}
                   />
                 ))}
               </div>

@@ -1,6 +1,7 @@
 import type { PlayerScript } from "@singularities/shared";
 import { SCRIPT_TRIGGER_MAP, SCRIPT_ACTION_MAP } from "@singularities/shared";
 import { Power, Trash2 } from "lucide-react";
+import { CyberTooltip } from "../ui/CyberTooltip";
 
 interface ScriptCardProps {
   script: PlayerScript;
@@ -32,26 +33,28 @@ export function ScriptCard({ script, onToggle, onDelete, toggling, deleting }: S
           </span>
         </div>
         <div className="flex items-center gap-1">
-          <button
-            onClick={() => onToggle(script.id)}
-            disabled={toggling}
-            className={`p-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded transition-colors ${
-              script.isActive
-                ? "text-cyber-green hover:text-cyber-green/70"
-                : "text-text-muted hover:text-cyber-cyan"
-            }`}
-            title={script.isActive ? "Deactivate" : "Activate"}
-          >
-            <Power size={14} />
-          </button>
-          <button
-            onClick={() => onDelete(script.id)}
-            disabled={deleting}
-            className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded text-text-muted hover:text-cyber-red transition-colors"
-            title="Delete"
-          >
-            <Trash2 size={14} />
-          </button>
+          <CyberTooltip content={script.isActive ? "Deactivate" : "Activate"}>
+            <button
+              onClick={() => onToggle(script.id)}
+              disabled={toggling}
+              className={`p-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded transition-colors ${
+                script.isActive
+                  ? "text-cyber-green hover:text-cyber-green/70"
+                  : "text-text-muted hover:text-cyber-cyan"
+              }`}
+            >
+              <Power size={14} />
+            </button>
+          </CyberTooltip>
+          <CyberTooltip content="Delete script">
+            <button
+              onClick={() => onDelete(script.id)}
+              disabled={deleting}
+              className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded text-text-muted hover:text-cyber-red transition-colors"
+            >
+              <Trash2 size={14} />
+            </button>
+          </CyberTooltip>
         </div>
       </div>
 

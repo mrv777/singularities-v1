@@ -4,18 +4,19 @@ import { NetworkNode, type NodeDef } from "./NetworkNode";
 import { NetworkConnections } from "./NetworkConnections";
 import { useUIStore } from "@/stores/ui";
 import { useGameStore } from "@/stores/game";
-import { 
-  Lock, 
-  LogOut, 
-  Radar, 
-  GitBranch, 
-  Settings, 
-  Code2, 
-  Swords, 
-  ShieldAlert, 
-  BarChart3, 
-  FlaskConical, 
-  Database as DatabaseIcon 
+import {
+  Lock,
+  LogOut,
+  Radar,
+  GitBranch,
+  Settings,
+  Code2,
+  Swords,
+  ShieldAlert,
+  BarChart3,
+  FlaskConical,
+  Database as DatabaseIcon,
+  HelpCircle
 } from "lucide-react";
 import { useEffect, useCallback } from "react";
 import { api } from "@/lib/api";
@@ -138,6 +139,14 @@ export function NetworkMap({ playerLevel, unlockedSystems, isInSandbox }: Networ
             </button>
           );
         })}
+        {/* Help entry */}
+        <button
+          onClick={() => openModal("help")}
+          className="w-full flex items-center gap-3 p-3 min-h-[48px] rounded border text-left text-sm transition-colors border-border-default bg-bg-elevated hover:border-cyber-cyan text-text-secondary"
+        >
+          <span className="text-lg text-text-muted"><HelpCircle size={20} /></span>
+          <span className="flex-1">Operations Manual</span>
+        </button>
       </div>
     </>
   );

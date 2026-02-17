@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import type { ArenaAttackResponse } from "@singularities/shared";
+import { ResourceCost } from "../ui/ResourceCost";
 import { playSound } from "@/lib/sound";
 
 interface CombatResultDisplayProps {
@@ -76,9 +77,9 @@ export function CombatResultDisplay({ result, onClose }: CombatResultDisplayProp
 
           {result.rewards && (
             <div className="flex gap-3 justify-center text-xs flex-wrap">
-              <span className="text-cyber-yellow">+{result.rewards.credits} CR</span>
-              <span className="text-cyber-purple">+{result.rewards.reputation} REP</span>
-              <span className="text-cyber-cyan">+{result.rewards.xp} XP</span>
+              <ResourceCost costs={{ credits: result.rewards.credits }} prefix="+" />
+              <ResourceCost costs={{ reputation: result.rewards.reputation }} prefix="+" />
+              <ResourceCost costs={{ xp: result.rewards.xp }} prefix="+" />
             </div>
           )}
 

@@ -1,5 +1,6 @@
 import type { ScanTarget } from "@singularities/shared";
 import { RISK_COLORS, TARGET_TYPE_LABELS, getHackEnergyCost } from "@singularities/shared";
+import { ResourceCost } from "../ui/ResourceCost";
 
 interface TargetCardProps {
   target: ScanTarget;
@@ -60,16 +61,15 @@ export function TargetCard({ target, selected, onSelect }: TargetCardProps) {
           <span className="text-cyber-red">{target.detectionChance}%</span>
         </div>
         <div>
-          <span className="text-text-muted">Energy:</span>{" "}
-          <span className="text-cyber-cyan">{energyCost}</span>
+          <span className="text-text-muted">Cost:</span>{" "}
+          <ResourceCost costs={{ energy: energyCost }} size={10} />
         </div>
         <div>
-          <span className="text-text-muted">Credits:</span>{" "}
-          <span className="text-cyber-amber">{target.rewards.credits}</span>
+          <span className="text-text-muted">Reward:</span>{" "}
+          <ResourceCost costs={{ credits: target.rewards.credits }} size={10} prefix="+" />
         </div>
-        <div>
-          <span className="text-text-muted">Data:</span>{" "}
-          <span className="text-cyber-green">{target.rewards.data}</span>
+        <div className="flex items-center gap-0.5">
+          <ResourceCost costs={{ data: target.rewards.data }} size={10} prefix="+" />
         </div>
       </div>
     </button>

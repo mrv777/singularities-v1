@@ -6,6 +6,7 @@ import { api } from "@/lib/api";
 import { DAY_PHASE_HOURS } from "@singularities/shared";
 import { OpponentCard } from "./OpponentCard";
 import { CombatResultDisplay } from "./CombatResultDisplay";
+import { ResourceCost } from "../ui/ResourceCost";
 import { useState, useEffect } from "react";
 import { Shield, Clock, ScrollText } from "lucide-react";
 import { playSound } from "@/lib/sound";
@@ -144,8 +145,8 @@ export function ArenaModal() {
           <>
             {!player?.inPvpArena ? (
               <div className="text-center space-y-3">
-                <p className="text-text-secondary text-xs">
-                  Enter the arena to find opponents and engage in PvP combat. Costs 25 energy per attack.
+                <p className="text-text-secondary text-xs flex items-center justify-center gap-1 flex-wrap">
+                  Enter the arena to find opponents and engage in PvP combat. Costs <ResourceCost costs={{ energy: 25 }} /> per attack.
                 </p>
                 <button
                   onClick={handleEnterArena}

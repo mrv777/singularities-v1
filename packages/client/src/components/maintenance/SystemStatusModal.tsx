@@ -8,6 +8,7 @@ import { useState, useEffect } from "react";
 import { ENERGY_COSTS, REPAIR_CREDIT_COST } from "@singularities/shared";
 import type { PlayerSystem } from "@singularities/shared";
 import { AlertTriangle, RefreshCw } from "lucide-react";
+import { ResourceCost } from "../ui/ResourceCost";
 import { playSound } from "@/lib/sound";
 
 export function SystemStatusModal() {
@@ -73,7 +74,7 @@ export function SystemStatusModal() {
       <div className="space-y-4">
         {/* Cost info */}
         <div className="flex items-center justify-between text-[10px] text-text-muted">
-          <span>Repair cost: {ENERGY_COSTS.repair} EN + {REPAIR_CREDIT_COST} CR</span>
+          <span className="flex items-center gap-1">Repair cost: <ResourceCost costs={{ energy: ENERGY_COSTS.repair, credits: REPAIR_CREDIT_COST }} /></span>
           <button
             onClick={loadSystems}
             disabled={loading}
