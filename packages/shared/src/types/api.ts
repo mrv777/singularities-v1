@@ -74,6 +74,8 @@ export interface HackResult {
   levelUp?: boolean;
   newLevel?: number;
   player: Player;
+  chainVerified?: boolean;
+  txSignature?: string | null;
 }
 
 // Modules

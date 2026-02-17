@@ -35,6 +35,8 @@ import {
   HACK_FAIL_DETECTED_TEMPLATES,
 } from "@singularities/shared";
 import { sendActivity } from "./ws.js";
+import { submitHackOnChain, deriveFromSeed, type ChainHackResult } from "./chain.js";
+import { env } from "../lib/env.js";
 
 function randomInt(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -171,15 +173,33 @@ export async function executeHack(playerId: string, targetIndex: number) {
       [playerId, newEnergy]
     );
 
-    // Success calculation: hackPower drives success chance
+    // --- On-chain resolution (MagicBlock VRF) with server fallback ---
+    const successFloor = getEarlyHackSuccessFloor(player.level as number);
+    let chainResult: ChainHackResult | null = null;
+    if (env.CHAIN_RESOLUTION_ENABLED) {
+      try {
+        chainResult = await submitHackOnChain({
+          playerWallet: playerRow.wallet_address as string,
+          hackPower: effectiveHackPower,
+          stealth: stats.stealth + stats.detectionReduction,
+          securityLevel: target.securityLevel,
+          detectionChance: target.detectionChance,
+          heatLevel: player.heat_level as number,
+          successFloor,
+        });
+      } catch (err) {
+        console.warn("Chain resolution failed, falling back to server-side:", err);
+      }
+    }
+
+    // Success calculation: use chain results if available, else server-side
     const baseChance = SCANNER_BALANCE.hackSuccess.baseChance
       + (effectiveHackPower - target.securityLevel);
-    const successFloor = getEarlyHackSuccessFloor(player.level as number);
     const successChance = Math.max(
       successFloor,
       Math.min(SCANNER_BALANCE.hackSuccess.maxChance, baseChance)
     );
-    const roll = randomInt(1, 100);
+    const roll = chainResult ? chainResult.successRoll : randomInt(1, 100);
     const success = roll <= successChance;
 
     let detected = false;
@@ -275,13 +295,15 @@ export async function executeHack(playerId: string, targetIndex: number) {
         narrative += `\n> DAILY SYNC BONUS: +${HOOK_BALANCE.firstSuccessDailyBuff.hackPower} Hack Power, +${HOOK_BALANCE.firstSuccessDailyBuff.stealth} Stealth for 1 hour`;
       }
     } else {
-      // Detection check: stealth + detectionReduction lower the chance
+      // Detection check: use chain result or server-side calculation
       const stealthReduction = (stats.stealth + stats.detectionReduction) / 2;
       const detectionModifier = stats.modifierEffects.detectionChanceMultiplier ?? 1;
-      const effectiveDetection = Math.max(5, Math.min(95,
-        (target.detectionChance - stealthReduction) * detectionModifier
-      ));
-      const detectionRoll = randomInt(1, 100);
+      const effectiveDetection = chainResult
+        ? chainResult.effectiveDetection
+        : Math.max(5, Math.min(95,
+            (target.detectionChance - stealthReduction) * detectionModifier
+          ));
+      const detectionRoll = chainResult ? chainResult.detectionRoll : randomInt(1, 100);
       detected = detectionRoll <= effectiveDetection;
 
       if (detected) {
@@ -304,7 +326,9 @@ export async function executeHack(playerId: string, targetIndex: number) {
           const computed = computeSystemHealth(sys, stats.modifierEffects);
           const currentHealth = computed.health as number;
 
-          const dmg = randomInt(config.minDamage, config.maxDamage);
+          const dmg = chainResult
+            ? deriveFromSeed(chainResult.damageSeed, config.minDamage, config.maxDamage, damageSystems.length)
+            : randomInt(config.minDamage, config.maxDamage);
           const newHealth = Math.max(0, currentHealth - dmg);
           const newStatus = getStatusForHealth(newHealth);
           await client.query(
@@ -339,8 +363,8 @@ export async function executeHack(playerId: string, targetIndex: number) {
 
     // Log infiltration
     await client.query(
-      `INSERT INTO infiltration_logs (player_id, target_type, security_level, success, detected, credits_earned, reputation_earned, damage_taken)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      `INSERT INTO infiltration_logs (player_id, target_type, security_level, success, detected, credits_earned, reputation_earned, damage_taken, chain_verified, tx_signature)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
       [
         playerId,
         target.type,
@@ -350,6 +374,8 @@ export async function executeHack(playerId: string, targetIndex: number) {
         rewards?.credits ?? 0,
         rewards?.reputation ?? 0,
         damage ? JSON.stringify(damage.systems) : null,
+        chainResult !== null,
+        chainResult?.txSignature ?? null,
       ]
     );
 
@@ -369,6 +395,8 @@ export async function executeHack(playerId: string, targetIndex: number) {
         ...finalRes.rows[0],
         energy: finalPlayer.energy,
       }),
+      chainVerified: chainResult !== null,
+      txSignature: chainResult?.txSignature ?? null,
     };
   });
 

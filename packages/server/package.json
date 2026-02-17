@@ -14,10 +14,12 @@
     "sim:all": "pnpm run sim:progression && pnpm run sim:economy"
   },
   "dependencies": {
+    "@coral-xyz/anchor": "^0.32.1",
     "@fastify/cors": "^11.0.0",
     "@fastify/jwt": "^9.0.0",
     "@fastify/websocket": "^11.0.0",
     "@singularities/shared": "workspace:*",
+    "@solana/web3.js": "^1.98.4",
     "bs58": "^6.0.0",
     "dotenv": "^16.4.0",
     "fastify": "^5.2.0",

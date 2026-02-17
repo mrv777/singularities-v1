@@ -9,3 +9,11 @@ dist/
 coverage/
 tmp/
 .vite/
+
+# Solana keypairs
+server-keypair.json
+*-keypair.json
+
+# Anchor build artifacts
+packages/chain/target/
+packages/chain/.anchor/

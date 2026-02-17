@@ -11,4 +11,11 @@ export const env = {
   JWT_SECRET: process.env.JWT_SECRET ?? "change-me-in-production",
   PORT: Number(process.env.PORT ?? 3001),
   CORS_ORIGIN: process.env.CORS_ORIGIN ?? "http://localhost:5173",
+  MAGICBLOCK_ROUTER_URL:
+    process.env.MAGICBLOCK_ROUTER_URL ??
+    "https://devnet-router.magicblock.app",
+  CHAIN_RESOLUTION_ENABLED: process.env.CHAIN_RESOLUTION_ENABLED === "true",
+  PROGRAM_ID: process.env.PROGRAM_ID ?? "",
+  SERVER_KEYPAIR_PATH:
+    process.env.SERVER_KEYPAIR_PATH ?? "./server-keypair.json",
 } as const;

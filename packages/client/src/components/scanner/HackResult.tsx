@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import type { HackResult as HackResultType } from "@singularities/shared";
 import { Coins, Cpu, Database, Star, Trophy } from "lucide-react";
+import { OnChainBadge } from "./OnChainBadge";
 import { useEffect, useState } from "react";
 import { playSound } from "@/lib/sound";
 import { useUITier } from "@/hooks/useUITier";
@@ -64,6 +65,12 @@ export function HackResultDisplay({ result, onDone }: HackResultProps) {
           <div className="text-xs mt-1 text-cyber-red">DETECTED</div>
         )}
       </motion.div>
+
+      {result.chainVerified && result.txSignature && (
+        <div className="flex justify-center">
+          <OnChainBadge txSignature={result.txSignature} />
+        </div>
+      )}
 
       {/* Terminal output */}
       <div className="bg-bg-primary border border-border-default rounded p-3 font-mono text-xs leading-relaxed min-h-[100px]">
