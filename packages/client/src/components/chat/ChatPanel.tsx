@@ -146,7 +146,7 @@ export function ChatPanel() {
                     value={input}
                     onChange={(e) => setInput(e.target.value.slice(0, MAX_INPUT))}
                     onKeyDown={handleKeyDown}
-                    placeholder={connected ? "Send a message..." : "Connecting..."}
+                    placeholder={connected ? "Send a message..." : "Disconnected. Reconnecting..."}
                     disabled={!connected}
                     className="flex-1 bg-bg-primary border border-border-default rounded px-2 py-1.5 text-xs text-text-primary placeholder:text-text-muted focus:border-cyber-cyan focus:outline-none disabled:opacity-50"
                   />
