@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { ScanTarget, PlayerLoadout, PlayerModule, CombatLog, WeeklyTopology, WorldEvent, PendingDecisionResponse } from "@singularities/shared";
+import type { ScanTarget, PlayerLoadout, PlayerModule, CombatLog, WeeklyTopology, WorldEvent, PendingDecisionResponse, SystemHealthSummaryResponse } from "@singularities/shared";
 import type { ArenaOpponent, ArenaAttackResponse, DecisionChooseResponse } from "@singularities/shared";
 
 interface GameState {
@@ -30,6 +30,9 @@ interface GameState {
   topology: WeeklyTopology | null;
   worldEvents: WorldEvent[];
 
+  // System health summary for AI Core coloring
+  systemHealthSummary: SystemHealthSummaryResponse | null;
+
   // Actions
   setScannedTargets: (targets: ScanTarget[], expiresAt: string) => void;
   clearScan: () => void;
@@ -49,6 +52,7 @@ interface GameState {
   setDecisionResult: (r: DecisionChooseResponse | null) => void;
   setTopology: (t: WeeklyTopology | null) => void;
   setWorldEvents: (e: WorldEvent[]) => void;
+  setSystemHealthSummary: (s: SystemHealthSummaryResponse | null) => void;
 }
 
 export const useGameStore = create<GameState>((set) => ({
@@ -69,6 +73,7 @@ export const useGameStore = create<GameState>((set) => ({
   decisionResult: null,
   topology: null,
   worldEvents: [],
+  systemHealthSummary: null,
 
   setScannedTargets: (targets, expiresAt) =>
     set({ scannedTargets: targets, scanExpiresAt: expiresAt, selectedTargetIndex: null, hackResult: null }),
@@ -90,4 +95,5 @@ export const useGameStore = create<GameState>((set) => ({
   setDecisionResult: (r) => set({ decisionResult: r }),
   setTopology: (t) => set({ topology: t }),
   setWorldEvents: (e) => set({ worldEvents: e }),
+  setSystemHealthSummary: (s) => set({ systemHealthSummary: s }),
 }));

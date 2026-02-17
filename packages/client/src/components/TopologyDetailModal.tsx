@@ -6,11 +6,10 @@ import type { ModifierEffect } from "@singularities/shared";
 const NODE_LABELS: Record<string, string> = {
   scanner: "Scanner",
   tech_tree: "Tech Tree",
-  system_maintenance: "Systems",
+  ice_breaker: "ICE Breaker",
   script_manager: "Scripts",
   pvp_arena: "Arena",
   security_center: "Security",
-  network_stats: "Net Stats",
 };
 
 const EFFECT_LABELS: Record<keyof ModifierEffect, string> = {

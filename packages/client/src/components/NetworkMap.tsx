@@ -13,11 +13,12 @@ import {
   Code2,
   Swords,
   ShieldAlert,
-  BarChart3,
-  FlaskConical,
   Database as DatabaseIcon,
   HelpCircle,
-  Cpu
+  Cpu,
+  Flame,
+  Bot,
+  Activity,
 } from "lucide-react";
 import { useEffect, useCallback } from "react";
 import { api } from "@/lib/api";
@@ -31,14 +32,20 @@ const AI_CORE_POS = { x: 400, y: 260 };
 const NODES: NodeDef[] = [
   { id: "scanner", label: "Scanner", x: 400, y: 80, unlockLevel: LEVEL_UNLOCKS.scanner, icon: <Radar size={20} /> },
   { id: "data_vault", label: "Data Vault", x: 540, y: 130, unlockLevel: LEVEL_UNLOCKS.data_vault, icon: <DatabaseIcon size={20} /> },
-  { id: "network_stats", label: "Net Stats", x: 600, y: 260, unlockLevel: LEVEL_UNLOCKS.network_stats, icon: <BarChart3 size={20} /> },
-  { id: "system_maintenance", label: "Systems", x: 540, y: 390, unlockLevel: LEVEL_UNLOCKS.system_maintenance, icon: <Settings size={20} /> },
+  { id: "ice_breaker", label: "ICE Breaker", x: 600, y: 260, unlockLevel: LEVEL_UNLOCKS.ice_breaker, icon: <Flame size={20} /> },
+  { id: "daemon_forge", label: "Daemon Forge", x: 540, y: 390, unlockLevel: LEVEL_UNLOCKS.daemon_forge, icon: <Bot size={20} /> },
   { id: "security_center", label: "Security", x: 400, y: 440, unlockLevel: LEVEL_UNLOCKS.security_center, icon: <ShieldAlert size={20} /> },
   { id: "pvp_arena", label: "Arena", x: 260, y: 390, unlockLevel: LEVEL_UNLOCKS.pvp_arena, icon: <Swords size={20} /> },
   { id: "script_manager", label: "Scripts", x: 200, y: 260, unlockLevel: LEVEL_UNLOCKS.script_manager, icon: <Code2 size={20} /> },
   { id: "tech_tree", label: "Tech Tree", x: 260, y: 130, unlockLevel: LEVEL_UNLOCKS.tech_tree, icon: <GitBranch size={20} /> },
-  { id: "quantum_lab", label: "Quantum Lab", x: 140, y: 100, unlockLevel: LEVEL_UNLOCKS.quantum_lab, comingSoon: true, icon: <FlaskConical size={20} /> },
 ];
+
+function getHealthColor(worstStatus: string | undefined): string {
+  if (!worstStatus) return "var(--color-cyber-cyan)";
+  if (worstStatus === "CORRUPTED" || worstStatus === "CRITICAL") return "var(--color-cyber-red)";
+  if (worstStatus === "DEGRADED") return "var(--color-cyber-amber)";
+  return "var(--color-cyber-cyan)";
+}
 
 interface NetworkMapProps {
   playerLevel: number;
@@ -54,11 +61,25 @@ export function NetworkMap({ playerLevel, unlockedSystems, isInSandbox }: Networ
   }, [rawOpenModal]);
   const topology = useGameStore((s) => s.topology);
   const setTopology = useGameStore((s) => s.setTopology);
+  const systemHealthSummary = useGameStore((s) => s.systemHealthSummary);
+  const setSystemHealthSummary = useGameStore((s) => s.setSystemHealthSummary);
   const showSandboxExit = isInSandbox && playerLevel >= SANDBOX_EXIT_LEVEL;
 
   useEffect(() => {
     api.getTopology().then((r) => setTopology(r.topology)).catch(() => {});
   }, [setTopology]);
+
+  // Fetch health summary on mount and poll every 30s
+  useEffect(() => {
+    const fetchHealth = () => {
+      api.getSystemHealthSummary().then(setSystemHealthSummary).catch(() => {});
+    };
+    fetchHealth();
+    const interval = setInterval(fetchHealth, 30_000);
+    return () => clearInterval(interval);
+  }, [setSystemHealthSummary]);
+
+  const coreColor = getHealthColor(systemHealthSummary?.worstStatus);
 
   function getNodeStyle(nodeId: string): { glow?: string; tint?: string; tooltip?: string } {
     if (!topology) return {};
@@ -92,18 +113,24 @@ export function NetworkMap({ playerLevel, unlockedSystems, isInSandbox }: Networ
           {/* Background decorative elements */}
           <circle cx={AI_CORE_POS.x} cy={AI_CORE_POS.y} r={180} fill="none" stroke="var(--color-border-default)" strokeWidth={1} strokeDasharray="5 15" opacity={0.2} />
           <circle cx={AI_CORE_POS.x} cy={AI_CORE_POS.y} r={280} fill="none" stroke="var(--color-border-default)" strokeWidth={0.5} strokeDasharray="2 10" opacity={0.15} />
-          
+
           {/* Angular connectors from center to nodes */}
           <NetworkConnections nodes={NODES} playerLevel={playerLevel} unlockedSystems={unlockedSystems} />
-          
-          {/* AI Core placeholder */}
-          <g>
+
+          {/* AI Core — clickable, opens system_maintenance */}
+          <g
+            className="cursor-pointer"
+            onClick={() => openModal("system_maintenance")}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => { if (e.key === "Enter") openModal("system_maintenance"); }}
+          >
             <motion.circle
               cx={AI_CORE_POS.x}
               cy={AI_CORE_POS.y}
               r={65}
               fill="none"
-              stroke="var(--color-cyber-cyan)"
+              stroke={coreColor}
               strokeWidth={1}
               strokeDasharray="20 40"
               opacity={0.2}
@@ -114,10 +141,10 @@ export function NetworkMap({ playerLevel, unlockedSystems, isInSandbox }: Networ
               cx={AI_CORE_POS.x}
               cy={AI_CORE_POS.y}
               r={60}
-              fill="rgba(0, 240, 255, 0.05)"
-              stroke="var(--color-cyber-cyan)"
+              fill={`${coreColor}0D`}
+              stroke={coreColor}
               strokeWidth={1}
-              animate={{ 
+              animate={{
                 r: [60, 64, 60],
                 opacity: [0.3, 0.5, 0.3]
               }}
@@ -128,7 +155,7 @@ export function NetworkMap({ playerLevel, unlockedSystems, isInSandbox }: Networ
               cy={AI_CORE_POS.y}
               r={50}
               fill="none"
-              stroke="var(--color-cyber-cyan)"
+              stroke={coreColor}
               strokeWidth={0.5}
               strokeDasharray="5 5"
               animate={{ rotate: 360 }}
@@ -139,9 +166,9 @@ export function NetworkMap({ playerLevel, unlockedSystems, isInSandbox }: Networ
               cy={AI_CORE_POS.y}
               r={45}
               fill="var(--color-bg-elevated)"
-              stroke="var(--color-cyber-cyan)"
+              stroke={coreColor}
               strokeWidth={2}
-              className="drop-shadow-[0_0_15px_rgba(0,240,255,0.4)]"
+              style={{ filter: `drop-shadow(0 0 15px ${coreColor}66)` }}
             />
             <foreignObject
               x={AI_CORE_POS.x - 24}
@@ -150,19 +177,19 @@ export function NetworkMap({ playerLevel, unlockedSystems, isInSandbox }: Networ
               height={48}
               className="pointer-events-none"
             >
-              <div className="flex items-center justify-center w-full h-full text-cyber-cyan">
+              <div className="flex items-center justify-center w-full h-full" style={{ color: coreColor }}>
                 <Cpu size={36} />
               </div>
             </foreignObject>
-            
+
             {/* AI Core Text */}
             <g transform={`translate(${AI_CORE_POS.x}, ${AI_CORE_POS.y + 75})`}>
               <text
                 textAnchor="middle"
                 fontSize={10}
                 fontWeight="bold"
-                fill="var(--color-cyber-cyan)"
-                className="uppercase tracking-[0.3em] glow-cyan"
+                fill={coreColor}
+                className="uppercase tracking-[0.3em]"
               >
                 CENTRAL_INTELLIGENCE
               </text>
@@ -173,7 +200,7 @@ export function NetworkMap({ playerLevel, unlockedSystems, isInSandbox }: Networ
                 fill="var(--color-text-secondary)"
                 className="uppercase tracking-[0.1em]"
               >
-                Protocol: Active_Resonance
+                {systemHealthSummary ? `Status: ${systemHealthSummary.worstStatus}` : "Protocol: Active_Resonance"}
               </text>
             </g>
           </g>
@@ -206,7 +233,26 @@ export function NetworkMap({ playerLevel, unlockedSystems, isInSandbox }: Networ
 
       {/* Mobile list fallback */}
       <div className="sm:hidden space-y-2">
-        {NODES.filter((n) => !n.comingSoon).map((node) => {
+        {/* System Health button (mobile equivalent of clicking AI Core) */}
+        <button
+          onClick={() => openModal("system_maintenance")}
+          className="w-full flex items-center gap-3 p-3 min-h-[48px] rounded border text-left text-sm transition-colors border-cyber-cyan/30 bg-bg-elevated hover:border-cyber-cyan text-text-primary"
+        >
+          <span className="text-lg" style={{ color: coreColor }}>
+            <Activity size={20} />
+          </span>
+          <span className="flex-1">System Health</span>
+          {systemHealthSummary && systemHealthSummary.worstStatus !== "OPTIMAL" && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded border" style={{
+              color: coreColor,
+              borderColor: coreColor,
+            }}>
+              {systemHealthSummary.worstStatus}
+            </span>
+          )}
+        </button>
+
+        {NODES.map((node) => {
           const unlocked = unlockedSystems
             ? unlockedSystems.includes(node.id)
             : playerLevel >= node.unlockLevel;

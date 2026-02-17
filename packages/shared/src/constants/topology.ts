@@ -1,7 +1,7 @@
 export const TOPOLOGY_NODES = [
   "scanner",
   "tech_tree",
-  "system_maintenance",
+  "ice_breaker",
   "script_manager",
   "pvp_arena",
   "security_center",

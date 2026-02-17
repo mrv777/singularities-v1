@@ -18,6 +18,9 @@ import type {
   BinaryDecision,
   DataVaultProtocolDefinition,
   DataVaultBuffKey,
+  IceLayerType,
+  DaemonType,
+  DaemonMissionDuration,
 } from "../constants/index.js";
 
 // Auth
@@ -432,6 +435,90 @@ export interface AdminArenaBotPreviewResponse {
 export interface AdminSeasonEndRequest {
   confirmation: "END SEASON";
   reason?: string;
+}
+
+// System Health Summary (for AI Core coloring)
+export interface SystemHealthSummaryResponse {
+  worstStatus: string;
+  criticalCount: number;
+  degradedCount: number;
+}
+
+// ICE Breaker
+export interface IceBreakerLayer {
+  type: IceLayerType;
+  threshold: number;
+  depth: number;
+}
+
+export interface IceBreakerRunState {
+  layers: IceBreakerLayer[];
+  currentDepth: number;
+  accumulatedRewards: { credits: number; data: number; xp: number; processingPower: number };
+  completed: boolean;
+  failed: boolean;
+}
+
+export interface IceBreakerStatusResponse {
+  dailyAttemptsRemaining: number;
+  cooldownTTL: number;
+  activeRun: IceBreakerRunState | null;
+}
+
+export interface IceBreakerInitiateResponse {
+  run: IceBreakerRunState;
+  player: Player;
+}
+
+export interface IceBreakerResolveResponse {
+  passed: boolean;
+  layerType: IceLayerType;
+  depth: number;
+  playerStat: number;
+  threshold: number;
+  rewards?: { credits: number; data: number; xp: number; processingPower: number };
+  damage?: { systems: Array<{ systemType: string; damage: number }> };
+  run: IceBreakerRunState;
+}
+
+export interface IceBreakerExtractResponse {
+  rewards: { credits: number; data: number; xp: number; processingPower: number };
+  player: Player;
+  levelUp?: boolean;
+  newLevel?: number;
+}
+
+// Daemon Forge
+export interface PlayerDaemon {
+  id: string;
+  daemonType: DaemonType;
+  durabilityRemaining: number;
+  missionDuration: number | null;
+  deployedAt: string | null;
+  completesAt: string | null;
+  createdAt: string;
+}
+
+export interface DaemonForgeStatusResponse {
+  daemons: PlayerDaemon[];
+  availableSlots: number;
+  maxSlots: number;
+}
+
+export interface DaemonForgeCraftResponse {
+  daemon: PlayerDaemon;
+  player: Player;
+}
+
+export interface DaemonForgeDeployResponse {
+  daemon: PlayerDaemon;
+}
+
+export interface DaemonForgeCollectResponse {
+  daemon: PlayerDaemon | null;
+  rewards: { credits: number; data: number };
+  buffApplied?: { stat: string; amount: number; durationSeconds: number };
+  player: Player;
 }
 
 // Generic error

@@ -2,6 +2,7 @@ import { query, withTransaction, type TxClient } from "../db/pool.js";
 import { redis } from "../db/redis.js";
 import { computeEnergy, mapPlayerRow, mapSystemRow } from "./player.js";
 import { getActiveModifierEffects } from "./modifiers.js";
+import { hasActiveSentinel } from "./daemonForge.js";
 import {
   DEGRADATION_RATE_PER_HOUR,
   SYSTEM_STATUS_THRESHOLDS,
@@ -9,6 +10,7 @@ import {
   getRepairCreditCostForHealth,
   REPAIR_HEALTH_AMOUNT,
   REPAIR_COOLDOWN_SECONDS,
+  SENTINEL_DEGRADATION_MULTIPLIER,
   type ModifierEffect,
 } from "@singularities/shared";
 
@@ -39,10 +41,25 @@ export function computeSystemHealth(
 }
 
 /**
+ * Returns modifier effects augmented with Sentinel daemon status for a player.
+ */
+export async function getPlayerModifierEffects(playerId: string): Promise<ModifierEffect> {
+  const [effects, sentinelActive] = await Promise.all([
+    getActiveModifierEffects(),
+    hasActiveSentinel(playerId),
+  ]);
+  if (!sentinelActive) return effects;
+  return {
+    ...effects,
+    degradationRateMultiplier: (effects.degradationRateMultiplier ?? 1) * SENTINEL_DEGRADATION_MULTIPLIER,
+  };
+}
+
+/**
  * Full scan: return all 6 systems with computed (degraded) health.
  */
 export async function fullScan(playerId: string) {
-  const effects = await getActiveModifierEffects();
+  const effects = await getPlayerModifierEffects(playerId);
   const result = await query(
     "SELECT * FROM player_systems WHERE player_id = $1 ORDER BY system_type",
     [playerId]
@@ -54,7 +71,7 @@ export async function fullScan(playerId: string) {
  * Repair a system. Transaction-based with energy+credit deduction and cooldown.
  */
 export async function repairSystem(playerId: string, systemType: string) {
-  const effects = await getActiveModifierEffects();
+  const effects = await getPlayerModifierEffects(playerId);
   const cooldownKey = `repair_cd:${playerId}:${systemType}`;
 
   return withTransaction(async (client: TxClient) => {
@@ -172,7 +189,7 @@ interface RepairCandidate {
  * with no discounts and no bypass of per-system cooldown.
  */
 export async function repairAllSystems(playerId: string) {
-  const effects = await getActiveModifierEffects();
+  const effects = await getPlayerModifierEffects(playerId);
   const energyCostPerRepair = Math.round(
     ENERGY_COSTS.repair * (effects.energyCostMultiplier ?? 1)
   );
@@ -368,6 +385,34 @@ export async function repairAllSystems(playerId: string) {
       player: mapPlayerRow(computeEnergy(updatedPlayerResult.rows[0])),
     };
   });
+}
+
+/**
+ * Lightweight summary for NetworkMap AI Core coloring.
+ */
+export async function getSystemHealthSummary(playerId: string) {
+  const effects = await getPlayerModifierEffects(playerId);
+  const result = await query(
+    "SELECT * FROM player_systems WHERE player_id = $1",
+    [playerId]
+  );
+
+  let criticalCount = 0;
+  let degradedCount = 0;
+  let worstStatus = "OPTIMAL";
+  const statusRank: Record<string, number> = { OPTIMAL: 0, DEGRADED: 1, CRITICAL: 2, CORRUPTED: 3 };
+
+  for (const row of result.rows) {
+    const computed = computeSystemHealth(row, effects);
+    const status = computed.status as string;
+    if (status === "CRITICAL" || status === "CORRUPTED") criticalCount++;
+    else if (status === "DEGRADED") degradedCount++;
+    if ((statusRank[status] ?? 0) > (statusRank[worstStatus] ?? 0)) {
+      worstStatus = status;
+    }
+  }
+
+  return { worstStatus, criticalCount, degradedCount };
 }
 
 export class RepairError extends Error {

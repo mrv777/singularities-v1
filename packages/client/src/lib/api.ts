@@ -52,6 +52,15 @@ import type {
   AdminArenaBotSettingsResponse,
   AdminArenaBotPreviewResponse,
   AdminSeasonEndRequest,
+  SystemHealthSummaryResponse,
+  IceBreakerStatusResponse,
+  IceBreakerInitiateResponse,
+  IceBreakerResolveResponse,
+  IceBreakerExtractResponse,
+  DaemonForgeStatusResponse,
+  DaemonForgeCraftResponse,
+  DaemonForgeDeployResponse,
+  DaemonForgeCollectResponse,
 } from "@singularities/shared";
 
 const API_BASE = "/api";
@@ -352,6 +361,66 @@ class ApiClient {
     return this.fetch<{ success: boolean }>("/admin/season/end", {
       method: "POST",
       body: JSON.stringify(data),
+    });
+  }
+
+  // System Health Summary
+  getSystemHealthSummary() {
+    return this.fetch<SystemHealthSummaryResponse>("/maintenance/summary");
+  }
+
+  // ICE Breaker
+  getIceBreakerStatus() {
+    return this.fetch<IceBreakerStatusResponse>("/ice-breaker/status");
+  }
+
+  initiateIceBreach() {
+    return this.fetch<IceBreakerInitiateResponse>("/ice-breaker/initiate", {
+      method: "POST",
+    });
+  }
+
+  resolveIceLayer() {
+    return this.fetch<IceBreakerResolveResponse>("/ice-breaker/resolve", {
+      method: "POST",
+    });
+  }
+
+  extractIceRewards() {
+    return this.fetch<IceBreakerExtractResponse>("/ice-breaker/extract", {
+      method: "POST",
+    });
+  }
+
+  // Daemon Forge
+  getDaemonForgeStatus() {
+    return this.fetch<DaemonForgeStatusResponse>("/daemon-forge/status");
+  }
+
+  craftDaemon(daemonType: string) {
+    return this.fetch<DaemonForgeCraftResponse>("/daemon-forge/craft", {
+      method: "POST",
+      body: JSON.stringify({ daemonType }),
+    });
+  }
+
+  deployDaemon(daemonId: string, duration: number) {
+    return this.fetch<DaemonForgeDeployResponse>("/daemon-forge/deploy", {
+      method: "POST",
+      body: JSON.stringify({ daemonId, duration }),
+    });
+  }
+
+  collectDaemon(daemonId: string) {
+    return this.fetch<DaemonForgeCollectResponse>("/daemon-forge/collect", {
+      method: "POST",
+      body: JSON.stringify({ daemonId }),
+    });
+  }
+
+  scrapDaemon(daemonId: string) {
+    return this.fetch<{ success: boolean }>(`/daemon-forge/${daemonId}`, {
+      method: "DELETE",
     });
   }
 }

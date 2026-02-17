@@ -16,6 +16,8 @@ import { SandboxExitModal } from "@/components/SandboxExitModal";
 import { NetStatsModal } from "@/components/stats/NetStatsModal";
 import { DecisionModal } from "@/components/decisions/DecisionModal";
 import { HelpModal } from "@/components/help/HelpModal";
+import { IceBreakerModal } from "@/components/iceBreaker/IceBreakerModal";
+import { DaemonForgeModal } from "@/components/daemonForge/DaemonForgeModal";
 import { WorldEventBanner } from "@/components/world/WorldEventBanner";
 import { DeathScreen } from "@/components/death/DeathScreen";
 import { ChatPanel } from "@/components/chat/ChatPanel";
@@ -206,6 +208,8 @@ function GamePage() {
         <NetStatsModal />
         <SandboxExitModal />
         <DecisionModal />
+        <IceBreakerModal />
+        <DaemonForgeModal />
         <HelpModal />
       </motion.div>
       <ChatPanel />

@@ -103,8 +103,15 @@ export function Header() {
         <>
           {/* Desktop HUD */}
           <div className="hidden lg:flex items-center gap-2 xl:gap-4 h-full py-2">
-            {/* Profile Group */}
-            <div className="hud-box flex items-center gap-3 px-3 h-10 rounded-sm">
+            {/* Profile Group — click to open Net Stats */}
+            <div
+              className="hud-box flex items-center gap-3 px-3 h-10 rounded-sm cursor-pointer hover:border-cyber-cyan/50 transition-colors"
+              onClick={() => useUIStore.getState().openModal("network_stats")}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => { if (e.key === "Enter") useUIStore.getState().openModal("network_stats"); }}
+              title="View Network Stats"
+            >
               <div className="hud-corner hud-corner-tl" />
               <div className="hud-corner hud-corner-tr" />
               <div className="hud-corner hud-corner-bl" />
@@ -307,8 +314,14 @@ export function Header() {
             onClick={() => setShowResources(!showResources)}
             className="lg:hidden flex items-center gap-2 px-3 py-1 bg-bg-surface/50 border border-border-default rounded text-xs text-text-secondary transition-colors hover:border-cyber-cyan"
           >
-            <div className="w-2 h-2 rounded-full bg-cyber-green animate-pulse" />
-            <span className="text-cyber-green font-bold uppercase tracking-wider">
+            <div
+              className="w-2 h-2 rounded-full bg-cyber-green animate-pulse"
+              onClick={(e) => { e.stopPropagation(); useUIStore.getState().openModal("network_stats"); }}
+            />
+            <span
+              className="text-cyber-green font-bold uppercase tracking-wider"
+              onClick={(e) => { e.stopPropagation(); useUIStore.getState().openModal("network_stats"); }}
+            >
               {player.aiName}
             </span>
             <ChevronDown

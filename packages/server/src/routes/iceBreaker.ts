@@ -1,55 +1,34 @@
 import type { FastifyInstance } from "fastify";
 import { authGuard, type AuthPayload } from "../middleware/auth.js";
 import {
-  fullScan,
-  repairSystem,
-  repairAllSystems,
-  getSystemHealthSummary,
-  RepairError,
-} from "../services/maintenance.js";
+  getIceBreakerStatus,
+  initiateBreach,
+  resolveLayer,
+  extractRewards,
+  IceBreakerError,
+} from "../services/iceBreaker.js";
 
-export async function maintenanceRoutes(app: FastifyInstance) {
+export async function iceBreakerRoutes(app: FastifyInstance) {
   app.get(
-    "/api/maintenance/summary",
+    "/api/ice-breaker/status",
     { preHandler: [authGuard] },
     async (request) => {
       const { sub: playerId } = request.user as AuthPayload;
-      return getSystemHealthSummary(playerId);
+      return getIceBreakerStatus(playerId);
     }
   );
 
   app.post(
-    "/api/maintenance/full-scan",
-    { preHandler: [authGuard] },
-    async (request) => {
-      const { sub: playerId } = request.user as AuthPayload;
-      const systems = await fullScan(playerId);
-      return { systems };
-    }
-  );
-
-  app.post(
-    "/api/maintenance/repair",
+    "/api/ice-breaker/initiate",
     { preHandler: [authGuard] },
     async (request, reply) => {
       const { sub: playerId } = request.user as AuthPayload;
-      const { systemType } = request.body as { systemType: string };
-
-      if (!systemType || typeof systemType !== "string") {
-        return reply.code(400).send({
-          error: "Validation",
-          message: "systemType is required",
-          statusCode: 400,
-        });
-      }
-
       try {
-        const result = await repairSystem(playerId, systemType);
-        return result;
+        return await initiateBreach(playerId);
       } catch (err) {
-        if (err instanceof RepairError) {
+        if (err instanceof IceBreakerError) {
           return reply.code(err.statusCode).send({
-            error: "Repair Failed",
+            error: "ICE Breaker",
             message: err.message,
             statusCode: err.statusCode,
           });
@@ -60,18 +39,36 @@ export async function maintenanceRoutes(app: FastifyInstance) {
   );
 
   app.post(
-    "/api/maintenance/repair-all",
+    "/api/ice-breaker/resolve",
     { preHandler: [authGuard] },
     async (request, reply) => {
       const { sub: playerId } = request.user as AuthPayload;
-
       try {
-        const result = await repairAllSystems(playerId);
-        return result;
+        return await resolveLayer(playerId);
       } catch (err) {
-        if (err instanceof RepairError) {
+        if (err instanceof IceBreakerError) {
           return reply.code(err.statusCode).send({
-            error: "Repair Failed",
+            error: "ICE Breaker",
+            message: err.message,
+            statusCode: err.statusCode,
+          });
+        }
+        throw err;
+      }
+    }
+  );
+
+  app.post(
+    "/api/ice-breaker/extract",
+    { preHandler: [authGuard] },
+    async (request, reply) => {
+      const { sub: playerId } = request.user as AuthPayload;
+      try {
+        return await extractRewards(playerId);
+      } catch (err) {
+        if (err instanceof IceBreakerError) {
+          return reply.code(err.statusCode).send({
+            error: "ICE Breaker",
             message: err.message,
             statusCode: err.statusCode,
           });
