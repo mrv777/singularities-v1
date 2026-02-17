@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { Lock } from "lucide-react";
+import type { ReactNode } from "react";
 
 export interface NodeDef {
   id: string;
@@ -8,7 +9,7 @@ export interface NodeDef {
   y: number;
   unlockLevel: number;
   comingSoon?: boolean;
-  icon: string;
+  icon: ReactNode;
 }
 
 export interface TopologyStyle {
@@ -32,114 +33,154 @@ export function NetworkNode({ node, playerLevel, unlockedSystems, onClick, topol
   const isComingSoon = node.comingSoon;
 
   const hasTopo = isUnlocked && topologyStyle?.tint;
+  const nodeColor = isComingSoon
+    ? "var(--color-text-muted)"
+    : isUnlocked
+      ? (hasTopo ? topologyStyle.tint! : "var(--color-cyber-cyan)")
+      : "var(--color-text-muted)";
 
   return (
     <g
-      className={isUnlocked ? "cursor-pointer" : "cursor-default"}
+      className={isUnlocked ? "cursor-pointer group" : "cursor-default"}
       onClick={() => isUnlocked && onClick(node.id)}
-      style={hasTopo && topologyStyle?.glow ? { filter: topologyStyle.glow } : undefined}
     >
-      {/* Glow effect for active nodes */}
+      {/* Outer rotating circuit ring */}
       {isUnlocked && (
         <motion.circle
           cx={node.x}
           cy={node.y}
-          r={32}
+          r={36}
           fill="none"
-          stroke={hasTopo ? topologyStyle.tint : "var(--color-cyber-cyan)"}
+          stroke={nodeColor}
           strokeWidth={1}
-          opacity={0.3}
-          animate={{ r: [32, 36, 32], opacity: [0.3, 0.15, 0.3] }}
-          transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+          strokeDasharray="10 20"
+          opacity={0.2}
+          animate={{ rotate: 360 }}
+          transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
         />
       )}
 
-      {/* Node circle */}
+      {/* Pulsing selection glow */}
+      {isUnlocked && (
+        <motion.circle
+          cx={node.x}
+          cy={node.y}
+          r={28}
+          fill="none"
+          stroke={nodeColor}
+          strokeWidth={2}
+          opacity={0}
+          className="group-hover:opacity-40 transition-opacity"
+          animate={{ r: [28, 32, 28] }}
+          transition={{ duration: 2, repeat: Infinity }}
+        />
+      )}
+
+      {/* Main node circle */}
       <circle
         cx={node.x}
         cy={node.y}
         r={28}
         fill="var(--color-bg-elevated)"
-        stroke={
-          isComingSoon
-            ? "var(--color-border-default)"
-            : isUnlocked
-              ? (hasTopo ? topologyStyle.tint! : "var(--color-cyber-cyan)")
-              : "var(--color-border-default)"
-        }
+        stroke={nodeColor}
         strokeWidth={isUnlocked ? 2 : 1}
         opacity={isUnlocked ? 1 : isComingSoon ? 0.4 : 0.3}
+        style={hasTopo && topologyStyle?.glow ? { filter: topologyStyle.glow } : undefined}
       />
 
-      {/* Icon text */}
-      <text
-        x={node.x}
-        y={node.y + 1}
-        textAnchor="middle"
-        dominantBaseline="central"
-        fontSize={16}
-        fill={
-          isComingSoon
-            ? "var(--color-text-muted)"
-            : isUnlocked
-              ? (hasTopo ? topologyStyle.tint! : "var(--color-cyber-cyan)")
-              : "var(--color-text-muted)"
-        }
-        opacity={isUnlocked ? 1 : 0.4}
+      {/* Hexagonal decorative frame (simulated with path) */}
+      {isUnlocked && (
+        <path
+          d={`M ${node.x} ${node.y - 32} L ${node.x + 28} ${node.y - 16} L ${node.x + 28} ${node.y + 16} L ${node.x} ${node.y + 32} L ${node.x - 28} ${node.y + 16} L ${node.x - 28} ${node.y - 16} Z`}
+          fill="none"
+          stroke={nodeColor}
+          strokeWidth={0.5}
+          opacity={0.3}
+        />
+      )}
+
+      {/* Icon rendering */}
+      <foreignObject
+        x={node.x - 10}
+        y={node.y - 10}
+        width={20}
+        height={20}
+        className="pointer-events-none"
       >
-        {isComingSoon ? "?" : node.icon}
-      </text>
+        <div 
+          className="flex items-center justify-center w-full h-full"
+          style={{ 
+            color: nodeColor,
+            opacity: isUnlocked ? 1 : 0.4,
+            filter: isUnlocked ? "drop-shadow(0 0 2px currentColor)" : "none"
+          }}
+        >
+          {isComingSoon ? <Lock size={16} /> : node.icon}
+        </div>
+      </foreignObject>
 
       {/* Label */}
-      <text
-        x={node.x}
-        y={node.y + 44}
-        textAnchor="middle"
-        fontSize={9}
-        fontFamily="var(--font-mono)"
-        fill={isUnlocked ? "var(--color-text-primary)" : "var(--color-text-muted)"}
-        opacity={isUnlocked ? 1 : 0.5}
-      >
-        {isComingSoon ? "???" : node.label}
-      </text>
+      <g transform={`translate(${node.x}, ${node.y + 46})`}>
+        <rect
+          x="-30"
+          y="-1"
+          width="60"
+          height="12"
+          fill="var(--color-bg-primary)"
+          fillOpacity="0.8"
+          rx="2"
+        />
+        <text
+          textAnchor="middle"
+          y="8"
+          fontSize={8}
+          fontWeight="bold"
+          fontFamily="var(--font-mono)"
+          fill={isUnlocked ? "var(--color-text-primary)" : "var(--color-text-muted)"}
+          opacity={isUnlocked ? 1 : 0.5}
+          className="uppercase tracking-wider"
+        >
+          {isComingSoon ? "SYSTEM_OFFLINE" : node.label.replace(" ", "_")}
+        </text>
+      </g>
 
       {/* Topology tooltip */}
       {hasTopo && topologyStyle?.tooltip && (
         <text
           x={node.x}
-          y={node.y + 56}
+          y={node.y + 62}
           textAnchor="middle"
           fontSize={7}
           fontFamily="var(--font-mono)"
           fill={topologyStyle.tint}
           opacity={0.8}
+          className="font-bold"
         >
-          {topologyStyle.tooltip}
+          {`> ${topologyStyle.tooltip.toUpperCase()}`}
         </text>
       )}
 
       {/* Lock / level badge */}
       {!isUnlocked && !isComingSoon && (
-        <g>
+        <g transform={`translate(${node.x + 14}, ${node.y - 28})`}>
           <rect
-            x={node.x + 12}
-            y={node.y - 28}
-            width={24}
-            height={14}
-            rx={3}
-            fill="var(--color-bg-primary)"
+            width="22"
+            height="12"
+            rx="2"
+            fill="var(--color-bg-surface)"
             stroke="var(--color-border-default)"
-            strokeWidth={0.5}
+            strokeWidth={1}
           />
           <text
-            x={node.x + 24}
-            y={node.y - 19}
+            x="11"
+            y="8.5"
             textAnchor="middle"
             fontSize={7}
+            fontWeight="bold"
             fontFamily="var(--font-mono)"
-            fill="var(--color-text-muted)"
+            fill="var(--color-cyber-red)"
           >
-            LV{node.unlockLevel}
+            L{node.unlockLevel}
           </text>
         </g>
       )}

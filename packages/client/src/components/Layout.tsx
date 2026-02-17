@@ -6,9 +6,12 @@ export function Layout({ children }: { children: ReactNode }) {
   const { tierClass } = useUITier();
 
   return (
-    <div className={`min-h-screen bg-bg-primary scanlines ${tierClass}`}>
+    <div className={`min-h-screen bg-bg-primary scanlines relative overflow-x-hidden ${tierClass}`}>
+      {/* Background patterns */}
+      <div className="fixed inset-0 cyber-grid pointer-events-none opacity-40" />
+      
       <Header />
-      <main className="p-4 lg:p-6">{children}</main>
+      <main className="relative z-10 p-4 lg:p-6">{children}</main>
     </div>
   );
 }
