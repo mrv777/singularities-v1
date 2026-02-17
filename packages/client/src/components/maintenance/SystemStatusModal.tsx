@@ -8,6 +8,7 @@ import { useState, useEffect } from "react";
 import { ENERGY_COSTS, REPAIR_CREDIT_COST } from "@singularities/shared";
 import type { PlayerSystem } from "@singularities/shared";
 import { AlertTriangle, RefreshCw } from "lucide-react";
+import { playSound } from "@/lib/sound";
 
 export function SystemStatusModal() {
   const activeModal = useUIStore((s) => s.activeModal);
@@ -61,6 +62,11 @@ export function SystemStatusModal() {
   const criticalCount = systems.filter(
     (s) => s.status === "CRITICAL" || s.status === "CORRUPTED"
   ).length;
+
+  // Play critical warning if any systems are critical/corrupted
+  useEffect(() => {
+    if (open && criticalCount > 0) playSound("criticalWarning");
+  }, [open, criticalCount]);
 
   return (
     <Modal open={open} onClose={closeModal} title="SYSTEM MAINTENANCE" maxWidth="max-w-3xl">

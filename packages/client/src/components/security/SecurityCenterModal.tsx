@@ -69,7 +69,7 @@ export function SecurityCenterModal() {
         <div className="flex gap-1 border-b border-border-default">
           <button
             onClick={() => setTab("defense")}
-            className={`px-3 py-1.5 text-xs transition-colors ${
+            className={`px-3 py-1.5 min-h-[44px] text-xs transition-colors ${
               tab === "defense" ? "text-cyber-cyan border-b border-cyber-cyan" : "text-text-muted hover:text-text-secondary"
             }`}
           >
@@ -78,7 +78,7 @@ export function SecurityCenterModal() {
           </button>
           <button
             onClick={() => setTab("threats")}
-            className={`px-3 py-1.5 text-xs transition-colors ${
+            className={`px-3 py-1.5 min-h-[44px] text-xs transition-colors ${
               tab === "threats" ? "text-cyber-cyan border-b border-cyber-cyan" : "text-text-muted hover:text-text-secondary"
             }`}
           >
@@ -87,7 +87,7 @@ export function SecurityCenterModal() {
           </button>
           <button
             onClick={() => setTab("status")}
-            className={`px-3 py-1.5 text-xs transition-colors ${
+            className={`px-3 py-1.5 min-h-[44px] text-xs transition-colors ${
               tab === "status" ? "text-cyber-cyan border-b border-cyber-cyan" : "text-text-muted hover:text-text-secondary"
             }`}
           >
@@ -113,7 +113,7 @@ export function SecurityCenterModal() {
                   <select
                     value={selected ?? ""}
                     onChange={(e) => handleSlotChange(i, e.target.value || null)}
-                    className="w-full bg-bg-primary border border-border-default rounded px-2 py-1.5 text-xs text-text-primary"
+                    className="w-full bg-bg-primary border border-border-default rounded px-2 py-1.5 min-h-[44px] text-xs text-text-primary"
                   >
                     <option value="">-- Empty --</option>
                     {ownedModules.map((m) => {
@@ -137,7 +137,7 @@ export function SecurityCenterModal() {
             <button
               onClick={handleSave}
               disabled={saving}
-              className="w-full py-2 border border-cyber-cyan text-cyber-cyan rounded hover:bg-cyber-cyan/10 transition-colors disabled:opacity-30 text-sm"
+              className="w-full py-2 min-h-[44px] border border-cyber-cyan text-cyber-cyan rounded hover:bg-cyber-cyan/10 transition-colors disabled:opacity-30 text-sm"
             >
               {saving ? "Saving..." : "Save Defense"}
             </button>

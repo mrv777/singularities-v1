@@ -8,6 +8,7 @@ import { OpponentCard } from "./OpponentCard";
 import { CombatResultDisplay } from "./CombatResultDisplay";
 import { useState, useEffect } from "react";
 import { Shield, Clock, ScrollText } from "lucide-react";
+import { playSound } from "@/lib/sound";
 
 type Tab = "arena" | "logs";
 
@@ -65,6 +66,7 @@ export function ArenaModal() {
   const handleAttack = async (targetId: string) => {
     setIsAttacking(true);
     setError("");
+    playSound("pvpAttack");
     try {
       const result = await api.attackPlayer({ targetId });
       setCombatResult(result);
@@ -110,7 +112,7 @@ export function ArenaModal() {
         <div className="flex gap-1 border-b border-border-default">
           <button
             onClick={() => setTab("arena")}
-            className={`px-3 py-1.5 text-xs transition-colors ${
+            className={`px-3 py-1.5 min-h-[44px] text-xs transition-colors ${
               tab === "arena" ? "text-cyber-cyan border-b border-cyber-cyan" : "text-text-muted hover:text-text-secondary"
             }`}
           >
@@ -119,7 +121,7 @@ export function ArenaModal() {
           </button>
           <button
             onClick={() => setTab("logs")}
-            className={`px-3 py-1.5 text-xs transition-colors ${
+            className={`px-3 py-1.5 min-h-[44px] text-xs transition-colors ${
               tab === "logs" ? "text-cyber-cyan border-b border-cyber-cyan" : "text-text-muted hover:text-text-secondary"
             }`}
           >

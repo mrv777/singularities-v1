@@ -55,17 +55,17 @@ export function SandboxExitModal() {
           <div className="text-cyber-red text-xs">{error}</div>
         )}
 
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2">
           <button
             onClick={closeModal}
-            className="flex-1 py-2 border border-border-default text-text-secondary rounded hover:border-cyber-cyan hover:text-cyber-cyan transition-colors text-sm"
+            className="flex-1 py-2 min-h-[44px] border border-border-default text-text-secondary rounded hover:border-cyber-cyan hover:text-cyber-cyan transition-colors text-sm"
           >
             Stay in Sandbox
           </button>
           <button
             onClick={handleExit}
             disabled={exiting}
-            className="flex-1 py-2 border border-cyber-red text-cyber-red rounded hover:bg-cyber-red/10 transition-colors disabled:opacity-30 text-sm font-semibold"
+            className="flex-1 py-2 min-h-[44px] border border-cyber-red text-cyber-red rounded hover:bg-cyber-red/10 transition-colors disabled:opacity-30 text-sm font-semibold"
           >
             {exiting ? "Exiting..." : "Exit Sandbox"}
           </button>

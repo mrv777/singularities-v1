@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import type { ArenaAttackResponse } from "@singularities/shared";
+import { playSound } from "@/lib/sound";
 
 interface CombatResultDisplayProps {
   result: ArenaAttackResponse;
@@ -10,6 +11,10 @@ interface CombatResultDisplayProps {
 export function CombatResultDisplay({ result, onClose }: CombatResultDisplayProps) {
   const [visibleLines, setVisibleLines] = useState(0);
   const won = result.result === "attacker_win";
+
+  useEffect(() => {
+    playSound(won ? "pvpWin" : "pvpLoss");
+  }, [won]);
 
   useEffect(() => {
     if (visibleLines < result.narrative.length) {
@@ -70,7 +75,7 @@ export function CombatResultDisplay({ result, onClose }: CombatResultDisplayProp
           </div>
 
           {result.rewards && (
-            <div className="flex gap-3 justify-center text-xs">
+            <div className="flex gap-3 justify-center text-xs flex-wrap">
               <span className="text-cyber-yellow">+{result.rewards.credits} CR</span>
               <span className="text-cyber-purple">+{result.rewards.reputation} REP</span>
               <span className="text-cyber-cyan">+{result.rewards.xp} XP</span>
@@ -85,7 +90,7 @@ export function CombatResultDisplay({ result, onClose }: CombatResultDisplayProp
 
           <button
             onClick={onClose}
-            className="w-full py-2 border border-border-default text-text-secondary rounded hover:border-cyber-cyan hover:text-cyber-cyan transition-colors text-xs"
+            className="w-full py-2 min-h-[44px] border border-border-default text-text-secondary rounded hover:border-cyber-cyan hover:text-cyber-cyan transition-colors text-xs"
           >
             Close
           </button>

@@ -1,0 +1,86 @@
+/* UI Tier System — CSS variable overrides per tier */
+/* Tier 1 (Retro Terminal): levels 1-9 — green monochrome */
+/* Tier 2 (Enhanced): levels 10-19 — default palette */
+/* Tier 3 (Futuristic): levels 20+ — enhanced glows, brighter accents */
+
+/* Tier transitions */
+.ui-tier-1,
+.ui-tier-2,
+.ui-tier-3 {
+  transition:
+    --color-cyber-cyan 2s ease,
+    --color-cyber-magenta 2s ease,
+    --color-cyber-green 2s ease,
+    --color-bg-surface 2s ease,
+    --color-bg-elevated 2s ease;
+}
+
+/* -----------------------------------------------------------
+   Tier 1 — Retro Terminal (green monochrome)
+   ----------------------------------------------------------- */
+.ui-tier-1 {
+  --color-cyber-cyan: #00ff88;
+  --color-cyber-magenta: #00cc66;
+  --color-cyber-amber: #88ff44;
+  --color-bg-surface: #0f1a0f;
+  --color-bg-elevated: #152015;
+  --scanline-opacity: 0.06;
+}
+
+/* Suppress glows in Tier 1 */
+.ui-tier-1 .glow-cyan,
+.ui-tier-1 .glow-magenta,
+.ui-tier-1 .glow-green {
+  text-shadow: none;
+}
+
+.ui-tier-1 .border-glow-cyan {
+  box-shadow: none;
+}
+
+/* -----------------------------------------------------------
+   Tier 2 — Enhanced (default palette, no overrides needed)
+   ----------------------------------------------------------- */
+.ui-tier-2 {
+  --scanline-opacity: 0.03;
+}
+
+/* -----------------------------------------------------------
+   Tier 3 — Futuristic (brighter, enhanced glows)
+   ----------------------------------------------------------- */
+.ui-tier-3 {
+  --color-cyber-cyan: #00f0ff;
+  --color-cyber-magenta: #ff44ff;
+  --color-cyber-green: #44ffaa;
+  --color-bg-surface: #1a1a2e;
+  --color-bg-elevated: #222240;
+  --scanline-opacity: 0.005;
+}
+
+/* Enhanced glows in Tier 3 */
+.ui-tier-3 .glow-cyan {
+  text-shadow:
+    0 0 10px var(--color-cyber-cyan),
+    0 0 30px color-mix(in srgb, var(--color-cyber-cyan) 40%, transparent),
+    0 0 60px color-mix(in srgb, var(--color-cyber-cyan) 20%, transparent);
+}
+
+.ui-tier-3 .glow-magenta {
+  text-shadow:
+    0 0 10px var(--color-cyber-magenta),
+    0 0 30px color-mix(in srgb, var(--color-cyber-magenta) 40%, transparent);
+}
+
+.ui-tier-3 .border-glow-cyan {
+  box-shadow:
+    0 0 8px color-mix(in srgb, var(--color-cyber-cyan) 40%, transparent),
+    0 0 20px color-mix(in srgb, var(--color-cyber-magenta) 15%, transparent),
+    inset 0 0 8px color-mix(in srgb, var(--color-cyber-cyan) 15%, transparent);
+}
+
+/* Keep danger red unchanged in all tiers */
+.ui-tier-1,
+.ui-tier-2,
+.ui-tier-3 {
+  --color-cyber-red: #ff3333;
+}

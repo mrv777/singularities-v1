@@ -8,6 +8,7 @@ import {
 } from "@singularities/shared";
 import { computeEnergy, mapPlayerRow } from "./player.js";
 import { getSeasonCatchUpMultiplier, applySeasonXPBoost } from "./seasons.js";
+import { broadcastSystem, sendActivity } from "./ws.js";
 
 type DbQuery = (text: string, params?: unknown[]) => Promise<{ rows: Record<string, unknown>[] }>;
 
@@ -44,6 +45,11 @@ export async function awardXP(
       `UPDATE players SET xp = $2, level = $3, energy_max = $4 WHERE id = $1`,
       [playerId, newXP, newLevel, newEnergyMax]
     );
+    // Broadcast level up
+    const nameRes = await dbQuery("SELECT ai_name FROM players WHERE id = $1", [playerId]);
+    const aiName = nameRes.rows[0]?.ai_name as string ?? "Unknown";
+    broadcastSystem(`${aiName} reached level ${newLevel}!`);
+    sendActivity(playerId, `Level up! Now level ${newLevel}`);
   } else {
     await dbQuery(`UPDATE players SET xp = $2 WHERE id = $1`, [playerId, newXP]);
   }

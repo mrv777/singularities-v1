@@ -22,7 +22,15 @@ import { resolveLoadoutStats } from "./stats.js";
 import { computeSystemHealth } from "./maintenance.js";
 import { triggerDecision } from "./decisions.js";
 import { shiftAlignment } from "./alignment.js";
-import { ALIGNMENT_SHIFTS } from "@singularities/shared";
+import {
+  ALIGNMENT_SHIFTS,
+  pickTemplate,
+  fillTemplate,
+  HACK_SUCCESS_TEMPLATES,
+  HACK_FAIL_UNDETECTED_TEMPLATES,
+  HACK_FAIL_DETECTED_TEMPLATES,
+} from "@singularities/shared";
+import { sendActivity } from "./ws.js";
 
 function randomInt(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -171,12 +179,18 @@ export async function executeHack(playerId: string, targetIndex: number) {
       levelUp = xpResult.levelUp;
       newLevel = xpResult.newLevel;
 
-      narrative = `> Infiltration of ${target.name} successful.\n` +
-        `> Security level ${target.securityLevel} breached (hack power: ${effectiveHackPower}).\n` +
-        `> Extracted: ${finalCredits} CR, ${finalData} DATA\n` +
-        `> Reputation +${finalReputation}\n` +
-        (levelUp ? `> LEVEL UP! Now level ${newLevel}\n` : "") +
-        `> Connection terminated. No traces found.`;
+      narrative = fillTemplate(pickTemplate(HACK_SUCCESS_TEMPLATES), {
+        target: target.name,
+        security: target.securityLevel,
+        power: effectiveHackPower,
+        credits: finalCredits,
+        data: finalData,
+        reputation: finalReputation,
+        rounds: randomInt(2, 5),
+      });
+      if (levelUp) {
+        narrative += `\n> LEVEL UP! Now level ${newLevel}`;
+      }
     } else {
       // Detection check: stealth + detectionReduction lower the chance
       const stealthReduction = (stats.stealth + stats.detectionReduction) / 2;
@@ -225,16 +239,18 @@ export async function executeHack(playerId: string, targetIndex: number) {
 
         damage = { systems: damageSystems };
 
-        narrative = `> Infiltration of ${target.name} FAILED.\n` +
-          `> DETECTED by security systems! (detection: ${Math.round(effectiveDetection)}%)\n` +
-          `> Countermeasures engaged — ${damageSystems.map(d => `${d.systemType}: -${d.damage}HP`).join(", ")}\n` +
-          `> Heat level increased.\n` +
-          `> Connection severed.`;
+        narrative = fillTemplate(pickTemplate(HACK_FAIL_DETECTED_TEMPLATES), {
+          target: target.name,
+          detection: Math.round(effectiveDetection),
+          damageReport: damageSystems.map(d => `${d.systemType}: -${d.damage}HP`).join(", "),
+        });
       } else {
-        narrative = `> Infiltration of ${target.name} FAILED.\n` +
-          `> Target security held. Hack unsuccessful.\n` +
-          `> Escaped undetected (stealth: ${stats.stealth}). No damage taken.\n` +
-          `> Connection terminated cleanly.`;
+        narrative = fillTemplate(pickTemplate(HACK_FAIL_UNDETECTED_TEMPLATES), {
+          target: target.name,
+          security: target.securityLevel,
+          stealth: stats.stealth,
+          power: effectiveHackPower,
+        });
       }
     }
 
@@ -280,6 +296,14 @@ export async function executeHack(playerId: string, targetIndex: number) {
   } else {
     await redis.del(key);
   }
+
+  // Send activity notification
+  try {
+    const msg = result.success
+      ? `Hack succeeded on ${target.name} — +${result.rewards?.credits ?? 0} CR`
+      : `Hack failed on ${target.name}${result.detected ? " (DETECTED)" : ""}`;
+    sendActivity(playerId, msg);
+  } catch { /* non-critical */ }
 
   // Phase 4: Post-hack alignment shifts and decision triggers (fire-and-forget)
   try {

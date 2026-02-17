@@ -67,7 +67,7 @@ export function SystemCard({ system, onRepair, repairing }: SystemCardProps) {
       <button
         onClick={() => onRepair(system.systemType)}
         disabled={repairing || system.health >= 100}
-        className="w-full flex items-center justify-center gap-1 py-1.5 text-[10px] border border-cyber-cyan/30 text-cyber-cyan rounded hover:bg-cyber-cyan/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+        className="w-full flex items-center justify-center gap-1 py-1.5 min-h-[44px] text-[10px] border border-cyber-cyan/30 text-cyber-cyan rounded hover:bg-cyber-cyan/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
       >
         <Wrench size={10} />
         {repairing ? "Repairing..." : system.health >= 100 ? "Full Health" : "Repair"}

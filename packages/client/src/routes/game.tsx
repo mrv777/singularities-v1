@@ -15,8 +15,11 @@ import { NetStatsModal } from "@/components/stats/NetStatsModal";
 import { DecisionModal } from "@/components/decisions/DecisionModal";
 import { WorldEventBanner } from "@/components/world/WorldEventBanner";
 import { DeathScreen } from "@/components/death/DeathScreen";
+import { ChatPanel } from "@/components/chat/ChatPanel";
 import { useState, useEffect } from "react";
 import { api } from "@/lib/api";
+import { wsManager } from "@/lib/ws";
+import { useChatStore } from "@/stores/chat";
 import { useQueryClient } from "@tanstack/react-query";
 import { useGameStore } from "@/stores/game";
 
@@ -100,6 +103,9 @@ function GamePage() {
   const queryClient = useQueryClient();
   const setWorldEvents = useGameStore((s) => s.setWorldEvents);
   const setPendingDecision = useGameStore((s) => s.setPendingDecision);
+  const addChatMessage = useChatStore((s) => s.addMessage);
+  const setChatHistory = useChatStore((s) => s.setHistory);
+  const setChatConnected = useChatStore((s) => s.setConnected);
 
   // Load world events on mount
   useEffect(() => {
@@ -111,6 +117,20 @@ function GamePage() {
       }).catch(() => {});
     }
   }, [player?.isAlive, setWorldEvents, setPendingDecision]);
+
+  // WebSocket chat connection
+  useEffect(() => {
+    if (player?.isAlive) {
+      wsManager.setHandlers({
+        onMessage: addChatMessage,
+        onHistory: setChatHistory,
+        onConnected: () => setChatConnected(true),
+        onDisconnected: () => setChatConnected(false),
+      });
+      wsManager.connect();
+      return () => wsManager.disconnect();
+    }
+  }, [player?.isAlive, addChatMessage, setChatHistory, setChatConnected]);
 
   if (!isAuthenticated) {
     return <Navigate to="/" />;
@@ -167,6 +187,7 @@ function GamePage() {
       <NetStatsModal />
       <SandboxExitModal />
       <DecisionModal />
+      <ChatPanel />
     </motion.div>
   );
 }

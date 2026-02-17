@@ -1,7 +1,15 @@
 import { query } from "../db/pool.js";
 import { redis } from "../db/redis.js";
-import { RIPPLE_THRESHOLDS, RIPPLE_EVENTS, type RippleEvent } from "@singularities/shared";
-import type { WorldEvent } from "@singularities/shared";
+import {
+  RIPPLE_THRESHOLDS,
+  RIPPLE_EVENTS,
+  type RippleEvent,
+  type WorldEvent,
+  pickTemplate,
+  fillTemplate,
+  WORLD_EVENT_TEMPLATES,
+} from "@singularities/shared";
+import { broadcastSystem } from "./ws.js";
 
 const REDIS_EVENTS_KEY = "world_events";
 
@@ -69,13 +77,17 @@ export async function analyzeAndGenerateRipples(): Promise<WorldEvent[]> {
   const created: WorldEvent[] = [];
 
   for (const event of selected) {
+    const narrative = event.narrative
+      ?? fillTemplate(pickTemplate(WORLD_EVENT_TEMPLATES), { event: event.id.replace("ripple_", "").replace(/_/g, " ") });
     const res = await query(
       `INSERT INTO world_events (date, event_type, trigger_data, effect_data, narrative)
        VALUES ($1, $2, $3, $4, $5)
        RETURNING *`,
-      [today, event.id, JSON.stringify(metrics), JSON.stringify(event.effects), event.narrative]
+      [today, event.id, JSON.stringify(metrics), JSON.stringify(event.effects), narrative]
     );
-    created.push(mapWorldEventRow(res.rows[0]));
+    const worldEvent = mapWorldEventRow(res.rows[0]);
+    created.push(worldEvent);
+    broadcastSystem(`World Event: ${worldEvent.narrative ?? event.id}`);
   }
 
   // Invalidate cache

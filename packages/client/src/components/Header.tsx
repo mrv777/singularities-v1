@@ -1,11 +1,13 @@
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { useAuthStore } from "@/stores/auth";
-import { Menu, ChevronDown } from "lucide-react";
+import { Menu, ChevronDown, Volume2, VolumeX } from "lucide-react";
 import { useUIStore } from "@/stores/ui";
 import { DAY_PHASE_HOURS, XP_THRESHOLDS, getXPForNextLevel } from "@singularities/shared";
 import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { ModifierBadge } from "./ModifierBadge";
 import { AlignmentIndicator } from "./alignment/AlignmentIndicator";
+import { useUITier } from "@/hooks/useUITier";
 
 function getDayPhase() {
   const hour = new Date().getHours();
@@ -31,6 +33,9 @@ function getPhaseCountdown() {
 export function Header() {
   const { player, isAuthenticated } = useAuthStore();
   const toggleSidebar = useUIStore((s) => s.toggleSidebar);
+  const soundEnabled = useUIStore((s) => s.soundEnabled);
+  const toggleSound = useUIStore((s) => s.toggleSound);
+  const { tier } = useUITier();
   const [showResources, setShowResources] = useState(false);
   const [phase, setPhase] = useState(getDayPhase());
   const [countdown, setCountdown] = useState(getPhaseCountdown());
@@ -49,14 +54,14 @@ export function Header() {
     <header className="h-14 border-b border-border-default bg-bg-secondary flex items-center px-4 gap-4 relative">
       <button
         onClick={toggleSidebar}
-        className="text-text-secondary hover:text-cyber-cyan transition-colors lg:hidden"
+        className="text-text-secondary hover:text-cyber-cyan transition-colors lg:hidden min-w-[44px] min-h-[44px] flex items-center justify-center"
         aria-label="Toggle sidebar"
       >
         <Menu size={20} />
       </button>
 
       <div className="flex items-center gap-2">
-        <span className="text-cyber-cyan font-bold text-sm tracking-wider glow-cyan">
+        <span className={`text-cyber-cyan font-bold text-sm tracking-wider ${tier === 1 ? "" : "glow-cyan"}`}>
           SINGULARITIES
         </span>
       </div>
@@ -103,7 +108,7 @@ export function Header() {
             <span className="text-text-secondary">REP {player.reputation}</span>
             <ModifierBadge />
             <AlignmentIndicator />
-            <span className={`${phase.color} text-[10px]`}>
+            <span className={`${phase.color} text-xs`}>
               {phase.phase} {countdown}
             </span>
           </div>
@@ -111,13 +116,22 @@ export function Header() {
           {/* Mobile: compact + expandable */}
           <button
             onClick={() => setShowResources(!showResources)}
-            className="md:hidden flex items-center gap-1 text-xs text-text-secondary"
+            className="md:hidden flex items-center gap-1 text-xs text-text-secondary min-w-[44px] min-h-[44px]"
           >
             <span className="text-cyber-green">{player.aiName}</span>
-            <ChevronDown size={12} className={showResources ? "rotate-180" : ""} />
+            <ChevronDown size={12} className={`transition-transform ${showResources ? "rotate-180" : ""}`} />
           </button>
         </>
       )}
+
+      <button
+        onClick={toggleSound}
+        className="text-text-secondary hover:text-cyber-cyan transition-colors p-1"
+        aria-label={soundEnabled ? "Mute sounds" : "Enable sounds"}
+        title={soundEnabled ? "Mute sounds" : "Enable sounds"}
+      >
+        {soundEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
+      </button>
 
       <WalletMultiButton
         style={{
@@ -130,48 +144,60 @@ export function Header() {
       />
 
       {/* Mobile resource panel */}
-      {isAuthenticated && player && showResources && (
-        <div className="absolute top-14 left-0 right-0 bg-bg-secondary border-b border-border-default p-3 md:hidden z-40">
-          <div className="grid grid-cols-3 gap-2 text-xs">
-            <div>
-              <span className="text-text-muted">LVL</span>{" "}
-              <span className="text-text-primary">{player.level}</span>
-              {(() => {
-                const nextXP = getXPForNextLevel(player.level);
-                if (!nextXP) return null;
-                return <span className="text-text-muted ml-1">({player.xp}/{nextXP} XP)</span>;
-              })()}
+      <AnimatePresence>
+        {isAuthenticated && player && showResources && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+            className="absolute top-14 left-0 right-0 bg-bg-secondary border-b border-border-default p-3 md:hidden z-40"
+          >
+            <div className="grid grid-cols-3 gap-2 text-xs">
+              <div>
+                <span className="text-text-muted">LVL</span>{" "}
+                <span className="text-text-primary">{player.level}</span>
+                {(() => {
+                  const nextXP = getXPForNextLevel(player.level);
+                  if (!nextXP) return null;
+                  return <span className="text-text-muted ml-1">({player.xp}/{nextXP} XP)</span>;
+                })()}
+              </div>
+              <div>
+                <span className="text-text-muted">CR</span>{" "}
+                <span className="text-cyber-amber">{player.credits}</span>
+              </div>
+              <div>
+                <span className="text-text-muted">EN</span>{" "}
+                <span className="text-cyber-cyan">
+                  {player.energy}/{player.energyMax}
+                </span>
+              </div>
+              <div>
+                <span className="text-text-muted">DATA</span>{" "}
+                <span className="text-cyber-green">{player.data}</span>
+              </div>
+              <div>
+                <span className="text-text-muted">PP</span>{" "}
+                <span className="text-cyber-magenta">{player.processingPower}</span>
+              </div>
+              <div>
+                <span className="text-text-muted">REP</span>{" "}
+                <span className="text-text-primary">{player.reputation}</span>
+              </div>
+              <div className="col-span-2 flex items-center gap-2">
+                <AlignmentIndicator />
+                <ModifierBadge />
+              </div>
+              <div>
+                <span className={`${phase.color}`}>
+                  {phase.phase} {countdown}
+                </span>
+              </div>
             </div>
-            <div>
-              <span className="text-text-muted">CR</span>{" "}
-              <span className="text-cyber-amber">{player.credits}</span>
-            </div>
-            <div>
-              <span className="text-text-muted">EN</span>{" "}
-              <span className="text-cyber-cyan">
-                {player.energy}/{player.energyMax}
-              </span>
-            </div>
-            <div>
-              <span className="text-text-muted">DATA</span>{" "}
-              <span className="text-cyber-green">{player.data}</span>
-            </div>
-            <div>
-              <span className="text-text-muted">PP</span>{" "}
-              <span className="text-cyber-magenta">{player.processingPower}</span>
-            </div>
-            <div>
-              <span className="text-text-muted">REP</span>{" "}
-              <span className="text-text-primary">{player.reputation}</span>
-            </div>
-            <div className="col-span-3">
-              <span className={`${phase.color}`}>
-                {phase.phase} Phase — {countdown} remaining
-              </span>
-            </div>
-          </div>
-        </div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </header>
   );
 }

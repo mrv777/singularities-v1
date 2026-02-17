@@ -39,7 +39,7 @@ export function OpponentCard({ opponent, onAttack, isAttacking }: OpponentCardPr
       <button
         onClick={() => onAttack(opponent.id)}
         disabled={isAttacking}
-        className="flex items-center gap-1.5 px-3 py-1.5 border border-cyber-red text-cyber-red rounded text-xs hover:bg-cyber-red/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed shrink-0"
+        className="flex items-center gap-1.5 px-3 py-1.5 min-h-[44px] border border-cyber-red text-cyber-red rounded text-xs hover:bg-cyber-red/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed shrink-0"
       >
         <Swords size={12} />
         Attack

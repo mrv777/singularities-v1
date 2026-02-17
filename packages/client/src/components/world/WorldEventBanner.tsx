@@ -1,8 +1,18 @@
 import { useGameStore } from "@/stores/game";
 import { AlertTriangle } from "lucide-react";
+import { useEffect, useRef } from "react";
+import { playSound } from "@/lib/sound";
 
 export function WorldEventBanner() {
   const worldEvents = useGameStore((s) => s.worldEvents);
+
+  const prevCount = useRef(worldEvents.length);
+  useEffect(() => {
+    if (worldEvents.length > prevCount.current) {
+      playSound("notification");
+    }
+    prevCount.current = worldEvents.length;
+  }, [worldEvents.length]);
 
   if (worldEvents.length === 0) return null;
 

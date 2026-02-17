@@ -15,6 +15,7 @@ import { checkDeath } from "./death.js";
 import { shiftAlignment } from "./alignment.js";
 import { triggerDecision } from "./decisions.js";
 import { ALIGNMENT_SHIFTS } from "@singularities/shared";
+import { broadcastSystem, sendActivity } from "./ws.js";
 
 function getTodayKey(): string {
   return new Date().toISOString().slice(0, 10); // YYYY-MM-DD
@@ -289,6 +290,13 @@ export async function executeAttack(attackerId: string, targetId: string) {
       combatLog: mapCombatLogRow(logRes.rows[0]),
     };
   });
+
+  // Broadcast combat result
+  try {
+    broadcastSystem(`PvP: ${txResult.result === "attacker_win" ? "Attacker wins" : "Defender wins"} in the arena`);
+    sendActivity(attackerId, `Combat ${txResult.result === "attacker_win" ? "victory" : "defeat"}${txResult.rewards ? ` — +${txResult.rewards.credits} CR` : ""}`);
+    sendActivity(targetId, `${txResult.result === "attacker_win" ? "Attacked and defeated" : "Successfully defended"} in arena`);
+  } catch { /* non-critical */ }
 
   // Phase 4: Trigger decision after combat (fire-and-forget, outside transaction)
   try {

@@ -35,22 +35,22 @@ export function ScriptCard({ script, onToggle, onDelete, toggling, deleting }: S
           <button
             onClick={() => onToggle(script.id)}
             disabled={toggling}
-            className={`p-1 rounded transition-colors ${
+            className={`p-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded transition-colors ${
               script.isActive
                 ? "text-cyber-green hover:text-cyber-green/70"
                 : "text-text-muted hover:text-cyber-cyan"
             }`}
             title={script.isActive ? "Deactivate" : "Activate"}
           >
-            <Power size={12} />
+            <Power size={14} />
           </button>
           <button
             onClick={() => onDelete(script.id)}
             disabled={deleting}
-            className="p-1 rounded text-text-muted hover:text-cyber-red transition-colors"
+            className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded text-text-muted hover:text-cyber-red transition-colors"
             title="Delete"
           >
-            <Trash2 size={12} />
+            <Trash2 size={14} />
           </button>
         </div>
       </div>

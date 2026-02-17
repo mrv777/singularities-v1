@@ -5,7 +5,15 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { WalletProvider } from "@/components/WalletProvider";
 import { AuthGate } from "@/components/AuthGate";
 import { router } from "./router";
+import { soundManager } from "@/lib/sound";
 import "./styles/globals.css";
+
+// Preload critical sounds on first user interaction
+document.addEventListener(
+  "click",
+  () => soundManager.preload(),
+  { once: true }
+);
 
 const queryClient = new QueryClient({
   defaultOptions: {

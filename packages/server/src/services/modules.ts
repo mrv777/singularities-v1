@@ -10,6 +10,7 @@ import {
 } from "@singularities/shared";
 import { mapPlayerRow, mapModuleRow } from "./player.js";
 import { awardXP } from "./progression.js";
+import { sendActivity } from "./ws.js";
 
 const TIER_ORDER: ModuleTier[] = ["basic", "advanced", "elite"];
 
@@ -101,6 +102,10 @@ export async function purchaseOrUpgradeModule(playerId: string, moduleId: string
       "SELECT * FROM player_modules WHERE player_id = $1 AND module_id = $2",
       [playerId, moduleId]
     );
+
+    // Activity notification
+    const action = existing ? "upgraded" : "unlocked";
+    sendActivity(playerId, `Module ${definition.name} ${action}`);
 
     return {
       player: xpResult.player,

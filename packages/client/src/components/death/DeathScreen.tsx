@@ -1,6 +1,14 @@
 import { motion } from "framer-motion";
-import { useState, useEffect } from "react";
-import { SYSTEM_LABELS, type SystemType, SYSTEM_TYPES } from "@singularities/shared";
+import { useState, useEffect, useMemo } from "react";
+import {
+  SYSTEM_LABELS,
+  type SystemType,
+  SYSTEM_TYPES,
+  pickTemplate,
+  fillTemplate,
+  DEATH_TEMPLATES,
+} from "@singularities/shared";
+import { playSound } from "@/lib/sound";
 
 interface DeathScreenProps {
   aiName: string;
@@ -8,12 +16,17 @@ interface DeathScreenProps {
 }
 
 export function DeathScreen({ aiName, onRestart }: DeathScreenProps) {
+  const deathNarrative = useMemo(
+    () => fillTemplate(pickTemplate(DEATH_TEMPLATES), { name: aiName }),
+    [aiName]
+  );
   const [phase, setPhase] = useState(0);
   // Phase 0: System shutdown sequence
   // Phase 1: Death message
   // Phase 2: Restart prompt
 
   useEffect(() => {
+    playSound("death");
     const t1 = setTimeout(() => setPhase(1), SYSTEM_TYPES.length * 500 + 500);
     const t2 = setTimeout(() => setPhase(2), SYSTEM_TYPES.length * 500 + 2500);
     return () => {
@@ -63,9 +76,9 @@ export function DeathScreen({ aiName, onRestart }: DeathScreenProps) {
             <div className="text-cyber-red text-sm">
               AI TERMINATED
             </div>
-            <div className="text-text-muted text-xs mt-2">
-              {aiName} has been irreversibly corrupted.
-            </div>
+            <pre className="text-text-muted text-xs mt-2 whitespace-pre-wrap font-mono">
+              {deathNarrative}
+            </pre>
           </motion.div>
         )}
 

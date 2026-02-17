@@ -15,6 +15,7 @@ import {
 import { ModuleCard } from "./ModuleCard";
 import { useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { playSound } from "@/lib/sound";
 
 const CATEGORIES: ModuleCategory[] = ["primary", "secondary", "relay", "backup"];
 
@@ -72,6 +73,7 @@ export function TechTreeModal() {
     setProcessing(moduleId);
     try {
       const result = await api.purchaseModule({ moduleId });
+      playSound("moduleUnlock");
       setPlayer(result.player);
       // Refresh owned modules
       const modules = await api.getModules();
@@ -108,12 +110,12 @@ export function TechTreeModal() {
   return (
     <Modal open={open} onClose={closeModal} title="TECH TREE" maxWidth="max-w-4xl">
       {/* Category tabs */}
-      <div className="flex gap-1 mb-4 border-b border-border-default pb-2">
+      <div className="flex gap-1 mb-4 border-b border-border-default pb-2 overflow-x-auto scrollbar-hide">
         {CATEGORIES.map((cat) => (
           <button
             key={cat}
             onClick={() => setActiveTab(cat)}
-            className={`px-3 py-1.5 text-xs rounded-t transition-colors ${
+            className={`px-3 py-1.5 min-h-[44px] text-xs rounded-t transition-colors whitespace-nowrap ${
               activeTab === cat
                 ? "text-cyber-cyan border-b-2 border-cyber-cyan bg-bg-elevated"
                 : "text-text-muted hover:text-text-secondary"

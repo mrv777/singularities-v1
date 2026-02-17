@@ -26,20 +26,20 @@ export function TargetCard({ target, selected, onSelect }: TargetCardProps) {
           {target.name}
         </span>
         <span
-          className="text-[10px] px-1.5 py-0.5 rounded uppercase font-bold"
+          className="text-[11px] px-1.5 py-0.5 rounded uppercase font-bold"
           style={{ color: riskColor, border: `1px solid ${riskColor}40` }}
         >
           {target.riskRating}
         </span>
       </div>
 
-      <div className="text-text-muted text-[10px] mb-2">
+      <div className="text-text-muted text-[11px] mb-2">
         {TARGET_TYPE_LABELS[target.type]}
       </div>
 
       {/* Security bar */}
       <div className="mb-2">
-        <div className="flex justify-between text-[10px] mb-0.5">
+        <div className="flex justify-between text-[11px] mb-0.5">
           <span className="text-text-secondary">Security</span>
           <span className="text-text-muted">{securityPercent}%</span>
         </div>
@@ -54,7 +54,7 @@ export function TargetCard({ target, selected, onSelect }: TargetCardProps) {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-1 text-[10px]">
+      <div className="grid grid-cols-2 gap-1 text-[11px]">
         <div>
           <span className="text-text-muted">Detection:</span>{" "}
           <span className="text-cyber-red">{target.detectionChance}%</span>

@@ -5,8 +5,9 @@ import { NetworkConnections } from "./NetworkConnections";
 import { useUIStore } from "@/stores/ui";
 import { useGameStore } from "@/stores/game";
 import { Lock, LogOut } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useCallback } from "react";
 import { api } from "@/lib/api";
+import { playSound } from "@/lib/sound";
 
 // Carefully positioned nodes on 800x600 viewport
 const NODES: NodeDef[] = [
@@ -28,7 +29,11 @@ interface NetworkMapProps {
 }
 
 export function NetworkMap({ playerLevel, unlockedSystems, isInSandbox }: NetworkMapProps) {
-  const openModal = useUIStore((s) => s.openModal);
+  const rawOpenModal = useUIStore((s) => s.openModal);
+  const openModal = useCallback((id: string) => {
+    playSound("click");
+    rawOpenModal(id);
+  }, [rawOpenModal]);
   const topology = useGameStore((s) => s.topology);
   const setTopology = useGameStore((s) => s.setTopology);
   const showSandboxExit = isInSandbox && playerLevel >= SANDBOX_EXIT_LEVEL;
@@ -103,7 +108,7 @@ export function NetworkMap({ playerLevel, unlockedSystems, isInSandbox }: Networ
               key={node.id}
               onClick={() => unlocked && openModal(node.id)}
               disabled={!unlocked}
-              className={`w-full flex items-center gap-3 p-3 rounded border text-left text-sm transition-colors ${
+              className={`w-full flex items-center gap-3 p-3 min-h-[48px] rounded border text-left text-sm transition-colors ${
                 unlocked
                   ? "border-cyber-cyan/30 bg-bg-elevated hover:border-cyber-cyan text-text-primary"
                   : "border-border-default bg-bg-surface text-text-muted cursor-not-allowed opacity-50"

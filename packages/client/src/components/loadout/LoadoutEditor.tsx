@@ -74,7 +74,7 @@ export function LoadoutEditor() {
                 onChange={(e) =>
                   handleSlotChange(i, e.target.value || null)
                 }
-                className="w-full bg-bg-primary border border-border-default rounded px-2 py-1.5 text-xs text-text-primary"
+                className="w-full bg-bg-primary border border-border-default rounded px-2 py-1.5 min-h-[44px] text-xs text-text-primary"
               >
                 <option value="">-- Empty --</option>
                 {ownedModules.map((m) => {
@@ -99,7 +99,7 @@ export function LoadoutEditor() {
         <button
           onClick={handleSave}
           disabled={saving}
-          className="w-full py-2 border border-cyber-cyan text-cyber-cyan rounded hover:bg-cyber-cyan/10 transition-colors disabled:opacity-30 text-sm"
+          className="w-full py-2 min-h-[44px] border border-cyber-cyan text-cyber-cyan rounded hover:bg-cyber-cyan/10 transition-colors disabled:opacity-30 text-sm"
         >
           {saving ? "Saving..." : "Save Loadout"}
         </button>

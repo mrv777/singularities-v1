@@ -1,6 +1,8 @@
 import { motion } from "framer-motion";
 import type { HackResult as HackResultType } from "@singularities/shared";
 import { useEffect, useState } from "react";
+import { playSound } from "@/lib/sound";
+import { useUITier } from "@/hooks/useUITier";
 
 interface HackResultProps {
   result: HackResultType;
@@ -10,6 +12,22 @@ interface HackResultProps {
 export function HackResultDisplay({ result, onDone }: HackResultProps) {
   const [displayedText, setDisplayedText] = useState("");
   const [typingDone, setTypingDone] = useState(false);
+  const { tier } = useUITier();
+
+  // Tier-aware typing speed
+  const typingSpeed = tier === 1 ? 8 : tier === 3 ? 20 : 15;
+
+  // Play sound on mount based on result
+  useEffect(() => {
+    if (result.success) {
+      playSound("hackSuccess");
+      if (result.levelUp) playSound("levelUp");
+    } else if (result.detected) {
+      playSound("detection");
+    } else {
+      playSound("hackFail");
+    }
+  }, [result.success, result.detected, result.levelUp]);
 
   useEffect(() => {
     const lines = result.narrative;
@@ -22,9 +40,9 @@ export function HackResultDisplay({ result, onDone }: HackResultProps) {
         clearInterval(timer);
         setTypingDone(true);
       }
-    }, 15);
+    }, typingSpeed);
     return () => clearInterval(timer);
-  }, [result.narrative]);
+  }, [result.narrative, typingSpeed]);
 
   return (
     <div className="space-y-4">
@@ -59,7 +77,7 @@ export function HackResultDisplay({ result, onDone }: HackResultProps) {
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="grid grid-cols-4 gap-2 text-xs text-center"
+          className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs text-center"
         >
           <div className="bg-bg-secondary rounded p-2">
             <div className="text-cyber-amber font-bold">+{result.rewards.credits}</div>
@@ -101,7 +119,7 @@ export function HackResultDisplay({ result, onDone }: HackResultProps) {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           onClick={onDone}
-          className="w-full py-2 text-sm border border-border-default rounded hover:border-cyber-cyan hover:text-cyber-cyan transition-colors text-text-secondary"
+          className="w-full py-2 min-h-[44px] text-sm border border-border-default rounded hover:border-cyber-cyan hover:text-cyber-cyan transition-colors text-text-secondary"
         >
           Continue
         </motion.button>

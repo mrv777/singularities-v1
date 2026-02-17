@@ -101,7 +101,7 @@ export function ModuleCard({
         <button
           onClick={onPurchase}
           disabled={!canPurchase || isProcessing}
-          className="w-full text-[10px] py-1.5 border border-cyber-cyan/50 text-cyber-cyan rounded hover:bg-cyber-cyan/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+          className="w-full text-[10px] py-1.5 min-h-[44px] border border-cyber-cyan/50 text-cyber-cyan rounded hover:bg-cyber-cyan/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
         >
           {isProcessing
             ? "..."
@@ -116,7 +116,7 @@ export function ModuleCard({
         <button
           onClick={onMutate}
           disabled={isMutating}
-          className="w-full mt-1 text-[10px] py-1.5 border border-cyber-magenta/50 text-cyber-magenta rounded hover:bg-cyber-magenta/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+          className="w-full mt-1 text-[10px] py-1.5 min-h-[44px] border border-cyber-magenta/50 text-cyber-magenta rounded hover:bg-cyber-magenta/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
         >
           {isMutating ? "Mutating..." : "MUTATE (500CR 200D 100PP)"}
         </button>

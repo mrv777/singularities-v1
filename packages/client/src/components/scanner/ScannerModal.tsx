@@ -9,6 +9,7 @@ import { LoadoutPreview } from "./LoadoutPreview";
 import { HackResultDisplay } from "./HackResult";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
+import { playSound } from "@/lib/sound";
 
 export function ScannerModal() {
   const activeModal = useUIStore((s) => s.activeModal);
@@ -50,6 +51,7 @@ export function ScannerModal() {
     setError("");
     try {
       const result = await api.scan();
+      playSound("scan");
       setScannedTargets(result.targets, result.expiresAt);
       queryClient.invalidateQueries({ queryKey: ["player"] });
       // Refresh player state to get updated energy
@@ -129,7 +131,7 @@ export function ScannerModal() {
               <button
                 onClick={handleScan}
                 disabled={isScanning || !player || player.energy < SCAN_ENERGY_COST}
-                className="px-6 py-2 border border-cyber-cyan text-cyber-cyan rounded hover:bg-cyber-cyan/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed text-sm"
+                className="px-6 py-2 min-h-[44px] border border-cyber-cyan text-cyber-cyan rounded hover:bg-cyber-cyan/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed text-sm"
               >
                 {isScanning ? "Scanning..." : `Scan Network (${SCAN_ENERGY_COST} EN)`}
               </button>
@@ -173,7 +175,7 @@ export function ScannerModal() {
                   <button
                     onClick={handleHack}
                     disabled={isHacking}
-                    className="w-full py-2.5 border border-cyber-green text-cyber-green rounded hover:bg-cyber-green/10 transition-colors disabled:opacity-30 text-sm font-semibold"
+                    className="w-full py-2.5 min-h-[44px] border border-cyber-green text-cyber-green rounded hover:bg-cyber-green/10 transition-colors disabled:opacity-30 text-sm font-semibold"
                   >
                     {isHacking ? "Executing..." : "EXECUTE HACK"}
                   </button>

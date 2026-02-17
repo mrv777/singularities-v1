@@ -1,8 +1,10 @@
 import { useGameStore } from "@/stores/game";
 import { useAuthStore } from "@/stores/auth";
 import { api } from "@/lib/api";
+import { pickTemplate, DECISION_APPEAR_TEMPLATES } from "@singularities/shared";
+import { playSound } from "@/lib/sound";
 import { motion, AnimatePresence } from "framer-motion";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
 export function DecisionModal() {
@@ -17,6 +19,12 @@ export function DecisionModal() {
   const [displayedText, setDisplayedText] = useState("");
 
   const definition = pendingDecision?.definition;
+  const appearText = useMemo(() => pickTemplate(DECISION_APPEAR_TEMPLATES), [pendingDecision]);
+
+  // Play decision sound when modal appears
+  useEffect(() => {
+    if (pendingDecision) playSound("decision");
+  }, [pendingDecision]);
 
   // Typing animation for the prompt
   useEffect(() => {
@@ -86,6 +94,7 @@ export function DecisionModal() {
             <h2 className="text-cyber-magenta text-sm font-semibold tracking-wider">
               BINARY DECISION
             </h2>
+            <p className="text-text-muted text-[10px] mt-1 font-mono">{appearText}</p>
           </div>
 
           <div className="p-5 space-y-4">

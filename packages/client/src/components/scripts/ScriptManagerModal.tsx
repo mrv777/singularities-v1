@@ -102,7 +102,7 @@ export function ScriptManagerModal() {
           <button
             onClick={() => setShowCreate(!showCreate)}
             disabled={scripts.length >= MAX_SCRIPTS}
-            className="flex items-center gap-1 text-cyber-cyan hover:text-cyber-cyan/80 transition-colors disabled:opacity-30"
+            className="flex items-center gap-1 min-h-[44px] text-cyber-cyan hover:text-cyber-cyan/80 transition-colors disabled:opacity-30"
           >
             <Plus size={10} />
             New Script
@@ -119,7 +119,7 @@ export function ScriptManagerModal() {
               <select
                 value={trigger}
                 onChange={(e) => setTrigger(e.target.value)}
-                className="w-full bg-bg-primary border border-border-default rounded px-2 py-1.5 text-xs text-text-primary"
+                className="w-full bg-bg-primary border border-border-default rounded px-2 py-1.5 min-h-[44px] text-xs text-text-primary"
               >
                 {SCRIPT_TRIGGERS.map((t) => (
                   <option key={t.id} value={t.id}>
@@ -136,7 +136,7 @@ export function ScriptManagerModal() {
               <select
                 value={action}
                 onChange={(e) => setAction(e.target.value)}
-                className="w-full bg-bg-primary border border-border-default rounded px-2 py-1.5 text-xs text-text-primary"
+                className="w-full bg-bg-primary border border-border-default rounded px-2 py-1.5 min-h-[44px] text-xs text-text-primary"
               >
                 {SCRIPT_ACTIONS.map((a) => (
                   <option key={a.id} value={a.id}>
@@ -150,13 +150,13 @@ export function ScriptManagerModal() {
               <button
                 onClick={handleCreate}
                 disabled={creating}
-                className="flex-1 py-1.5 text-xs border border-cyber-cyan text-cyber-cyan rounded hover:bg-cyber-cyan/10 transition-colors disabled:opacity-30"
+                className="flex-1 py-1.5 min-h-[44px] text-xs border border-cyber-cyan text-cyber-cyan rounded hover:bg-cyber-cyan/10 transition-colors disabled:opacity-30"
               >
                 {creating ? "Creating..." : "Create Script"}
               </button>
               <button
                 onClick={() => setShowCreate(false)}
-                className="px-3 py-1.5 text-xs border border-border-default text-text-muted rounded hover:text-text-primary transition-colors"
+                className="px-3 py-1.5 min-h-[44px] text-xs border border-border-default text-text-muted rounded hover:text-text-primary transition-colors"
               >
                 Cancel
               </button>

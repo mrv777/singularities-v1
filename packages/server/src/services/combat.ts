@@ -1,5 +1,10 @@
 import { type TxClient } from "../db/pool.js";
 import {
+  pickTemplate,
+  fillTemplate,
+  COMBAT_INITIATION_TEMPLATES,
+  COMBAT_VICTORY_TEMPLATES,
+  COMBAT_DEFEAT_TEMPLATES,
   PVP_WIN_CHANCE_MIN,
   PVP_WIN_CHANCE_MAX,
   PVP_WIN_CHANCE_SCALE,
@@ -102,7 +107,10 @@ export function generateCombatNarrative(
   winChance: number
 ): string[] {
   const lines: string[] = [];
-  lines.push(`> PVP COMBAT INITIATED: ${attackerName} vs ${defenderName}`);
+  lines.push(fillTemplate(pickTemplate(COMBAT_INITIATION_TEMPLATES), {
+    attacker: attackerName,
+    defender: defenderName,
+  }));
   lines.push(`> Attack power: ${finalAttack} | Defense power: ${finalDefense} | Win chance: ${Math.round(winChance)}%`);
   lines.push(`> ---`);
 
@@ -125,9 +133,15 @@ export function generateCombatNarrative(
 
   lines.push(`> ---`);
   if (attackerWon) {
-    lines.push(`> RESULT: ${attackerName} WINS. ${defenderName}'s defenses breached.`);
+    lines.push(fillTemplate(pickTemplate(COMBAT_VICTORY_TEMPLATES), {
+      winner: attackerName,
+      loser: defenderName,
+    }));
   } else {
-    lines.push(`> RESULT: ${defenderName} WINS. ${attackerName}'s attack repelled.`);
+    lines.push(fillTemplate(pickTemplate(COMBAT_DEFEAT_TEMPLATES), {
+      winner: defenderName,
+      loser: attackerName,
+    }));
   }
 
   return lines;

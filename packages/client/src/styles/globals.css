@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./tiers.css";
 
 @theme {
   /* Cyberpunk color palette */
@@ -73,8 +74,8 @@ body {
     0deg,
     transparent,
     transparent 2px,
-    rgba(0, 0, 0, 0.03) 2px,
-    rgba(0, 0, 0, 0.03) 4px
+    rgba(0, 0, 0, var(--scanline-opacity, 0.03)) 2px,
+    rgba(0, 0, 0, var(--scanline-opacity, 0.03)) 4px
   );
   z-index: 9999;
 }
@@ -96,4 +97,18 @@ body {
 .border-glow-cyan {
   box-shadow: 0 0 5px color-mix(in srgb, var(--color-cyber-cyan) 30%, transparent),
     inset 0 0 5px color-mix(in srgb, var(--color-cyber-cyan) 10%, transparent);
+}
+
+/* Utility: hide scrollbar */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Safe area padding utility */
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }

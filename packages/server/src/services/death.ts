@@ -4,7 +4,11 @@ import {
   ALL_TRAITS,
   REBIRTH_TRAIT_COUNT_MIN,
   REBIRTH_TRAIT_COUNT_MAX,
+  pickTemplate,
+  fillTemplate,
+  DEATH_TEMPLATES,
 } from "@singularities/shared";
+import { broadcastSystem } from "./ws.js";
 
 function randomInt(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -93,7 +97,10 @@ export async function executeDeath(playerId: string, outerClient?: TxClient): Pr
     );
 
     // NFT burn stub — TODO: real Metaplex burn when real minting is added
-    console.log(`[death] Player ${playerId} (wallet: ${walletAddress}) died. NFT burn would happen here.`);
+    const aiName = player.ai_name as string;
+    const deathNarrative = fillTemplate(pickTemplate(DEATH_TEMPLATES), { name: aiName });
+    console.log(`[death] ${deathNarrative}\n  Player ${playerId} (wallet: ${walletAddress}) died. NFT burn would happen here.`);
+    broadcastSystem(`${aiName} has been terminated. Systems corrupted beyond recovery.`);
   };
 
   if (outerClient) {
