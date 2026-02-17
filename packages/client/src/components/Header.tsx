@@ -13,10 +13,10 @@ import {
   Star,
   Activity,
   Timer,
-  HelpCircle
+  HelpCircle,
 } from "lucide-react";
 import { useUIStore } from "@/stores/ui";
-import { DAY_PHASE_HOURS, XP_THRESHOLDS, getXPForNextLevel } from "@singularities/shared";
+import { XP_THRESHOLDS, getXPForNextLevel } from "@singularities/shared";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ModifierBadge } from "./ModifierBadge";
@@ -24,26 +24,31 @@ import { TopologyBadge } from "./TopologyBadge";
 import { AlignmentIndicator } from "./alignment/AlignmentIndicator";
 import { CyberTooltip } from "./ui/CyberTooltip";
 import { useUITier } from "@/hooks/useUITier";
+import {
+  getCurrentWorldPhase,
+  getLocalTimeZoneName,
+  getPhaseCountdown as getPhaseCountdownLabel,
+  getPvpWindowLocalLabel,
+} from "@/lib/phaseTime";
 
 function getDayPhase() {
-  const hour = new Date().getHours();
-  if (hour >= DAY_PHASE_HOURS.pve.start && hour < DAY_PHASE_HOURS.pve.end) {
-    return { phase: "PvE", color: "text-cyber-green", icon: <Activity size={14} className="text-cyber-green" /> };
+  const phase = getCurrentWorldPhase();
+  if (phase === "PvE") {
+    return {
+      phase: "PvE",
+      color: "text-cyber-green",
+      icon: <Activity size={14} className="text-cyber-green" />,
+    };
   }
-  return { phase: "PvP", color: "text-cyber-magenta", icon: <Shield size={14} className="text-cyber-magenta" /> };
+  return {
+    phase: "PvP",
+    color: "text-cyber-magenta",
+    icon: <Shield size={14} className="text-cyber-magenta" />,
+  };
 }
 
 function getPhaseCountdown() {
-  const now = new Date();
-  const hour = now.getHours();
-  const targetHour =
-    hour < DAY_PHASE_HOURS.pve.end
-      ? DAY_PHASE_HOURS.pve.end
-      : 24;
-  const remaining = targetHour * 60 - (hour * 60 + now.getMinutes());
-  const h = Math.floor(remaining / 60);
-  const m = remaining % 60;
-  return `${h}h ${m}m`;
+  return getPhaseCountdownLabel();
 }
 
 export function Header() {
@@ -55,6 +60,9 @@ export function Header() {
   const [showResources, setShowResources] = useState(false);
   const [phase, setPhase] = useState(getDayPhase());
   const [countdown, setCountdown] = useState(getPhaseCountdown());
+  const localNow = new Date();
+  const timezoneName = getLocalTimeZoneName();
+  const localPvpWindow = getPvpWindowLocalLabel();
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -64,7 +72,9 @@ export function Header() {
     return () => clearInterval(timer);
   }, []);
 
-  const energyPercent = player ? Math.round((player.energy / player.energyMax) * 100) : 0;
+  const energyPercent = player
+    ? Math.round((player.energy / player.energyMax) * 100)
+    : 0;
 
   return (
     <header className="h-16 border-b border-border-default bg-bg-secondary/80 backdrop-blur-md flex items-center px-4 gap-4 relative z-50">
@@ -77,10 +87,14 @@ export function Header() {
       </button>
 
       <div className="flex flex-col">
-        <span className={`text-cyber-cyan font-bold text-sm tracking-widest leading-none ${tier === 1 ? "" : "glow-cyan"}`}>
+        <span
+          className={`text-cyber-cyan font-bold text-sm tracking-widest leading-none ${tier === 1 ? "" : "glow-cyan"}`}
+        >
           SINGULARITIES
         </span>
-        <span className="text-[8px] text-text-muted tracking-[0.2em] font-mono mt-0.5">NEURAL_NETWORK_OS v2.0</span>
+        <span className="text-[8px] text-text-muted tracking-[0.2em] font-mono mt-0.5">
+          NEURAL_NETWORK_OS v2.0
+        </span>
       </div>
 
       <div className="flex-1" />
@@ -89,7 +103,6 @@ export function Header() {
         <>
           {/* Desktop HUD */}
           <div className="hidden lg:flex items-center gap-2 xl:gap-4 h-full py-2">
-            
             {/* Profile Group */}
             <div className="hud-box flex items-center gap-3 px-3 h-10 rounded-sm">
               <div className="hud-corner hud-corner-tl" />
@@ -97,9 +110,11 @@ export function Header() {
               <div className="hud-corner hud-corner-bl" />
               <div className="hud-corner hud-corner-br" />
               <div className="flex flex-col items-end">
-                <span className="text-cyber-green text-[10px] font-bold leading-none tracking-tight uppercase">{player.aiName}</span>
+                <span className="text-cyber-green text-[10px] font-bold leading-none tracking-tight uppercase">
+                  {player.aiName}
+                </span>
                 <span className="text-[9px] text-text-muted mt-1 font-mono">
-                  LVL_{player.level.toString().padStart(2, '0')}
+                  LVL_{player.level.toString().padStart(2, "0")}
                 </span>
               </div>
               <div className="flex flex-col gap-1 w-20">
@@ -107,13 +122,16 @@ export function Header() {
                   const nextXP = getXPForNextLevel(player.level);
                   if (!nextXP) return null;
                   const prevXP = XP_THRESHOLDS[player.level - 1] ?? 0;
-                  const progress = ((player.xp - prevXP) / (nextXP - prevXP)) * 100;
+                  const progress =
+                    ((player.xp - prevXP) / (nextXP - prevXP)) * 100;
                   return (
                     <>
                       <div className="w-full h-1 bg-bg-primary/50 rounded-full overflow-hidden border border-white/5">
                         <motion.div
                           initial={{ width: 0 }}
-                          animate={{ width: `${Math.max(0, Math.min(progress, 100))}%` }}
+                          animate={{
+                            width: `${Math.max(0, Math.min(progress, 100))}%`,
+                          }}
                           className="h-full bg-cyber-magenta shadow-[0_0_5px_var(--color-cyber-magenta)]"
                         />
                       </div>
@@ -135,20 +153,32 @@ export function Header() {
               <div className="hud-corner hud-corner-br border-cyber-amber" />
               <CyberTooltip content="Credits — Main currency for purchases and upgrades">
                 <div className="flex items-center gap-2 group">
-                  <Coins size={12} className="text-cyber-amber group-hover:scale-110 transition-transform" />
+                  <Coins
+                    size={12}
+                    className="text-cyber-amber group-hover:scale-110 transition-transform"
+                  />
                   <div className="flex flex-col">
-                    <span className="text-cyber-amber text-[10px] font-bold leading-none font-mono">{player.credits.toLocaleString()}</span>
-                    <span className="text-[7px] text-text-muted mt-0.5 tracking-tighter">CREDITS</span>
+                    <span className="text-cyber-amber text-[10px] font-bold leading-none font-mono">
+                      {player.credits.toLocaleString()}
+                    </span>
+                    <span className="text-[7px] text-text-muted mt-0.5 tracking-tighter">
+                      CREDITS
+                    </span>
                   </div>
                 </div>
               </CyberTooltip>
 
               <CyberTooltip content="Energy — Consumed by scanning, hacking, and repairs">
                 <div className="flex items-center gap-2 group">
-                  <Zap size={12} className="text-cyber-cyan group-hover:scale-110 transition-transform" />
+                  <Zap
+                    size={12}
+                    className="text-cyber-cyan group-hover:scale-110 transition-transform"
+                  />
                   <div className="flex flex-col">
                     <div className="flex items-center gap-1.5">
-                      <span className="text-cyber-cyan text-[10px] font-bold leading-none font-mono">{player.energy}/{player.energyMax}</span>
+                      <span className="text-cyber-cyan text-[10px] font-bold leading-none font-mono">
+                        {player.energy}/{player.energyMax}
+                      </span>
                       <div className="w-10 h-1 bg-bg-primary/50 rounded-full overflow-hidden border border-white/5">
                         <motion.div
                           initial={{ width: 0 }}
@@ -157,17 +187,26 @@ export function Header() {
                         />
                       </div>
                     </div>
-                    <span className="text-[7px] text-text-muted mt-0.5 tracking-tighter">ENERGY_RES</span>
+                    <span className="text-[7px] text-text-muted mt-0.5 tracking-tighter">
+                      ENERGY_RES
+                    </span>
                   </div>
                 </div>
               </CyberTooltip>
 
               <CyberTooltip content="Data — Used for crafting and module upgrades">
                 <div className="flex items-center gap-2 group">
-                  <Database size={12} className="text-cyber-green group-hover:scale-110 transition-transform" />
+                  <Database
+                    size={12}
+                    className="text-cyber-green group-hover:scale-110 transition-transform"
+                  />
                   <div className="flex flex-col">
-                    <span className="text-cyber-green text-[10px] font-bold leading-none font-mono">{player.data}</span>
-                    <span className="text-[7px] text-text-muted mt-0.5 tracking-tighter">DATA_STR</span>
+                    <span className="text-cyber-green text-[10px] font-bold leading-none font-mono">
+                      {player.data}
+                    </span>
+                    <span className="text-[7px] text-text-muted mt-0.5 tracking-tighter">
+                      DATA_STR
+                    </span>
                   </div>
                 </div>
               </CyberTooltip>
@@ -181,24 +220,38 @@ export function Header() {
               <div className="hud-corner hud-corner-br border-cyber-magenta" />
               <CyberTooltip content="Processing Power — Determines max loadout capacity">
                 <div className="flex items-center gap-2 group">
-                  <Cpu size={12} className="text-cyber-magenta group-hover:scale-110 transition-transform" />
+                  <Cpu
+                    size={12}
+                    className="text-cyber-magenta group-hover:scale-110 transition-transform"
+                  />
                   <div className="flex flex-col">
-                    <span className="text-cyber-magenta text-[10px] font-bold leading-none font-mono">{player.processingPower}</span>
-                    <span className="text-[7px] text-text-muted mt-0.5 tracking-tighter">CPU_LOAD</span>
+                    <span className="text-cyber-magenta text-[10px] font-bold leading-none font-mono">
+                      {player.processingPower}
+                    </span>
+                    <span className="text-[7px] text-text-muted mt-0.5 tracking-tighter">
+                      CPU_LOAD
+                    </span>
                   </div>
                 </div>
               </CyberTooltip>
 
               <CyberTooltip content="Reputation — Your standing in the network">
                 <div className="flex items-center gap-2 group">
-                  <Star size={12} className="text-text-secondary group-hover:scale-110 transition-transform" />
+                  <Star
+                    size={12}
+                    className="text-text-secondary group-hover:scale-110 transition-transform"
+                  />
                   <div className="flex flex-col">
-                    <span className="text-text-secondary text-[10px] font-bold leading-none font-mono">{player.reputation}</span>
-                    <span className="text-[7px] text-text-muted mt-0.5 tracking-tighter">REP_STAT</span>
+                    <span className="text-text-secondary text-[10px] font-bold leading-none font-mono">
+                      {player.reputation}
+                    </span>
+                    <span className="text-[7px] text-text-muted mt-0.5 tracking-tighter">
+                      REP_STAT
+                    </span>
                   </div>
                 </div>
               </CyberTooltip>
-              
+
               <div className="h-6 w-px bg-border-default mx-1" />
               <AlignmentIndicator />
             </div>
@@ -209,13 +262,37 @@ export function Header() {
                 <ModifierBadge />
                 <TopologyBadge />
               </div>
-              <CyberTooltip content={`Current World Phase: ${phase.phase}`}>
-                <div className={`hud-box flex items-center gap-2 px-2 h-10 rounded-sm border-none ${phase.color} font-bold group`}>
+              <CyberTooltip
+                content={
+                  <div className="space-y-1">
+                    <div>Current World Phase: {phase.phase}</div>
+                    <div>
+                      Local Time:{" "}
+                      {localNow.toLocaleString([], {
+                        month: "short",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}{" "}
+                      {timezoneName}
+                    </div>
+                    <div>
+                      PvP Window: {localPvpWindow} {timezoneName} (12:00 - 24:00
+                      UTC)
+                    </div>
+                  </div>
+                }
+              >
+                <div
+                  className={`hud-box flex items-center gap-2 px-2 h-10 rounded-sm border-none ${phase.color} font-bold group`}
+                >
                   <div className={`hud-corner hud-corner-tl border-current`} />
                   <div className={`hud-corner hud-corner-br border-current`} />
                   {phase.icon}
                   <div className="flex flex-col">
-                    <span className="text-[10px] uppercase tracking-wider">{phase.phase}_OPS</span>
+                    <span className="text-[10px] uppercase tracking-wider">
+                      {phase.phase}_OPS
+                    </span>
                     <span className="text-[8px] text-text-muted flex items-center gap-1 font-mono">
                       <Timer size={8} /> {countdown}
                     </span>
@@ -231,8 +308,13 @@ export function Header() {
             className="lg:hidden flex items-center gap-2 px-3 py-1 bg-bg-surface/50 border border-border-default rounded text-xs text-text-secondary transition-colors hover:border-cyber-cyan"
           >
             <div className="w-2 h-2 rounded-full bg-cyber-green animate-pulse" />
-            <span className="text-cyber-green font-bold uppercase tracking-wider">{player.aiName}</span>
-            <ChevronDown size={14} className={`transition-transform duration-300 ${showResources ? "rotate-180" : ""}`} />
+            <span className="text-cyber-green font-bold uppercase tracking-wider">
+              {player.aiName}
+            </span>
+            <ChevronDown
+              size={14}
+              className={`transition-transform duration-300 ${showResources ? "rotate-180" : ""}`}
+            />
           </button>
         </>
       )}
@@ -291,8 +373,13 @@ export function Header() {
                     <Star size={16} className="text-cyber-magenta" />
                   </div>
                   <div>
-                    <div className="text-[10px] text-text-muted uppercase">Level {player.level}</div>
-                    <div className="text-sm font-bold">{player.xp} <span className="text-text-muted text-[10px]">XP</span></div>
+                    <div className="text-[10px] text-text-muted uppercase">
+                      Level {player.level}
+                    </div>
+                    <div className="text-sm font-bold">
+                      {player.xp}{" "}
+                      <span className="text-text-muted text-[10px]">XP</span>
+                    </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
@@ -300,8 +387,12 @@ export function Header() {
                     <Coins size={16} className="text-cyber-amber" />
                   </div>
                   <div>
-                    <div className="text-[10px] text-text-muted uppercase">Credits</div>
-                    <div className="text-sm font-bold text-cyber-amber">{player.credits.toLocaleString()}</div>
+                    <div className="text-[10px] text-text-muted uppercase">
+                      Credits
+                    </div>
+                    <div className="text-sm font-bold text-cyber-amber">
+                      {player.credits.toLocaleString()}
+                    </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
@@ -309,11 +400,18 @@ export function Header() {
                     <Zap size={16} className="text-cyber-cyan" />
                   </div>
                   <div className="flex-1">
-                    <div className="text-[10px] text-text-muted uppercase">Energy</div>
+                    <div className="text-[10px] text-text-muted uppercase">
+                      Energy
+                    </div>
                     <div className="flex items-center gap-2">
-                      <div className="text-sm font-bold text-cyber-cyan">{player.energy}/{player.energyMax}</div>
+                      <div className="text-sm font-bold text-cyber-cyan">
+                        {player.energy}/{player.energyMax}
+                      </div>
                       <div className="flex-1 h-1 bg-bg-primary rounded-full overflow-hidden">
-                        <div className="h-full bg-cyber-cyan" style={{ width: `${energyPercent}%` }} />
+                        <div
+                          className="h-full bg-cyber-cyan"
+                          style={{ width: `${energyPercent}%` }}
+                        />
                       </div>
                     </div>
                   </div>
@@ -326,8 +424,12 @@ export function Header() {
                     <Database size={16} className="text-cyber-green" />
                   </div>
                   <div>
-                    <div className="text-[10px] text-text-muted uppercase">Data</div>
-                    <div className="text-sm font-bold text-cyber-green">{player.data}</div>
+                    <div className="text-[10px] text-text-muted uppercase">
+                      Data
+                    </div>
+                    <div className="text-sm font-bold text-cyber-green">
+                      {player.data}
+                    </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
@@ -335,8 +437,12 @@ export function Header() {
                     <Cpu size={16} className="text-cyber-magenta" />
                   </div>
                   <div>
-                    <div className="text-[10px] text-text-muted uppercase">Power</div>
-                    <div className="text-sm font-bold text-cyber-magenta">{player.processingPower}</div>
+                    <div className="text-[10px] text-text-muted uppercase">
+                      Power
+                    </div>
+                    <div className="text-sm font-bold text-cyber-magenta">
+                      {player.processingPower}
+                    </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
@@ -344,8 +450,12 @@ export function Header() {
                     <Shield size={16} className="text-text-secondary" />
                   </div>
                   <div>
-                    <div className="text-[10px] text-text-muted uppercase">Reputation</div>
-                    <div className="text-sm font-bold text-text-secondary">{player.reputation}</div>
+                    <div className="text-[10px] text-text-muted uppercase">
+                      Reputation
+                    </div>
+                    <div className="text-sm font-bold text-text-secondary">
+                      {player.reputation}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -354,7 +464,9 @@ export function Header() {
                 <AlignmentIndicator />
                 <ModifierBadge />
                 <TopologyBadge />
-                <div className={`${phase.color} text-[10px] font-bold flex items-center gap-1`}>
+                <div
+                  className={`${phase.color} text-[10px] font-bold flex items-center gap-1`}
+                >
                   {phase.icon} {phase.phase} {countdown}
                 </div>
               </div>

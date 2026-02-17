@@ -10,6 +10,12 @@ import { ResourceCost } from "../ui/ResourceCost";
 import { useState, useEffect } from "react";
 import { Shield, Clock, ScrollText } from "lucide-react";
 import { playSound } from "@/lib/sound";
+import {
+  getLocalTimeZoneName,
+  getNextPvpOpenLocalLabel,
+  getPvpWindowLocalLabel,
+  isPvpWindowOpen,
+} from "@/lib/phaseTime";
 
 type Tab = "arena" | "logs";
 
@@ -33,6 +39,7 @@ export function ArenaModal() {
 
   const [tab, setTab] = useState<Tab>("arena");
   const [error, setError] = useState("");
+  const [now, setNow] = useState(() => new Date());
   const open = activeModal === "pvp_arena";
 
   useEffect(() => {
@@ -44,10 +51,16 @@ export function ArenaModal() {
     }
   }, [open, setArenaOpponents, setCombatResult, setCombatLogs]);
 
-  const isPvpTime = (() => {
-    const hour = new Date().getUTCHours();
-    return hour >= DAY_PHASE_HOURS.pvp.start && hour < DAY_PHASE_HOURS.pvp.end;
-  })();
+  useEffect(() => {
+    if (!open) return;
+    const timer = setInterval(() => setNow(new Date()), 30_000);
+    return () => clearInterval(timer);
+  }, [open]);
+
+  const isPvpTime = isPvpWindowOpen(now);
+  const timezoneName = getLocalTimeZoneName(now);
+  const localPvpWindow = getPvpWindowLocalLabel(now);
+  const nextOpenLocal = getNextPvpOpenLocalLabel(now);
 
   const handleEnterArena = async () => {
     setIsEnteringArena(true);
@@ -103,8 +116,8 @@ export function ArenaModal() {
           <Clock size={12} />
           <span>
             {isPvpTime
-              ? `PVP ACTIVE (${DAY_PHASE_HOURS.pvp.start}:00 - ${DAY_PHASE_HOURS.pvp.end}:00 UTC)`
-              : `PVP OFFLINE — Opens at ${DAY_PHASE_HOURS.pvp.start}:00 UTC`
+              ? `PVP ACTIVE (${localPvpWindow} ${timezoneName} / ${DAY_PHASE_HOURS.pvp.start}:00 - ${DAY_PHASE_HOURS.pvp.end}:00 UTC)`
+              : `PVP OFFLINE — Opens ${nextOpenLocal} ${timezoneName} (${DAY_PHASE_HOURS.pvp.start}:00 UTC)`
             }
           </span>
         </div>
