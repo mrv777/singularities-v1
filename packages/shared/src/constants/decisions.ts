@@ -20,7 +20,7 @@ export interface BinaryDecision {
 }
 
 export const DECISION_TRIGGER_CHANCES = {
-  afterHack: 0.12,
+  afterHack: 0.2,
   afterCombat: 0.16,
   onLogin: 0.08,
 } as const;

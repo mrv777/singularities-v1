@@ -8,12 +8,14 @@ import { router } from "./router";
 import { soundManager } from "@/lib/sound";
 import "./styles/globals.css";
 
-// Preload critical sounds on first user interaction
-document.addEventListener(
-  "click",
-  () => soundManager.preload(),
-  { once: true }
-);
+function initializeSound() {
+  soundManager.unlock();
+  soundManager.preload();
+}
+
+// Unlock the audio context and preload sounds on first direct interaction.
+document.addEventListener("pointerdown", initializeSound, { once: true });
+document.addEventListener("keydown", initializeSound, { once: true });
 
 const queryClient = new QueryClient({
   defaultOptions: {

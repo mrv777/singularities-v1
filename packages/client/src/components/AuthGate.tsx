@@ -1,8 +1,9 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 import { useAuthStore } from "@/stores/auth";
 import bs58 from "bs58";
+import { usePlayer } from "@/hooks/usePlayer";
 
 /**
  * Single component that owns all auth side effects.
@@ -12,6 +13,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
   const { publicKey, signMessage, connected } = useWallet();
   const { isAuthenticated, setPlayer, logout } = useAuthStore();
   const authenticatingRef = useRef(false);
+  const { data: livePlayer, error: livePlayerError } = usePlayer();
 
   // Auto-authenticate when wallet connects
   useEffect(() => {
@@ -67,6 +69,22 @@ export function AuthGate({ children }: { children: ReactNode }) {
         logout();
       });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Keep local auth store in sync with the polled /player/me query.
+  useEffect(() => {
+    if (livePlayer?.player) {
+      setPlayer(livePlayer.player);
+    }
+  }, [livePlayer?.player, setPlayer]);
+
+  // Expired/invalid token while polling: clear session.
+  useEffect(() => {
+    if (!(livePlayerError instanceof ApiError)) return;
+    if (livePlayerError.statusCode !== 401) return;
+
+    api.setToken(null);
+    logout();
+  }, [livePlayerError, logout]);
 
   return <>{children}</>;
 }

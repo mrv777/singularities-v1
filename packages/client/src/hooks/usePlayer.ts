@@ -10,6 +10,8 @@ export function usePlayer() {
     queryKey: ["player", "me"],
     queryFn: () => api.getMe(),
     enabled: isAuthenticated,
-    refetchInterval: 30_000,
+    refetchInterval: 10_000,
+    refetchIntervalInBackground: true,
+    refetchOnWindowFocus: true,
   });
 }
