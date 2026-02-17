@@ -122,15 +122,15 @@ export function NetworkNode({ node, playerLevel, unlockedSystems, onClick, topol
       {/* Label */}
       <g transform={`translate(${node.x}, ${node.y + 46})`}>
         <rect
-          x="-30"
+          x="-35"
           y="-1"
-          width="60"
+          width="70"
           height="12"
           fill="var(--color-bg-primary)"
           fillOpacity="0.8"
           rx="2"
         />
-        <text
+        <motion.text
           textAnchor="middle"
           y="8"
           fontSize={8}
@@ -139,10 +139,42 @@ export function NetworkNode({ node, playerLevel, unlockedSystems, onClick, topol
           fill={isUnlocked ? "var(--color-text-primary)" : "var(--color-text-muted)"}
           opacity={isUnlocked ? 1 : 0.5}
           className="uppercase tracking-wider"
+          animate={!isUnlocked ? {
+            opacity: [0.5, 0.3, 0.5, 0.4, 0.5],
+            x: [0, -1, 1, 0]
+          } : {}}
+          transition={!isUnlocked ? {
+            duration: 2,
+            repeat: Infinity,
+            times: [0, 0.1, 0.2, 0.3, 1]
+          } : {}}
         >
-          {isComingSoon ? "SYSTEM_OFFLINE" : node.label.replace(" ", "_")}
-        </text>
+          {isComingSoon ? "SYS_OFFLINE" : node.label.replace(" ", "_")}
+        </motion.text>
       </g>
+
+      {/* Decorative ID/Status line */}
+      {isUnlocked && (
+        <g transform={`translate(${node.x + 32}, ${node.y - 12})`}>
+          <text
+            fontSize={5}
+            fontFamily="var(--font-mono)"
+            fill={nodeColor}
+            opacity={0.4}
+          >
+            ID_{node.id.substring(0, 4).toUpperCase()}
+          </text>
+          <text
+            y="6"
+            fontSize={5}
+            fontFamily="var(--font-mono)"
+            fill={nodeColor}
+            opacity={0.4}
+          >
+            STATUS:OK
+          </text>
+        </g>
+      )}
 
       {/* Topology tooltip */}
       {hasTopo && topologyStyle?.tooltip && (

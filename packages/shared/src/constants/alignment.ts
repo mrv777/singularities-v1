@@ -1,8 +1,8 @@
 export const ALIGNMENT_SHIFTS = {
   attackWeaker: -0.05,
   attackStronger: 0.02,
-  pvpDefenseWin: 0.01,
-  hackCivilian: -0.02,
+  pvpDefenseWin: 0,
+  hackCivilian: -0.01,
 } as const;
 
 export const ALIGNMENT_THRESHOLDS = {

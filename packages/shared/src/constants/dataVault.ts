@@ -11,6 +11,7 @@ export interface DataVaultProtocolDefinition {
   id: string;
   name: string;
   description: string;
+  recommendationReason?: string;
   costs: {
     credits: number;
     data: number;
@@ -28,6 +29,7 @@ export const DATA_VAULT_BALANCE = {
       id: "focus_cache",
       name: "Focus Cache",
       description: "Convert captured telemetry into precision exploit signatures.",
+      recommendationReason: "Best early progression throughput (+Hack Power) for routine PvE hacks.",
       costs: { credits: 20, data: 40 },
       durationSeconds: 20 * 60,
       buffs: { hackPower: 8 },
@@ -40,6 +42,22 @@ export const DATA_VAULT_BALANCE = {
       costs: { credits: 15, data: 35 },
       durationSeconds: 20 * 60,
       buffs: { stealth: 10, detectionReduction: 10 },
+    },
+    {
+      id: "harvest_cache",
+      name: "Harvest Cache",
+      description: "Route trace residue into extraction routines for larger telemetry pulls.",
+      costs: { credits: 18, data: 45 },
+      durationSeconds: 20 * 60,
+      buffs: { dataBonus: 12 },
+    },
+    {
+      id: "tandem_cache",
+      name: "Tandem Cache",
+      description: "Balanced attack-stealth profile for mixed PvE and low-risk PvP windows.",
+      costs: { credits: 22, data: 45 },
+      durationSeconds: 20 * 60,
+      buffs: { hackPower: 4, stealth: 6 },
     },
   ] as const satisfies readonly DataVaultProtocolDefinition[],
 } as const;

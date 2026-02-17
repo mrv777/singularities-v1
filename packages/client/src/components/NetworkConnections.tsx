@@ -1,21 +1,7 @@
 import { motion } from "framer-motion";
 import type { NodeDef } from "./NetworkNode";
 
-interface ConnectionDef {
-  from: string;
-  to: string;
-}
-
-const CONNECTIONS: ConnectionDef[] = [
-  { from: "scanner", to: "tech_tree" },
-  { from: "scanner", to: "system_maintenance" },
-  { from: "scanner", to: "data_vault" },
-  { from: "tech_tree", to: "script_manager" },
-  { from: "system_maintenance", to: "security_center" },
-  { from: "script_manager", to: "pvp_arena" },
-  { from: "pvp_arena", to: "security_center" },
-  { from: "network_stats", to: "security_center" },
-];
+const AI_CORE_POS = { x: 400, y: 260 };
 
 interface NetworkConnectionsProps {
   nodes: NodeDef[];
@@ -30,43 +16,51 @@ function cubicPath(x1: number, y1: number, x2: number, y2: number): string {
 }
 
 export function NetworkConnections({ nodes, playerLevel, unlockedSystems }: NetworkConnectionsProps) {
-  const nodeMap = Object.fromEntries(nodes.map((n) => [n.id, n]));
-
   return (
     <g>
-      {CONNECTIONS.map(({ from, to }) => {
-        const a = nodeMap[from];
-        const b = nodeMap[to];
-        if (!a || !b) return null;
+      {nodes.map((node) => {
+        const isUnlocked = unlockedSystems
+          ? unlockedSystems.includes(node.id) && !node.comingSoon
+          : playerLevel >= node.unlockLevel && !node.comingSoon;
 
-        const bothUnlocked = unlockedSystems
-          ? unlockedSystems.includes(a.id) && unlockedSystems.includes(b.id) && !a.comingSoon && !b.comingSoon
-          : playerLevel >= a.unlockLevel && playerLevel >= b.unlockLevel && !a.comingSoon && !b.comingSoon;
-
-        const path = cubicPath(a.x, a.y, b.x, b.y);
+        // Path from AI Core to Node
+        const path = cubicPath(AI_CORE_POS.x, AI_CORE_POS.y, node.x, node.y);
 
         return (
-          <g key={`${from}-${to}`}>
+          <g key={`core-${node.id}`}>
             {/* Base line */}
             <path
               d={path}
               fill="none"
-              stroke={bothUnlocked ? "var(--color-cyber-cyan)" : "var(--color-border-default)"}
-              strokeWidth={bothUnlocked ? 1.5 : 0.5}
-              opacity={bothUnlocked ? 0.4 : 0.15}
+              stroke={isUnlocked ? "var(--color-cyber-cyan)" : "var(--color-border-default)"}
+              strokeWidth={isUnlocked ? 1.5 : 0.5}
+              opacity={isUnlocked ? 0.3 : 0.1}
             />
-            {/* Animated data flow */}
-            {bothUnlocked && (
+            
+            {/* Animated data flow from core to node */}
+            {isUnlocked && (
               <motion.path
                 d={path}
                 fill="none"
                 stroke="var(--color-cyber-cyan)"
                 strokeWidth={1.5}
-                strokeDasharray="4 8"
-                opacity={0.6}
+                strokeDasharray="4 12"
+                opacity={0.4}
                 initial={{ strokeDashoffset: 0 }}
-                animate={{ strokeDashoffset: -24 }}
-                transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                animate={{ strokeDashoffset: -32 }}
+                transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+              />
+            )}
+
+            {/* Pulsing connection point at node end */}
+            {isUnlocked && (
+              <motion.circle
+                cx={node.x}
+                cy={node.y}
+                r={2}
+                fill="var(--color-cyber-cyan)"
+                animate={{ scale: [1, 1.5, 1], opacity: [0.5, 1, 0.5] }}
+                transition={{ duration: 2, repeat: Infinity }}
               />
             )}
           </g>

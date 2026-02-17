@@ -195,7 +195,8 @@ function SectionContent({ section }: { section: Section }) {
               <li>Activate one protocol at a time (deterministic, no failure roll)</li>
               <li>Protocols consume credits + data and run for a short duration</li>
               <li>You have a short cooldown and a daily activation cap</li>
-              <li>Use Focus Cache for faster progression, Ghost Cache for safer hacks</li>
+              <li>The recommended protocol is dynamic (based on heat level + current credits/data)</li>
+              <li>Ghost Cache improves stealth safety, Harvest Cache boosts data gain, Tandem Cache is balanced</li>
             </ul>
           </div>
         </div>

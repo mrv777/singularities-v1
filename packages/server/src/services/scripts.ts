@@ -3,7 +3,6 @@ import { redis } from "../db/redis.js";
 import { computeEnergy } from "./player.js";
 import { getActiveModifierEffects } from "./modifiers.js";
 import { generateTargets } from "./scanner.js";
-import { materializePassiveIncome } from "./passive.js";
 import {
   SCRIPT_TRIGGER_MAP,
   SCRIPT_ACTION_MAP,
@@ -38,19 +37,21 @@ export async function createScript(playerId: string, triggerCondition: string, a
     );
   }
 
-  // Check total script count
-  const countResult = await query(
-    "SELECT COUNT(*) as count FROM player_scripts WHERE player_id = $1",
-    [playerId]
-  );
+  // Check total script count and active script count
+  const [countResult, activeCountResult] = await Promise.all([
+    query("SELECT COUNT(*) as count FROM player_scripts WHERE player_id = $1", [playerId]),
+    query("SELECT COUNT(*) as count FROM player_scripts WHERE player_id = $1 AND is_active = true", [playerId]),
+  ]);
   if (Number(countResult.rows[0].count) >= MAX_SCRIPTS) {
     throw new ScriptError(`Maximum ${MAX_SCRIPTS} scripts allowed`, 400);
   }
 
+  const startActive = Number(activeCountResult.rows[0].count) < MAX_ACTIVE_SCRIPTS;
+
   const result = await query(
     `INSERT INTO player_scripts (player_id, trigger_condition, action, is_active)
-     VALUES ($1, $2, $3, false) RETURNING *`,
-    [playerId, triggerCondition, action]
+     VALUES ($1, $2, $3, $4) RETURNING *`,
+    [playerId, triggerCondition, action, startActive]
   );
 
   return mapScriptRow(result.rows[0]);
@@ -259,14 +260,6 @@ async function executeAction(
         );
         await logScriptExecution(client, playerId, scriptId, "auto_repair_worst", action, true, 0, 0, energyCost);
       });
-      break;
-    }
-    case "collect_passive": {
-      const income = await materializePassiveIncome(playerId);
-      await logScriptExecution(
-        null, playerId, scriptId, "collect_passive", action, true,
-        income?.credits ?? 0, income?.data ?? 0, 0
-      );
       break;
     }
     case "reduce_heat": {

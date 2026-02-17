@@ -22,7 +22,6 @@ export const SCRIPT_TRIGGERS: ScriptTriggerDef[] = [
 export const SCRIPT_ACTIONS: ScriptActionDef[] = [
   { id: "auto_scan", label: "Auto Scan", description: "Automatically run a network scan." },
   { id: "auto_repair_worst", label: "Repair Worst System", description: "Repair the system with lowest health." },
-  { id: "collect_passive", label: "Collect Passive Income", description: "Materialize accumulated passive income." },
   { id: "reduce_heat", label: "Lay Low", description: "Enter low-profile mode to reduce heat faster." },
 ];
 
