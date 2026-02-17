@@ -11,9 +11,14 @@ import {
   PVP_DEFAULT_DEFENSE_POWER,
   PVP_REWARD_CREDITS_MIN,
   PVP_REWARD_CREDITS_MAX,
+  PVP_REWARD_CREDITS_STEAL_PCT_MIN,
+  PVP_REWARD_CREDITS_STEAL_PCT_MAX,
+  PVP_REWARD_CREDITS_LEVEL_BONUS,
   PVP_REWARD_REPUTATION_MIN,
   PVP_REWARD_REPUTATION_MAX,
   PVP_REWARD_XP,
+  PVP_REWARD_PROCESSING_POWER_MIN,
+  PVP_REWARD_PROCESSING_POWER_MAX,
   PVP_LOSER_DAMAGE_MIN_PCT,
   PVP_LOSER_DAMAGE_MAX_PCT,
   PVP_LOSER_SYSTEMS_MIN,
@@ -150,7 +155,7 @@ export function generateCombatNarrative(
 export interface CombatOutcome {
   result: "attacker_win" | "defender_win";
   narrative: string[];
-  rewards?: { credits: number; reputation: number; xp: number };
+  rewards?: { credits: number; reputation: number; xp: number; processingPower: number };
   damage?: { systems: Array<{ systemType: string; damage: number }> };
   combatLogEntries: Array<{
     round: number;
@@ -181,6 +186,7 @@ export async function resolveAttack(
   const attackerName = attacker.ai_name as string;
   const defenderName = defender.ai_name as string;
   const defenderLevel = defender.level as number;
+  const defenderCredits = defender.credits as number;
 
   // Resolve stats through shared pipeline (modules × level + traits + health)
   const attackerStats = await resolveLoadoutStats(attackerId, "attack", client);
@@ -224,11 +230,18 @@ export async function resolveAttack(
   const result: "attacker_win" | "defender_win" = attackerWon ? "attacker_win" : "defender_win";
 
   if (attackerWon) {
-    // Calculate rewards scaled by defender level
-    const credits = randomInt(PVP_REWARD_CREDITS_MIN, PVP_REWARD_CREDITS_MAX)
-      + defenderLevel * 5;
+    // Calculate rewards: baseline + partial credit transfer from defender.
+    const baseCredits = randomInt(PVP_REWARD_CREDITS_MIN, PVP_REWARD_CREDITS_MAX)
+      + defenderLevel * PVP_REWARD_CREDITS_LEVEL_BONUS;
+    const transferPct = randomInt(
+      Math.round(PVP_REWARD_CREDITS_STEAL_PCT_MIN * 100),
+      Math.round(PVP_REWARD_CREDITS_STEAL_PCT_MAX * 100)
+    ) / 100;
+    const transferCredits = Math.floor(defenderCredits * transferPct);
+    const credits = Math.max(20, Math.min(defenderCredits, baseCredits + transferCredits));
     const reputation = randomInt(PVP_REWARD_REPUTATION_MIN, PVP_REWARD_REPUTATION_MAX);
     const xp = PVP_REWARD_XP;
+    const processingPower = randomInt(PVP_REWARD_PROCESSING_POWER_MIN, PVP_REWARD_PROCESSING_POWER_MAX);
 
     // Determine damage to loser's systems
     const systemCount = randomInt(PVP_LOSER_SYSTEMS_MIN, PVP_LOSER_SYSTEMS_MAX);
@@ -241,12 +254,12 @@ export async function resolveAttack(
       damageSystems.push({ systemType: sysType, damage: damagePct });
     }
 
-    narrative.push(`> Rewards: +${credits} CR, +${reputation} REP, +${xp} XP`);
+    narrative.push(`> Rewards: +${credits} CR, +${reputation} REP, +${xp} XP, +${processingPower} PP`);
 
     return {
       result,
       narrative,
-      rewards: { credits, reputation, xp },
+      rewards: { credits, reputation, xp, processingPower },
       damage: { systems: damageSystems },
       combatLogEntries,
     };

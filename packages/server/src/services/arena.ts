@@ -11,6 +11,7 @@ import {
 import { resolveAttack, applyCombatDamage, type CombatOutcome } from "./combat.js";
 import { computeEnergy, mapPlayerRow, mapCombatLogRow } from "./player.js";
 import { awardXP } from "./progression.js";
+import { getSeasonCatchUpBonuses } from "./seasons.js";
 import { checkDeath } from "./death.js";
 import { shiftAlignment } from "./alignment.js";
 import { triggerDecision } from "./decisions.js";
@@ -125,6 +126,13 @@ export async function enterArena(playerId: string) {
  */
 export async function executeAttack(attackerId: string, targetId: string) {
   const dateKey = getTodayKey();
+  let resourceMultiplier = 1;
+  try {
+    const catchUpBonuses = await getSeasonCatchUpBonuses(attackerId);
+    resourceMultiplier = catchUpBonuses.resourceMultiplier;
+  } catch {
+    // Non-critical: fall back to base rewards.
+  }
 
   // Validate PvP hours
   if (!isPvpHours()) {
@@ -184,14 +192,34 @@ export async function executeAttack(attackerId: string, targetId: string) {
     // Resolve combat
     const outcome: CombatOutcome = await resolveAttack(attackerId, targetId, client);
 
+    let appliedRewards: CombatOutcome["rewards"] | undefined = outcome.rewards;
+
     // Apply outcomes
     if (outcome.result === "attacker_win") {
-      const { credits, reputation, xp } = outcome.rewards!;
+      const { credits, reputation, xp, processingPower } = outcome.rewards!;
+      const scaledCredits = Math.max(1, Math.floor(credits * resourceMultiplier));
+      const scaledProcessingPower = Math.max(1, Math.floor(processingPower * resourceMultiplier));
+      const defenderCredits = defenderRow.credits as number;
+      const transferredCredits = Math.min(defenderCredits, scaledCredits);
+      appliedRewards = {
+        credits: transferredCredits,
+        reputation,
+        xp,
+        processingPower: scaledProcessingPower,
+      };
 
-      // Reward attacker
+      // Reward attacker and transfer credits from defender.
       await client.query(
-        "UPDATE players SET credits = credits + $2, reputation = reputation + $3 WHERE id = $1",
-        [attackerId, credits, reputation]
+        `UPDATE players
+         SET credits = credits + $2,
+             reputation = reputation + $3,
+             processing_power = processing_power + $4
+         WHERE id = $1`,
+        [attackerId, transferredCredits, reputation, scaledProcessingPower]
+      );
+      await client.query(
+        "UPDATE players SET credits = GREATEST(0, credits - $2) WHERE id = $1",
+        [targetId, transferredCredits]
       );
       await awardXP(attackerId, xp, client);
 
@@ -238,7 +266,7 @@ export async function executeAttack(attackerId: string, targetId: string) {
         JSON.stringify({}),
         outcome.result,
         outcome.damage ? JSON.stringify(outcome.damage.systems.reduce((acc, d) => ({ ...acc, [d.systemType]: d.damage }), {})) : null,
-        outcome.rewards?.credits ?? 0,
+        appliedRewards?.credits ?? 0,
         outcome.rewards?.reputation ?? 0,
         JSON.stringify(outcome.combatLogEntries),
         outcome.rewards?.xp ?? 0,
@@ -284,7 +312,7 @@ export async function executeAttack(attackerId: string, targetId: string) {
     return {
       result: outcome.result,
       narrative: outcome.narrative,
-      rewards: outcome.rewards,
+      rewards: appliedRewards,
       damage: outcome.damage,
       player: mapPlayerRow({ ...finalRes.rows[0], energy: finalPlayer.energy }),
       combatLog: mapCombatLogRow(logRes.rows[0]),
@@ -294,7 +322,12 @@ export async function executeAttack(attackerId: string, targetId: string) {
   // Broadcast combat result
   try {
     broadcastSystem(`PvP: ${txResult.result === "attacker_win" ? "Attacker wins" : "Defender wins"} in the arena`);
-    sendActivity(attackerId, `Combat ${txResult.result === "attacker_win" ? "victory" : "defeat"}${txResult.rewards ? ` — +${txResult.rewards.credits} CR` : ""}`);
+    sendActivity(
+      attackerId,
+      `Combat ${txResult.result === "attacker_win" ? "victory" : "defeat"}${
+        txResult.rewards ? ` — +${txResult.rewards.credits} CR, +${txResult.rewards.processingPower ?? 0} PP` : ""
+      }`
+    );
     sendActivity(targetId, `${txResult.result === "attacker_win" ? "Attacked and defeated" : "Successfully defended"} in arena`);
   } catch { /* non-critical */ }
 

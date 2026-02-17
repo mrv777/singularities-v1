@@ -5,6 +5,9 @@ import {
   TARGET_TYPE_LABELS,
   type TargetType,
   type ScanTarget,
+  HOOK_BALANCE,
+  SCANNER_BALANCE,
+  getEarlyHackSuccessFloor,
   getRiskRating,
   getBaseReward,
   getHackEnergyCost,
@@ -18,6 +21,7 @@ import {
 } from "@singularities/shared";
 import { computeEnergy, mapPlayerRow, mapSystemRow } from "./player.js";
 import { awardXP } from "./progression.js";
+import { getSeasonCatchUpBonuses } from "./seasons.js";
 import { resolveLoadoutStats } from "./stats.js";
 import { computeSystemHealth } from "./maintenance.js";
 import { triggerDecision } from "./decisions.js";
@@ -34,6 +38,17 @@ import { sendActivity } from "./ws.js";
 
 function randomInt(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function todayDateString(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+async function applyTimedBuff(playerId: string, stat: "hackPower" | "stealth", amount: number, ttl: number) {
+  const key = `buff:${playerId}:${stat}`;
+  const existing = await redis.get(key);
+  const newValue = (existing ? parseInt(existing, 10) : 0) + amount;
+  await redis.set(key, String(newValue), "EX", ttl);
 }
 
 function getStatusForHealth(health: number): string {
@@ -59,7 +74,12 @@ export function generateTargets(playerLevel: number): ScanTarget[] {
   const targets: ScanTarget[] = [];
   for (let i = 0; i < SCAN_TARGET_COUNT; i++) {
     const type = TARGET_TYPES[randomInt(0, TARGET_TYPES.length - 1)];
-    const securityLevel = Math.min(95, 20 + randomInt(0, 15) + playerLevel * 5);
+    const securityLevel = Math.min(
+      SCANNER_BALANCE.targetSecurity.max,
+      SCANNER_BALANCE.targetSecurity.baseMin
+      + randomInt(0, SCANNER_BALANCE.targetSecurity.randomRange)
+      + playerLevel * SCANNER_BALANCE.targetSecurity.levelStep
+    );
     const detectionChance = Math.max(5, Math.min(95, securityLevel * 0.6 + randomInt(-10, 10)));
     const rewards = getBaseReward(securityLevel);
     targets.push({
@@ -120,6 +140,14 @@ export async function executeHack(playerId: string, targetIndex: number) {
     throw { statusCode: 400, message: "Invalid target index" };
   }
 
+  let resourceMultiplier = 1;
+  try {
+    const catchUpBonuses = await getSeasonCatchUpBonuses(playerId);
+    resourceMultiplier = catchUpBonuses.resourceMultiplier;
+  } catch {
+    // Non-critical: if season service fails, proceed with base rewards.
+  }
+
   const result = await withTransaction(async (client) => {
     // Lock player row and compute energy
     const pRes = await client.query("SELECT * FROM players WHERE id = $1 FOR UPDATE", [playerId]);
@@ -144,8 +172,13 @@ export async function executeHack(playerId: string, targetIndex: number) {
     );
 
     // Success calculation: hackPower drives success chance
-    const baseChance = 50 + (effectiveHackPower - target.securityLevel);
-    const successChance = Math.max(10, Math.min(95, baseChance));
+    const baseChance = SCANNER_BALANCE.hackSuccess.baseChance
+      + (effectiveHackPower - target.securityLevel);
+    const successFloor = getEarlyHackSuccessFloor(player.level as number);
+    const successChance = Math.max(
+      successFloor,
+      Math.min(SCANNER_BALANCE.hackSuccess.maxChance, baseChance)
+    );
     const roll = randomInt(1, 100);
     const success = roll <= successChance;
 
@@ -163,21 +196,67 @@ export async function executeHack(playerId: string, targetIndex: number) {
       const dataMultiplier = 1 + stats.dataBonus / 100;
       const rewardModifier = stats.modifierEffects.hackRewardMultiplier ?? 1;
 
-      const finalCredits = Math.floor(baseRewards.credits * creditMultiplier * rewardModifier);
-      const finalData = Math.floor(baseRewards.data * dataMultiplier * rewardModifier);
+      const finalCredits = Math.floor(
+        baseRewards.credits * creditMultiplier * rewardModifier * resourceMultiplier
+      );
+      const finalData = Math.floor(
+        baseRewards.data * dataMultiplier * rewardModifier * resourceMultiplier
+      );
       const finalReputation = baseRewards.reputation;
       const finalXp = Math.floor(baseRewards.xp * (stats.modifierEffects.xpGainMultiplier ?? 1));
+      const processingPowerReward = target.securityLevel >= SCANNER_BALANCE.highRiskProcessingPower.securityThreshold
+        ? Math.max(
+          1,
+          Math.floor(
+            randomInt(
+              SCANNER_BALANCE.highRiskProcessingPower.min,
+              SCANNER_BALANCE.highRiskProcessingPower.max
+            ) * resourceMultiplier
+          )
+        )
+        : 0;
 
       await client.query(
-        `UPDATE players SET credits = credits + $2, data = data + $3, reputation = reputation + $4, heat_level = 0 WHERE id = $1`,
-        [playerId, finalCredits, finalData, finalReputation]
+        `UPDATE players
+         SET credits = credits + $2,
+             data = data + $3,
+             reputation = reputation + $4,
+             processing_power = processing_power + $5,
+             heat_level = 0
+         WHERE id = $1`,
+        [playerId, finalCredits, finalData, finalReputation, processingPowerReward]
       );
-      rewards = { credits: finalCredits, data: finalData, reputation: finalReputation, xp: finalXp };
+      rewards = {
+        credits: finalCredits,
+        data: finalData,
+        reputation: finalReputation,
+        xp: finalXp,
+        processingPower: processingPowerReward > 0 ? processingPowerReward : undefined,
+      };
 
       // Award XP within the same transaction
       const xpResult = await awardXP(playerId, finalXp, client);
       levelUp = xpResult.levelUp;
       newLevel = xpResult.newLevel;
+
+      // Hook loop: first successful hack each UTC day grants temporary combat buffs.
+      const dailyBuffKey = `daily:first_success_buff:${playerId}:${todayDateString()}`;
+      const alreadyGranted = await redis.get(dailyBuffKey);
+      if (!alreadyGranted) {
+        await redis.set(dailyBuffKey, "1", "EX", 86400);
+        await applyTimedBuff(
+          playerId,
+          "hackPower",
+          HOOK_BALANCE.firstSuccessDailyBuff.hackPower,
+          HOOK_BALANCE.firstSuccessDailyBuff.durationSeconds
+        );
+        await applyTimedBuff(
+          playerId,
+          "stealth",
+          HOOK_BALANCE.firstSuccessDailyBuff.stealth,
+          HOOK_BALANCE.firstSuccessDailyBuff.durationSeconds
+        );
+      }
 
       narrative = fillTemplate(pickTemplate(HACK_SUCCESS_TEMPLATES), {
         target: target.name,
@@ -186,10 +265,14 @@ export async function executeHack(playerId: string, targetIndex: number) {
         credits: finalCredits,
         data: finalData,
         reputation: finalReputation,
+        processingPower: processingPowerReward,
         rounds: randomInt(2, 5),
       });
       if (levelUp) {
         narrative += `\n> LEVEL UP! Now level ${newLevel}`;
+      }
+      if (!alreadyGranted) {
+        narrative += `\n> DAILY SYNC BONUS: +${HOOK_BALANCE.firstSuccessDailyBuff.hackPower} Hack Power, +${HOOK_BALANCE.firstSuccessDailyBuff.stealth} Stealth for 1 hour`;
       }
     } else {
       // Detection check: stealth + detectionReduction lower the chance
@@ -300,7 +383,9 @@ export async function executeHack(playerId: string, targetIndex: number) {
   // Send activity notification
   try {
     const msg = result.success
-      ? `Hack succeeded on ${target.name} — +${result.rewards?.credits ?? 0} CR`
+      ? `Hack succeeded on ${target.name} — +${result.rewards?.credits ?? 0} CR${
+        result.rewards?.processingPower ? `, +${result.rewards.processingPower} PP` : ""
+      }`
       : `Hack failed on ${target.name}${result.detected ? " (DETECTED)" : ""}`;
     sendActivity(playerId, msg);
   } catch { /* non-critical */ }

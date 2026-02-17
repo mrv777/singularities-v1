@@ -4,6 +4,8 @@ import {
   ALL_DECISIONS,
   DECISION_MAP,
   DECISION_TRIGGER_CHANCES,
+  DECISION_BALANCE,
+  getDecisionResourceCap,
   type BinaryDecision,
 } from "@singularities/shared";
 import { shiftAlignment } from "./alignment.js";
@@ -117,21 +119,32 @@ export async function resolveDecision(
 
     const effects = choice === "yes" ? definition.yesEffects : definition.noEffects;
     const alignmentAmount = definition.alignmentShift[choice];
+    const playerRes = await client.query("SELECT level FROM players WHERE id = $1", [playerId]);
+    const playerLevel = playerRes.rows.length > 0 ? (playerRes.rows[0].level as number) : 1;
+    const appliedDescriptions: string[] = [];
 
     // Apply effects
     for (const effect of effects) {
       if (effect.type === "resource_grant") {
         const column = toSnakeCase(effect.target);
+        const normalizedValue = normalizeResourceGrant(
+          effect.target,
+          effect.value,
+          definition.rarity,
+          playerLevel
+        );
         await client.query(
           `UPDATE players SET ${column} = GREATEST(0, ${column} + $2) WHERE id = $1`,
-          [playerId, effect.value]
+          [playerId, normalizedValue]
         );
+        appliedDescriptions.push(formatResourceGrantDescription(effect.target, normalizedValue));
       } else if (effect.type === "system_health") {
         await client.query(
           `UPDATE player_systems SET health = GREATEST(0, LEAST(100, health + $3)), updated_at = NOW()
            WHERE player_id = $1 AND system_type = $2`,
           [playerId, effect.target, effect.value]
         );
+        appliedDescriptions.push(effect.description);
       }
       else if (effect.type === "stat_modifier") {
         const key = `buff:${playerId}:${effect.target}`;
@@ -139,6 +152,7 @@ export async function resolveDecision(
         const existing = await redis.get(key);
         const newValue = (existing ? parseInt(existing, 10) : 0) + effect.value;
         await redis.set(key, String(newValue), "EX", ttl);
+        appliedDescriptions.push(effect.description);
       }
       // permanent_buff, permanent_debuff — not yet implemented
     }
@@ -161,13 +175,13 @@ export async function resolveDecision(
     );
 
     // Get updated player
-    const playerRes = await client.query("SELECT * FROM players WHERE id = $1", [playerId]);
-    const player = computeEnergy(playerRes.rows[0]);
+    const updatedPlayerRes = await client.query("SELECT * FROM players WHERE id = $1", [playerId]);
+    const player = computeEnergy(updatedPlayerRes.rows[0]);
 
     return {
-      effects: effects.map((e) => ({ description: e.description })),
+      effects: appliedDescriptions.map((description) => ({ description })),
       alignmentShift: alignmentAmount,
-      player: mapPlayerRow({ ...playerRes.rows[0], energy: player.energy }),
+      player: mapPlayerRow({ ...updatedPlayerRes.rows[0], energy: player.energy }),
     };
   });
 }
@@ -213,4 +227,44 @@ function toSnakeCase(s: string): string {
     energy: "energy",
   };
   return map[s] ?? s;
+}
+
+function normalizeResourceGrant(
+  target: string,
+  baseValue: number,
+  rarity: BinaryDecision["rarity"],
+  playerLevel: number
+): number {
+  if (baseValue <= 0) return baseValue;
+
+  const rarityScale = DECISION_BALANCE.rarityResourceScale[rarity] ?? 1;
+  const scaled = Math.round(
+    baseValue * rarityScale * (1 + playerLevel * DECISION_BALANCE.levelScalePerLevel)
+  );
+
+  if (target === "credits") {
+    return Math.min(scaled, getDecisionResourceCap("credits", playerLevel));
+  }
+  if (target === "data") {
+    return Math.min(scaled, getDecisionResourceCap("data", playerLevel));
+  }
+  if (target === "processingPower") {
+    return Math.min(scaled, getDecisionResourceCap("processingPower", playerLevel));
+  }
+  if (target === "reputation") {
+    return Math.min(scaled, getDecisionResourceCap("reputation", playerLevel));
+  }
+  return scaled;
+}
+
+function formatResourceGrantDescription(target: string, value: number): string {
+  const labelMap: Record<string, string> = {
+    credits: "credits",
+    data: "data",
+    processingPower: "processing power",
+    reputation: "reputation",
+  };
+  const label = labelMap[target] ?? target;
+  const sign = value >= 0 ? "+" : "";
+  return `${sign}${value} ${label}`;
 }

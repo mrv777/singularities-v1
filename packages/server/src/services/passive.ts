@@ -1,6 +1,7 @@
 import { query } from "../db/pool.js";
 import { computeEnergy, mapPlayerRow } from "./player.js";
 import { getActiveModifierEffects } from "./modifiers.js";
+import { getSeasonCatchUpBonuses } from "./seasons.js";
 import {
   PASSIVE_CREDITS_PER_HOUR,
   PASSIVE_DATA_PER_HOUR,
@@ -20,7 +21,8 @@ export interface PassiveIncome {
  */
 export function computePassiveIncome(
   playerRow: Record<string, unknown>,
-  effects: ModifierEffect
+  effects: ModifierEffect,
+  resourceMultiplier = 1
 ): PassiveIncome {
   const lastActiveAt = new Date(playerRow.last_active_at as string).getTime();
   const now = Date.now();
@@ -36,7 +38,7 @@ export function computePassiveIncome(
 
   // Apply skip-day multiplier for time beyond 24 hours
   const multiplier = hoursElapsed > 24 ? PASSIVE_SKIP_DAY_MULTIPLIER : 1;
-  const incomeMultiplier = (effects.passiveIncomeMultiplier ?? 1) * multiplier;
+  const incomeMultiplier = (effects.passiveIncomeMultiplier ?? 1) * multiplier * resourceMultiplier;
 
   const credits = Math.floor(cappedHours * PASSIVE_CREDITS_PER_HOUR * incomeMultiplier);
   const data = Math.floor(cappedHours * PASSIVE_DATA_PER_HOUR * incomeMultiplier);
@@ -52,6 +54,13 @@ export async function materializePassiveIncome(
   playerId: string
 ): Promise<PassiveIncome | null> {
   const effects = await getActiveModifierEffects();
+  let resourceMultiplier = 1;
+  try {
+    const bonuses = await getSeasonCatchUpBonuses(playerId);
+    resourceMultiplier = bonuses.resourceMultiplier;
+  } catch {
+    // Non-critical: fallback to base multiplier.
+  }
 
   const result = await query(
     "SELECT * FROM players WHERE id = $1",
@@ -61,7 +70,7 @@ export async function materializePassiveIncome(
 
   const row = result.rows[0];
   const originalLastActive = row.last_active_at as string;
-  const income = computePassiveIncome(row, effects);
+  const income = computePassiveIncome(row, effects, resourceMultiplier);
 
   if (income.credits === 0 && income.data === 0) {
     return null;

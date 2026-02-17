@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import type { HackResult as HackResultType } from "@singularities/shared";
-import { Coins, Database, Star, Trophy } from "lucide-react";
+import { Coins, Cpu, Database, Star, Trophy } from "lucide-react";
 import { useEffect, useState } from "react";
 import { playSound } from "@/lib/sound";
 import { useUITier } from "@/hooks/useUITier";
@@ -78,7 +78,7 @@ export function HackResultDisplay({ result, onDone }: HackResultProps) {
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs text-center"
+          className={`grid ${result.rewards.processingPower ? "grid-cols-2 sm:grid-cols-5" : "grid-cols-2 sm:grid-cols-4"} gap-2 text-xs text-center`}
         >
           <div className="bg-bg-secondary rounded p-2 flex flex-col items-center gap-1">
             <Coins size={14} className="text-cyber-amber" />
@@ -96,6 +96,12 @@ export function HackResultDisplay({ result, onDone }: HackResultProps) {
             <Trophy size={14} className="text-cyber-cyan" />
             <div className="text-cyber-cyan font-bold">+{result.rewards.xp}</div>
           </div>
+          {result.rewards.processingPower ? (
+            <div className="bg-bg-secondary rounded p-2 flex flex-col items-center gap-1">
+              <Cpu size={14} className="text-cyber-magenta" />
+              <div className="text-cyber-magenta font-bold">+{result.rewards.processingPower}</div>
+            </div>
+          ) : null}
         </motion.div>
       )}
 

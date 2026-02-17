@@ -37,9 +37,9 @@ export const MUTATION_VARIANT_MAP: Record<string, MutationVariant> = Object.from
 );
 
 export const MUTATION_COST = {
-  credits: 500,
-  data: 200,
-  processingPower: 100,
+  credits: 750,
+  data: 300,
+  processingPower: 140,
 } as const;
 
 export const MUTATION_SUCCESS_RATE = 0.65;

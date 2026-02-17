@@ -5,7 +5,7 @@ import { api } from "@/lib/api";
 import { useAuthStore } from "@/stores/auth";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
-import { ENERGY_COSTS, REPAIR_CREDIT_COST } from "@singularities/shared";
+import { ENERGY_COSTS, getRepairCreditCostForHealth } from "@singularities/shared";
 import type { PlayerSystem } from "@singularities/shared";
 import { AlertTriangle, RefreshCw } from "lucide-react";
 import { ResourceCost } from "../ui/ResourceCost";
@@ -74,7 +74,9 @@ export function SystemStatusModal() {
       <div className="space-y-4">
         {/* Cost info */}
         <div className="flex items-center justify-between text-[10px] text-text-muted">
-          <span className="flex items-center gap-1">Repair cost: <ResourceCost costs={{ energy: ENERGY_COSTS.repair, credits: REPAIR_CREDIT_COST }} /></span>
+          <span className="flex items-center gap-1">
+            Repair cost scales with damage (energy fixed at <ResourceCost costs={{ energy: ENERGY_COSTS.repair }} />).
+          </span>
           <button
             onClick={loadSystems}
             disabled={loading}
@@ -112,6 +114,7 @@ export function SystemStatusModal() {
                 system={system}
                 onRepair={handleRepair}
                 repairing={repairing === system.systemType}
+                repairCreditCost={getRepairCreditCostForHealth(system.health)}
               />
             ))}
           </div>

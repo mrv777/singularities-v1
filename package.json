@@ -8,7 +8,8 @@
     "build": "pnpm --filter shared build && pnpm --filter server build && pnpm --filter client build",
     "typecheck": "pnpm -r typecheck",
     "lint": "pnpm -r lint",
-    "db:migrate": "pnpm --filter server db:migrate"
+    "db:migrate": "pnpm --filter server db:migrate",
+    "sim:balance": "pnpm --filter server sim:all"
   },
   "engines": {
     "node": ">=20"

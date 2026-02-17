@@ -1,3 +1,5 @@
+import { PVP_BALANCE } from "./balance.js";
+
 // PvP Combat Constants
 
 export const PVP_ENERGY_COST = 25;
@@ -17,11 +19,16 @@ export const PVP_WIN_CHANCE_MAX = 85;
 export const PVP_WIN_CHANCE_SCALE = 50;
 
 // Winner rewards (scaled by defender level)
-export const PVP_REWARD_CREDITS_MIN = 100;
-export const PVP_REWARD_CREDITS_MAX = 200;
+export const PVP_REWARD_CREDITS_MIN = PVP_BALANCE.rewardCredits.baseMin;
+export const PVP_REWARD_CREDITS_MAX = PVP_BALANCE.rewardCredits.baseMax;
 export const PVP_REWARD_REPUTATION_MIN = 20;
 export const PVP_REWARD_REPUTATION_MAX = 30;
 export const PVP_REWARD_XP = 50;
+export const PVP_REWARD_CREDITS_STEAL_PCT_MIN = PVP_BALANCE.rewardCredits.stealPctMin;
+export const PVP_REWARD_CREDITS_STEAL_PCT_MAX = PVP_BALANCE.rewardCredits.stealPctMax;
+export const PVP_REWARD_CREDITS_LEVEL_BONUS = PVP_BALANCE.rewardCredits.levelBonusPerLevel;
+export const PVP_REWARD_PROCESSING_POWER_MIN = PVP_BALANCE.rewardProcessingPower.min;
+export const PVP_REWARD_PROCESSING_POWER_MAX = PVP_BALANCE.rewardProcessingPower.max;
 
 // Loser damage: 10-20% per system, 1-2 systems affected
 export const PVP_LOSER_DAMAGE_MIN_PCT = 10;

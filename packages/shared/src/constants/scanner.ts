@@ -1,3 +1,5 @@
+import { SCANNER_BALANCE } from "./balance.js";
+
 export const TARGET_TYPES = [
   "database",
   "government",
@@ -37,20 +39,32 @@ export const RISK_COLORS: Record<RiskRating, string> = {
   critical: "#ff3333",
 };
 
-export const SCAN_ENERGY_COST = 5;
+export const SCAN_ENERGY_COST = 3;
 export const SCAN_TARGET_COUNT = 5;
 export const SCAN_TTL_SECONDS = 600; // 10 minutes
 
 export function getHackEnergyCost(securityLevel: number): number {
-  return 10 + Math.floor(securityLevel / 5);
+  return SCANNER_BALANCE.hackCost.base + Math.floor(securityLevel / SCANNER_BALANCE.hackCost.securityDivisor);
 }
 
 export function getBaseReward(securityLevel: number) {
   return {
-    credits: Math.floor(10 + securityLevel * 1.5),
-    data: Math.floor(5 + securityLevel * 0.8),
-    reputation: Math.floor(1 + securityLevel * 0.1),
-    xp: Math.floor(10 + securityLevel * 0.5),
+    credits: Math.floor(
+      SCANNER_BALANCE.rewards.creditsBase
+      + securityLevel * SCANNER_BALANCE.rewards.creditsPerSecurity
+    ),
+    data: Math.floor(
+      SCANNER_BALANCE.rewards.dataBase
+      + securityLevel * SCANNER_BALANCE.rewards.dataPerSecurity
+    ),
+    reputation: Math.floor(
+      SCANNER_BALANCE.rewards.reputationBase
+      + securityLevel * SCANNER_BALANCE.rewards.reputationPerSecurity
+    ),
+    xp: Math.floor(
+      SCANNER_BALANCE.rewards.xpBase
+      + securityLevel * SCANNER_BALANCE.rewards.xpPerSecurity
+    ),
   };
 }
 

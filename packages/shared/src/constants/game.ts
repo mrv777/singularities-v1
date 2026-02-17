@@ -1,31 +1,33 @@
-// XP thresholds per level (index = level, value = cumulative XP needed)
-// Levels 1-10: hand-tuned curve. Levels 11-25: 4000 + (level-10) * 1500
+import { PROGRESSION_BALANCE, REPAIR_BALANCE } from "./balance.js";
+
+// XP thresholds per level (index = level, value = cumulative XP needed).
+// Curve is tuned for faster early onboarding and steadier midgame progression.
 export const XP_THRESHOLDS = [
   0,     // Level 1 (starting)
-  100,   // Level 2
-  250,   // Level 3
-  500,   // Level 4
-  850,   // Level 5
-  1300,  // Level 6
-  1850,  // Level 7
-  2500,  // Level 8
-  3300,  // Level 9
-  4200,  // Level 10
-  5500,  // Level 11
-  7000,  // Level 12
-  8500,  // Level 13
-  10000, // Level 14
-  11500, // Level 15
-  13000, // Level 16
-  14500, // Level 17
-  16000, // Level 18
-  17500, // Level 19
-  19000, // Level 20
-  20500, // Level 21
-  22000, // Level 22
-  23500, // Level 23
-  25000, // Level 24
-  26500, // Level 25
+  80,    // Level 2
+  190,   // Level 3
+  360,   // Level 4
+  580,   // Level 5
+  860,   // Level 6
+  1210,  // Level 7
+  1630,  // Level 8
+  2120,  // Level 9
+  2680,  // Level 10
+  3880,  // Level 11
+  5080,  // Level 12
+  6280,  // Level 13
+  7480,  // Level 14
+  8680,  // Level 15
+  9880,  // Level 16
+  11080, // Level 17
+  12280, // Level 18
+  13480, // Level 19
+  14680, // Level 20
+  15880, // Level 21
+  17080, // Level 22
+  18280, // Level 23
+  19480, // Level 24
+  20680, // Level 25
 ];
 
 export const MAX_LEVEL = XP_THRESHOLDS.length;
@@ -44,14 +46,14 @@ export function getXPForNextLevel(currentLevel: number): number | null {
 
 // Energy costs for actions
 export const ENERGY_COSTS = {
-  scan: 5,
+  scan: 3,
   hackBase: 10,
   moduleUpgrade: 5,
   repair: 15,
 } as const;
 
 // Repair costs in credits
-export const REPAIR_CREDIT_COST = 25;
+export const REPAIR_CREDIT_COST = REPAIR_BALANCE.creditsBase;
 // Health restored per repair
 export const REPAIR_HEALTH_AMOUNT = 30;
 // Repair cooldown in seconds
@@ -68,7 +70,7 @@ export const STARTING_RESOURCES = {
 export const ENERGY_MAX_PER_LEVEL = 5; // +5 max energy per level
 
 // Module purchase XP reward
-export const MODULE_PURCHASE_XP = 10;
+export const MODULE_PURCHASE_XP = PROGRESSION_BALANCE.modulePurchaseXp;
 
 // Heat escalation damage tables
 export const HEAT_DAMAGE = [

@@ -6,7 +6,7 @@ import {
   DEGRADATION_RATE_PER_HOUR,
   SYSTEM_STATUS_THRESHOLDS,
   ENERGY_COSTS,
-  REPAIR_CREDIT_COST,
+  getRepairCreditCostForHealth,
   REPAIR_HEALTH_AMOUNT,
   REPAIR_COOLDOWN_SECONDS,
   type ModifierEffect,
@@ -79,13 +79,8 @@ export async function repairSystem(playerId: string, systemType: string) {
     const credits = playerRow.credits as number;
 
     const energyCost = Math.round(ENERGY_COSTS.repair * (effects.energyCostMultiplier ?? 1));
-    const creditCost = Math.round(REPAIR_CREDIT_COST * (effects.repairCostMultiplier ?? 1));
-
     if (energy < energyCost) {
       throw new RepairError(`Not enough energy. Need ${energyCost}, have ${energy}.`, 400);
-    }
-    if (credits < creditCost) {
-      throw new RepairError(`Not enough credits. Need ${creditCost}, have ${credits}.`, 400);
     }
 
     // Lock system
@@ -102,6 +97,12 @@ export async function repairSystem(playerId: string, systemType: string) {
 
     if (currentHealth >= 100) {
       throw new RepairError("System already at full health", 400);
+    }
+    const creditCost = Math.round(
+      getRepairCreditCostForHealth(currentHealth) * (effects.repairCostMultiplier ?? 1)
+    );
+    if (credits < creditCost) {
+      throw new RepairError(`Not enough credits. Need ${creditCost}, have ${credits}.`, 400);
     }
 
     const newHealth = Math.min(100, currentHealth + REPAIR_HEALTH_AMOUNT);

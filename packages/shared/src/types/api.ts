@@ -66,6 +66,7 @@ export interface HackResult {
     data: number;
     reputation: number;
     xp: number;
+    processingPower?: number;
   };
   damage?: {
     systems: Array<{ systemType: string; damage: number }>;
@@ -183,6 +184,7 @@ export interface ArenaAttackResponse {
     credits: number;
     reputation: number;
     xp: number;
+    processingPower?: number;
   };
   damage?: {
     systems: Array<{ systemType: string; damage: number }>;

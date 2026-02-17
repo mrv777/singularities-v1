@@ -1,22 +1,17 @@
-export const SANDBOX_EXIT_LEVEL = 10;
+import { PROGRESSION_BALANCE } from "./balance.js";
+
+export const SANDBOX_EXIT_LEVEL = PROGRESSION_BALANCE.sandboxExitLevel;
 
 export const LEVEL_UNLOCKS: Record<string, number> = {
-  scanner: 1,
-  tech_tree: 4,
-  system_maintenance: 6,
-  script_manager: 8,
-  pvp_arena: 10,
-  security_center: 10,
-  daily_modifiers: 10,
-  network_stats: 10,
+  ...PROGRESSION_BALANCE.unlockLevels,
 };
 
 // Systems that are blocked while in sandbox mode
 const SANDBOX_BLOCKED: string[] = ["pvp_arena", "security_center"];
 
 export const ENERGY_BASE_MAX = 100;
-export const ENERGY_BASE_REGEN_PER_HOUR = 120; // 2/min
-export const ENERGY_REGEN_PER_LEVEL = 6; // +0.1/min per level
+export const ENERGY_BASE_REGEN_PER_HOUR = 180; // 3/min
+export const ENERGY_REGEN_PER_LEVEL = 9; // +0.15/min per level
 
 export function getUnlockedSystems(level: number, inSandbox: boolean): string[] {
   const unlocked: string[] = [];

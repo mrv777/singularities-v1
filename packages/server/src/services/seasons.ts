@@ -8,6 +8,11 @@ import type { Season, SeasonLeaderboardEntry } from "@singularities/shared";
 
 const REDIS_SEASON_KEY = "current_season";
 
+export interface SeasonCatchUpBonuses {
+  xpMultiplier: number;
+  resourceMultiplier: number;
+}
+
 export async function getCurrentSeason(): Promise<Season | null> {
   // Check cache
   const cached = await redis.get(REDIS_SEASON_KEY);
@@ -96,10 +101,15 @@ export async function endSeason(): Promise<void> {
       [season.id]
     );
 
-    // Award stipend to all season players
+    // Apply season reset + stipend to all season players.
     await client.query(
-      `UPDATE players SET credits = credits + $2 WHERE season_id = $1`,
-      [season.id, SEASON_STIPEND.credits]
+      `UPDATE players
+       SET credits = $2,
+           reputation = 0,
+           processing_power = processing_power + $3,
+           in_pvp_arena = false
+       WHERE season_id = $1`,
+      [season.id, SEASON_STIPEND.credits, SEASON_STIPEND.processingPower]
     );
   });
 
@@ -108,8 +118,15 @@ export async function endSeason(): Promise<void> {
 }
 
 export async function getSeasonCatchUpMultiplier(playerId: string): Promise<number> {
+  const bonuses = await getSeasonCatchUpBonuses(playerId);
+  return bonuses.xpMultiplier;
+}
+
+export async function getSeasonCatchUpBonuses(playerId: string): Promise<SeasonCatchUpBonuses> {
   const season = await getCurrentSeason();
-  if (!season) return 1;
+  if (!season) {
+    return { xpMultiplier: 1, resourceMultiplier: 1 };
+  }
 
   // Get median level for active season players
   const medianRes = await query(
@@ -124,7 +141,9 @@ export async function getSeasonCatchUpMultiplier(playerId: string): Promise<numb
     "SELECT level, created_at FROM players WHERE id = $1",
     [playerId]
   );
-  if (playerRes.rows.length === 0) return 1;
+  if (playerRes.rows.length === 0) {
+    return { xpMultiplier: 1, resourceMultiplier: 1 };
+  }
 
   const playerLevel = playerRes.rows[0].level as number;
   const createdAt = new Date(playerRes.rows[0].created_at as string);
@@ -136,13 +155,24 @@ export async function getSeasonCatchUpMultiplier(playerId: string): Promise<numb
     CATCH_UP_BASE.maxXpMultiplier
   );
 
-  // Join-date boost (for new players)
-  const daysSinceJoin = (Date.now() - createdAt.getTime()) / (1000 * 60 * 60 * 24);
-  const joinBoost = daysSinceJoin <= CATCH_UP_BASE.joinBoostDays
-    ? CATCH_UP_BASE.joinBoostMultiplier
+  // Late-join boost scales with season progress (day 45 ~= 1.5x, day 75 ~= 2x).
+  const seasonStart = new Date(season.startedAt).getTime();
+  const seasonEnd = new Date(season.endsAt).getTime();
+  const now = Date.now();
+  const seasonDuration = Math.max(1, seasonEnd - seasonStart);
+  const seasonProgress = Math.max(0, Math.min(1, (now - seasonStart) / seasonDuration));
+  const joinedThisSeasonLate = createdAt.getTime() >= seasonStart;
+  const joinBoost = joinedThisSeasonLate
+    ? seasonProgress * CATCH_UP_BASE.lateJoinMaxXpBoost
     : 0;
 
-  return 1 + levelBoost + joinBoost;
+  const xpMultiplier = 1 + levelBoost + joinBoost;
+  const resourceMultiplier = 1 + (levelBoost + joinBoost) * CATCH_UP_BASE.resourceBoostFactor;
+
+  return {
+    xpMultiplier,
+    resourceMultiplier,
+  };
 }
 
 export function applySeasonXPBoost(baseXP: number, multiplier: number): number {
