@@ -26,10 +26,16 @@ export async function getScripts(playerId: string) {
 
 export async function createScript(playerId: string, triggerCondition: string, action: string) {
   if (!SCRIPT_TRIGGER_MAP[triggerCondition]) {
-    throw new ScriptError("Invalid trigger condition", 400);
+    throw new ScriptError(
+      `Invalid trigger condition. Valid: ${Object.keys(SCRIPT_TRIGGER_MAP).join(", ")}`,
+      400
+    );
   }
   if (!SCRIPT_ACTION_MAP[action]) {
-    throw new ScriptError("Invalid action", 400);
+    throw new ScriptError(
+      `Invalid action. Valid: ${Object.keys(SCRIPT_ACTION_MAP).join(", ")}`,
+      400
+    );
   }
 
   // Check total script count

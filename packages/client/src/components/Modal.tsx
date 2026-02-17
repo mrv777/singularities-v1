@@ -52,6 +52,7 @@ export function Modal({
             <Dialog.Overlay asChild>
               <motion.div
                 className="fixed inset-0 bg-[#0a0a0f]/90 z-50"
+                onClick={onClose}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
@@ -98,7 +99,10 @@ export function Modal({
               ) : (
                 /* Desktop: centered modal */
                 <motion.div
-                  className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none"
+                  className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-auto"
+                  onMouseDown={(e) => {
+                    if (e.target === e.currentTarget) onClose();
+                  }}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}

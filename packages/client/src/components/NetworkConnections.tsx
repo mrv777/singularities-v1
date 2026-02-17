@@ -9,6 +9,7 @@ interface ConnectionDef {
 const CONNECTIONS: ConnectionDef[] = [
   { from: "scanner", to: "tech_tree" },
   { from: "scanner", to: "system_maintenance" },
+  { from: "scanner", to: "data_vault" },
   { from: "tech_tree", to: "script_manager" },
   { from: "system_maintenance", to: "security_center" },
   { from: "script_manager", to: "pvp_arena" },

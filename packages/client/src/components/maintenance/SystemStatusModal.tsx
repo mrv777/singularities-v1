@@ -7,32 +7,49 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import { ENERGY_COSTS, getRepairCreditCostForHealth } from "@singularities/shared";
 import type { PlayerSystem } from "@singularities/shared";
-import { AlertTriangle, RefreshCw } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import { ResourceCost } from "../ui/ResourceCost";
 import { playSound } from "@/lib/sound";
 
 export function SystemStatusModal() {
   const activeModal = useUIStore((s) => s.activeModal);
   const closeModal = useUIStore((s) => s.closeModal);
-  const { setPlayer } = useAuthStore();
+  const { player, setPlayer } = useAuthStore();
   const queryClient = useQueryClient();
   const open = activeModal === "system_maintenance";
 
   const [systems, setSystems] = useState<PlayerSystem[]>([]);
   const [loading, setLoading] = useState(false);
   const [repairing, setRepairing] = useState<string | null>(null);
+  const [repairingAll, setRepairingAll] = useState(false);
   const [error, setError] = useState("");
+  const [syncWarning, setSyncWarning] = useState("");
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null);
+  const [summary, setSummary] = useState<{
+    repairedCount: number;
+    damagedCount: number;
+    creditsSpent: number;
+    energySpent: number;
+    skippedCooldown: number;
+    skippedBudget: number;
+  } | null>(null);
 
-  const loadSystems = async () => {
-    setLoading(true);
-    setError("");
+  const loadSystems = async (opts?: { silent?: boolean }) => {
+    const silent = opts?.silent ?? false;
+    if (!silent) {
+      setLoading(true);
+      setError("");
+    }
     try {
       const result = await api.fullScan();
       setSystems(result.systems);
+      setLastUpdatedAt(Date.now());
+      setSyncWarning("");
+      if (!silent) setSummary(null);
     } catch (err: any) {
-      setError(err.message || "Failed to scan systems");
+      if (!silent) setError(err.message || "Failed to scan systems");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -42,9 +59,70 @@ export function SystemStatusModal() {
     }
   }, [open]);
 
+  useEffect(() => {
+    if (!open) return;
+
+    let cancelled = false;
+    let timer: number | null = null;
+    let inFlight = false;
+    let consecutiveSilentFailures = 0;
+
+    const scheduleNext = () => {
+      if (cancelled) return;
+      if (timer !== null) window.clearTimeout(timer);
+      timer = window.setTimeout(tick, 15_000);
+    };
+
+    const tick = async () => {
+      if (cancelled) return;
+      // Avoid unnecessary requests when tab is hidden.
+      if (document.hidden || repairing || repairingAll || inFlight) {
+        scheduleNext();
+        return;
+      }
+
+      inFlight = true;
+      try {
+        const result = await api.fullScan();
+        if (cancelled) return;
+        setSystems(result.systems);
+        setLastUpdatedAt(Date.now());
+        consecutiveSilentFailures = 0;
+        setSyncWarning("");
+      } catch {
+        if (cancelled) return;
+        consecutiveSilentFailures += 1;
+        if (consecutiveSilentFailures >= 3) {
+          setSyncWarning("Auto-sync unstable. Reconnecting...");
+        }
+      } finally {
+        inFlight = false;
+        scheduleNext();
+      }
+    };
+
+    const refreshOnVisibilityOrOnline = () => {
+      if (document.hidden || repairing || repairingAll || inFlight) return;
+      if (timer !== null) window.clearTimeout(timer);
+      void tick();
+    };
+
+    timer = window.setTimeout(tick, 15_000);
+    document.addEventListener("visibilitychange", refreshOnVisibilityOrOnline);
+    window.addEventListener("online", refreshOnVisibilityOrOnline);
+
+    return () => {
+      cancelled = true;
+      if (timer !== null) window.clearTimeout(timer);
+      document.removeEventListener("visibilitychange", refreshOnVisibilityOrOnline);
+      window.removeEventListener("online", refreshOnVisibilityOrOnline);
+    };
+  }, [open, repairing, repairingAll]);
+
   const handleRepair = async (systemType: string) => {
     setRepairing(systemType);
     setError("");
+    setSummary(null);
     try {
       const result = await api.repairSystem({ systemType });
       setPlayer(result.player);
@@ -60,9 +138,50 @@ export function SystemStatusModal() {
     }
   };
 
+  const handleRepairAll = async () => {
+    setRepairingAll(true);
+    setError("");
+    setSummary(null);
+    try {
+      const result = await api.repairAllSystems();
+      setPlayer(result.player);
+      const repairedMap = new Map(
+        result.repaired.map((item) => [item.system.systemType, item.system])
+      );
+      setSystems((prev) =>
+        prev.map((system) => repairedMap.get(system.systemType) ?? system)
+      );
+      const skippedCooldown = result.skipped.filter((s) => s.reason === "cooldown").length;
+      const skippedBudget = result.skipped.filter(
+        (s) =>
+          s.reason === "insufficient_energy"
+          || s.reason === "insufficient_credits"
+          || s.reason === "budget_exhausted"
+      ).length;
+      setSummary({
+        repairedCount: result.totals.repairedCount,
+        damagedCount: result.totals.damagedCount,
+        creditsSpent: result.totals.creditsSpent,
+        energySpent: result.totals.energySpent,
+        skippedCooldown,
+        skippedBudget,
+      });
+      queryClient.invalidateQueries({ queryKey: ["player"] });
+    } catch (err: any) {
+      setError(err.message || "Repair all failed");
+    } finally {
+      setRepairingAll(false);
+    }
+  };
+
   const criticalCount = systems.filter(
     (s) => s.status === "CRITICAL" || s.status === "CORRUPTED"
   ).length;
+  const damagedCount = systems.filter((s) => s.health < 100).length;
+  const estimatedCreditsToRepairAll = systems
+    .filter((s) => s.health < 100)
+    .reduce((sum, s) => sum + getRepairCreditCostForHealth(s.health), 0);
+  const estimatedEnergyToRepairAll = damagedCount * ENERGY_COSTS.repair;
 
   // Play critical warning if any systems are critical/corrupted
   useEffect(() => {
@@ -73,19 +192,58 @@ export function SystemStatusModal() {
     <Modal open={open} onClose={closeModal} title="SYSTEM MAINTENANCE" maxWidth="max-w-3xl">
       <div className="space-y-4">
         {/* Cost info */}
-        <div className="flex items-center justify-between text-[10px] text-text-muted">
-          <span className="flex items-center gap-1">
-            Repair cost scales with damage (energy fixed at <ResourceCost costs={{ energy: ENERGY_COSTS.repair }} />).
-          </span>
+        <div className="space-y-1 text-[10px] text-text-muted">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <span>Available:</span>
+              <ResourceCost
+                costs={{
+                  credits: player?.credits ?? 0,
+                  energy: player?.energy ?? 0,
+                }}
+                size={10}
+              />
+              <span className="text-text-muted/70">|</span>
+              <span>Est. all repairs:</span>
+              <ResourceCost
+                costs={{
+                  credits: estimatedCreditsToRepairAll,
+                  energy: estimatedEnergyToRepairAll,
+                }}
+                available={{
+                  credits: player?.credits ?? 0,
+                  energy: player?.energy ?? 0,
+                }}
+                size={10}
+              />
+            </div>
+            <span className="text-text-muted/80">
+              Auto-sync: {lastUpdatedAt ? new Date(lastUpdatedAt).toLocaleTimeString() : "syncing..."}
+            </span>
+          </div>
+          <div>
+            Repair cost scales with damage (energy fixed at <ResourceCost costs={{ energy: ENERGY_COSTS.repair }} /> per repaired system).
+          </div>
+        </div>
+
+        <div className="flex items-center justify-end text-[10px] text-text-muted">
           <button
-            onClick={loadSystems}
-            disabled={loading}
-            className="flex items-center gap-1 text-cyber-cyan hover:text-cyber-cyan/80 transition-colors"
+            onClick={handleRepairAll}
+            disabled={loading || repairingAll || repairing !== null || damagedCount === 0}
+            className="text-cyber-green hover:text-cyber-green/80 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
           >
-            <RefreshCw size={10} className={loading ? "animate-spin" : ""} />
-            Refresh
+            {repairingAll ? "Repairing..." : `Repair All (${damagedCount})`}
           </button>
         </div>
+
+        {summary && (
+          <div className="text-[10px] p-2 border border-cyber-green/30 rounded bg-cyber-green/5 text-cyber-green">
+            Repaired {summary.repairedCount}/{summary.damagedCount} damaged systems.
+            Spent <ResourceCost costs={{ credits: summary.creditsSpent, energy: summary.energySpent }} size={10} />.
+            {summary.skippedCooldown > 0 && ` ${summary.skippedCooldown} skipped by cooldown.`}
+            {summary.skippedBudget > 0 && ` ${summary.skippedBudget} skipped due to resource budget.`}
+          </div>
+        )}
 
         {/* Cascade warning banner */}
         {criticalCount > 0 && (
@@ -102,6 +260,11 @@ export function SystemStatusModal() {
             {error}
           </div>
         )}
+        {!error && syncWarning && (
+          <div className="text-cyber-amber text-xs p-2 border border-cyber-amber/30 rounded">
+            {syncWarning}
+          </div>
+        )}
 
         {/* System grid */}
         {loading && systems.length === 0 ? (
@@ -113,7 +276,7 @@ export function SystemStatusModal() {
                 key={system.systemType}
                 system={system}
                 onRepair={handleRepair}
-                repairing={repairing === system.systemType}
+                repairing={repairingAll || repairing === system.systemType}
                 repairCreditCost={getRepairCreditCostForHealth(system.health)}
               />
             ))}

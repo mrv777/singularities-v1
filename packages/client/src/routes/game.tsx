@@ -9,6 +9,7 @@ import { ModifierDetailModal } from "@/components/ModifierDetailModal";
 import { TopologyDetailModal } from "@/components/TopologyDetailModal";
 import { SystemStatusModal } from "@/components/maintenance/SystemStatusModal";
 import { ScriptManagerModal } from "@/components/scripts/ScriptManagerModal";
+import { DataVaultModal } from "@/components/dataVault/DataVaultModal";
 import { ArenaModal } from "@/components/arena/ArenaModal";
 import { SecurityCenterModal } from "@/components/security/SecurityCenterModal";
 import { SandboxExitModal } from "@/components/SandboxExitModal";
@@ -185,6 +186,7 @@ function GamePage() {
       <TopologyDetailModal />
       <SystemStatusModal />
       <ScriptManagerModal />
+      <DataVaultModal />
       <ArenaModal />
       <SecurityCenterModal />
       <NetStatsModal />

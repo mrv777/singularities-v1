@@ -9,7 +9,8 @@
     "typecheck": "pnpm -r typecheck",
     "lint": "pnpm -r lint",
     "db:migrate": "pnpm --filter server db:migrate",
-    "sim:balance": "pnpm --filter server sim:all"
+    "sim:balance": "pnpm --filter server sim:all",
+    "sim:day1": "pnpm --filter server sim:day1"
   },
   "engines": {
     "node": ">=20"

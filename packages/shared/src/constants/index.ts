@@ -17,3 +17,4 @@ export * from "./seasons.js";
 export * from "./worldEvents.js";
 export * from "./narratives.js";
 export * from "./balance.js";
+export * from "./dataVault.js";

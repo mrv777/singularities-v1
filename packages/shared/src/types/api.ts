@@ -1,7 +1,24 @@
-import type { Player, PlayerSystem, PlayerModule, PlayerLoadout, PlayerScript, PlayerTrait, LoadoutType } from "./player.js";
+import type {
+  Player,
+  PlayerSystem,
+  PlayerModule,
+  PlayerLoadout,
+  PlayerScript,
+  PlayerTrait,
+  LoadoutType,
+  SystemType,
+} from "./player.js";
 import type { CombatLog } from "./combat.js";
 import type { WeeklyTopology, WorldEvent, PendingDecision, SeasonLeaderboardEntry, NetworkStats, MutationResult, Season } from "./world.js";
-import type { ScanTarget, ModuleDefinition, ModifierDefinition, GeneticTrait, BinaryDecision } from "../constants/index.js";
+import type {
+  ScanTarget,
+  ModuleDefinition,
+  ModifierDefinition,
+  GeneticTrait,
+  BinaryDecision,
+  DataVaultProtocolDefinition,
+  DataVaultBuffKey,
+} from "../constants/index.js";
 
 // Auth
 export interface AuthChallengeRequest {
@@ -136,6 +153,61 @@ export interface RepairResponse {
 
 export interface FullScanResponse {
   systems: PlayerSystem[];
+}
+
+export type RepairAllSkipReason =
+  | "full_health"
+  | "cooldown"
+  | "insufficient_energy"
+  | "insufficient_credits"
+  | "budget_exhausted";
+
+export interface RepairAllResponse {
+  repaired: Array<{
+    system: PlayerSystem;
+    energyCost: number;
+    creditCost: number;
+  }>;
+  skipped: Array<{
+    systemType: SystemType;
+    reason: RepairAllSkipReason;
+  }>;
+  totals: {
+    repairedCount: number;
+    skippedCount: number;
+    damagedCount: number;
+    energySpent: number;
+    creditsSpent: number;
+  };
+  player: Player;
+}
+
+// Data Vault
+export interface DataVaultActiveProtocol {
+  id: string;
+  name: string;
+  expiresAt: string;
+  buffs: Partial<Record<DataVaultBuffKey, number>>;
+}
+
+export interface DataVaultStatusResponse {
+  protocols: DataVaultProtocolDefinition[];
+  activeProtocol: DataVaultActiveProtocol | null;
+  cooldownExpiresAt: string | null;
+  dailyUses: number;
+  dailyUseCap: number;
+}
+
+export interface DataVaultActivateRequest {
+  protocolId: string;
+}
+
+export interface DataVaultActivateResponse {
+  player: Player;
+  activeProtocol: DataVaultActiveProtocol;
+  cooldownExpiresAt: string;
+  dailyUses: number;
+  dailyUseCap: number;
 }
 
 // Modifiers

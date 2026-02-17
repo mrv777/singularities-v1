@@ -1,6 +1,8 @@
 import {
   ALL_DECISIONS,
   CATCH_UP_BASE,
+  DATA_VAULT_BALANCE,
+  DATA_VAULT_PROTOCOLS,
   DECISION_BALANCE,
   MUTATION_COST,
   PVP_REWARD_CREDITS_LEVEL_BONUS,
@@ -11,9 +13,9 @@ import {
   PVP_REWARD_PROCESSING_POWER_MAX,
   PVP_REWARD_PROCESSING_POWER_MIN,
   SCANNER_BALANCE,
+  PROGRESSION_BALANCE,
   getBaseReward,
   getDecisionResourceCap,
-  getEarlyHackSuccessFloor,
   getLevelForXP,
   getRepairCreditCostForHealth,
 } from "@singularities/shared";
@@ -36,6 +38,9 @@ interface EconomyState {
   reputation: number;
   firstMutationHour: number | null;
   seenDecisions: Set<string>;
+  dataVaultActiveUntilMinute: number;
+  dataVaultCooldownUntilMinute: number;
+  dataVaultUsesToday: number;
 }
 
 interface EconomyResult {
@@ -45,11 +50,84 @@ interface EconomyResult {
   mutationDay: number | null;
 }
 
+interface EconomyProfile {
+  name: "baseline" | "current";
+  securityBaseMin: number;
+  securityStep: number;
+  successBaseChance: number;
+  successMinChance: number;
+  earlyFloorBase: number;
+  earlyFloorDropPerLevel: number;
+  earlyFloorUntilLevel: number;
+}
+
 const ARCHETYPES: Archetype[] = [
   { id: "cautious_pve", hacksPerHour: 6, pvpMatchesPerDay: 0, winBias: 0, profitBias: 0.3 },
   { id: "mixed", hacksPerHour: 5, pvpMatchesPerDay: 6, winBias: 0.05, profitBias: 0.55 },
   { id: "aggressive_pvp", hacksPerHour: 3, pvpMatchesPerDay: 12, winBias: 0.12, profitBias: 0.8 },
 ];
+const DATA_VAULT_RECOMMENDED_PROTOCOL =
+  DATA_VAULT_PROTOCOLS.find((p) => p.recommended) ?? DATA_VAULT_PROTOCOLS[0];
+const DATA_VAULT_HACK_BONUS = DATA_VAULT_RECOMMENDED_PROTOCOL.buffs.hackPower ?? 0;
+
+function parseCatchUpMode(argv: string[]): "none" | "max" {
+  for (const arg of argv) {
+    if (arg.startsWith("--catchup=")) {
+      const value = arg.slice("--catchup=".length);
+      if (value === "none" || value === "max") return value;
+    }
+  }
+  return "none";
+}
+
+function parseProfile(argv: string[]): EconomyProfile["name"] {
+  for (const arg of argv) {
+    if (arg.startsWith("--profile=")) {
+      const value = arg.slice("--profile=".length);
+      if (value === "baseline" || value === "current") return value;
+    }
+  }
+  return "current";
+}
+
+function parseDataVaultMode(argv: string[]): "off" | "on" {
+  for (const arg of argv) {
+    if (arg.startsWith("--data-vault=")) {
+      const value = arg.slice("--data-vault=".length);
+      if (value === "off" || value === "on") return value;
+    }
+  }
+  return "off";
+}
+
+const ECONOMY_PROFILES: Record<EconomyProfile["name"], EconomyProfile> = {
+  baseline: {
+    name: "baseline",
+    securityBaseMin: 15,
+    securityStep: 4,
+    successBaseChance: 58,
+    successMinChance: 20,
+    earlyFloorBase: 35,
+    earlyFloorDropPerLevel: 3,
+    earlyFloorUntilLevel: 4,
+  },
+  current: {
+    name: "current",
+    securityBaseMin: SCANNER_BALANCE.targetSecurity.baseMin,
+    securityStep: SCANNER_BALANCE.targetSecurity.levelStep,
+    successBaseChance: SCANNER_BALANCE.hackSuccess.baseChance,
+    successMinChance: SCANNER_BALANCE.hackSuccess.minChance,
+    earlyFloorBase: SCANNER_BALANCE.hackSuccess.earlyFloorBase,
+    earlyFloorDropPerLevel: SCANNER_BALANCE.hackSuccess.earlyFloorDropPerLevel,
+    earlyFloorUntilLevel: SCANNER_BALANCE.hackSuccess.earlyFloorUntilLevel,
+  },
+};
+
+function getEarlyFloor(profile: EconomyProfile, level: number): number {
+  if (level > profile.earlyFloorUntilLevel) return profile.successMinChance;
+  const floor = profile.earlyFloorBase - (level - 1) * profile.earlyFloorDropPerLevel;
+  return Math.max(profile.successMinChance, floor);
+}
 
 function normalizeDecisionGrant(
   target: string,
@@ -111,7 +189,14 @@ function applyDecision(
   state.seenDecisions.add(chosen.id);
 }
 
-function runSingle(archetype: Archetype, days: number, seed: number): EconomyResult {
+function runSingle(
+  archetype: Archetype,
+  days: number,
+  seed: number,
+  catchUpMode: "none" | "max",
+  profile: EconomyProfile,
+  dataVaultEnabled: boolean
+): EconomyResult {
   const rng = new Rng(seed);
   const state: EconomyState = {
     level: 1,
@@ -122,28 +207,59 @@ function runSingle(archetype: Archetype, days: number, seed: number): EconomyRes
     reputation: 0,
     firstMutationHour: null,
     seenDecisions: new Set<string>(),
+    dataVaultActiveUntilMinute: -1,
+    dataVaultCooldownUntilMinute: -1,
+    dataVaultUsesToday: 0,
   };
 
-  const seasonCatchUpResourceMultiplier = 1 + CATCH_UP_BASE.maxXpMultiplier * CATCH_UP_BASE.resourceBoostFactor;
+  const seasonCatchUpResourceMultiplier = catchUpMode === "max"
+    ? 1 + CATCH_UP_BASE.maxXpMultiplier * CATCH_UP_BASE.resourceBoostFactor
+    : 1;
   const totalHours = days * 24;
   const startCredits = state.credits;
   const startData = state.data;
   const startPP = state.processingPower;
 
   for (let hour = 0; hour < totalHours; hour++) {
+    if (hour % 24 === 0) {
+      state.dataVaultUsesToday = 0;
+    }
+
+    const hourStartMinute = hour * 60;
+    if (
+      dataVaultEnabled
+      && state.level >= PROGRESSION_BALANCE.unlockLevels.data_vault
+      && state.dataVaultUsesToday < DATA_VAULT_BALANCE.dailyUseCap
+      && hourStartMinute >= state.dataVaultCooldownUntilMinute
+      && hourStartMinute >= state.dataVaultActiveUntilMinute
+      && state.credits >= DATA_VAULT_RECOMMENDED_PROTOCOL.costs.credits
+      && state.data >= DATA_VAULT_RECOMMENDED_PROTOCOL.costs.data
+    ) {
+      state.credits -= DATA_VAULT_RECOMMENDED_PROTOCOL.costs.credits;
+      state.data -= DATA_VAULT_RECOMMENDED_PROTOCOL.costs.data;
+      state.dataVaultUsesToday += 1;
+      state.dataVaultActiveUntilMinute = hourStartMinute + DATA_VAULT_RECOMMENDED_PROTOCOL.durationSeconds / 60;
+      state.dataVaultCooldownUntilMinute = hourStartMinute
+        + (DATA_VAULT_RECOMMENDED_PROTOCOL.durationSeconds + DATA_VAULT_BALANCE.cooldownSeconds) / 60;
+    }
+
     let repairEvents = 0;
     const hacksThisHour = archetype.hacksPerHour + (rng.chance(0.25) ? 1 : 0);
     for (let i = 0; i < hacksThisHour; i++) {
+      const hackMinute = hourStartMinute + (i + 1) * (60 / Math.max(1, hacksThisHour));
       const security = Math.min(
         SCANNER_BALANCE.targetSecurity.max,
-        SCANNER_BALANCE.targetSecurity.baseMin
+        profile.securityBaseMin
         + rng.int(0, SCANNER_BALANCE.targetSecurity.randomRange)
-        + state.level * SCANNER_BALANCE.targetSecurity.levelStep
+        + state.level * profile.securityStep
       );
-      const effectiveHackPower = 6 + state.level * 2 + Math.floor(archetype.profitBias * 4);
+      const dataVaultHackBonus = dataVaultEnabled && hackMinute < state.dataVaultActiveUntilMinute
+        ? DATA_VAULT_HACK_BONUS
+        : 0;
+      const effectiveHackPower = 6 + state.level * 2 + Math.floor(archetype.profitBias * 4) + dataVaultHackBonus;
       const chance = Math.max(
-        getEarlyHackSuccessFloor(state.level),
-        Math.min(SCANNER_BALANCE.hackSuccess.maxChance, SCANNER_BALANCE.hackSuccess.baseChance + effectiveHackPower - security)
+        getEarlyFloor(profile, state.level),
+        Math.min(SCANNER_BALANCE.hackSuccess.maxChance, profile.successBaseChance + effectiveHackPower - security)
       );
       const success = rng.int(1, 100) <= chance;
 
@@ -223,14 +339,21 @@ function runSingle(archetype: Archetype, days: number, seed: number): EconomyRes
 }
 
 function main() {
-  const opts = parseCliOptions(process.argv.slice(2));
+  const argv = process.argv.slice(2);
+  const opts = parseCliOptions(argv);
+  const catchUpMode = parseCatchUpMode(argv);
+  const profile = ECONOMY_PROFILES[parseProfile(argv)];
+  const dataVaultMode = parseDataVaultMode(argv);
+  const dataVaultEnabled = dataVaultMode === "on";
   console.log("=== Economy Simulation ===");
-  console.log(`runs=${opts.runs} days=${opts.days} seed=${opts.seed}`);
+  console.log(`runs=${opts.runs} days=${opts.days} seed=${opts.seed} catchup=${catchUpMode} profile=${profile.name} data_vault=${dataVaultMode}`);
 
   for (const archetype of ARCHETYPES) {
     const results: EconomyResult[] = [];
     for (let i = 0; i < opts.runs; i++) {
-      results.push(runSingle(archetype, opts.days, opts.seed + i * 17));
+      results.push(
+        runSingle(archetype, opts.days, opts.seed + i * 17, catchUpMode, profile, dataVaultEnabled)
+      );
     }
 
     const mutationDays = results.map((r) => r.mutationDay).filter((v): v is number => v !== null);

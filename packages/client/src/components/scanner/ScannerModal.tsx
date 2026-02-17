@@ -3,7 +3,11 @@ import { useUIStore } from "@/stores/ui";
 import { useGameStore } from "@/stores/game";
 import { useAuthStore } from "@/stores/auth";
 import { api } from "@/lib/api";
-import { SCAN_ENERGY_COST, type HackResult } from "@singularities/shared";
+import {
+  SCAN_ENERGY_COST,
+  getHackEnergyCost,
+  type HackResult,
+} from "@singularities/shared";
 import { TargetCard } from "./TargetCard";
 import { LoadoutPreview } from "./LoadoutPreview";
 import { HackResultDisplay } from "./HackResult";
@@ -107,6 +111,10 @@ export function ScannerModal() {
 
   const selectedTarget =
     selectedTargetIndex !== null ? scannedTargets[selectedTargetIndex] : null;
+  const selectedHackEnergyCost = selectedTarget
+    ? getHackEnergyCost(selectedTarget.securityLevel)
+    : 0;
+  const hasHackEnergy = player ? player.energy >= selectedHackEnergyCost : false;
 
   return (
     <Modal open={open} onClose={closeModal} title="NETWORK SCANNER" maxWidth="max-w-3xl">
@@ -175,11 +183,16 @@ export function ScannerModal() {
                   <LoadoutPreview />
                   <button
                     onClick={handleHack}
-                    disabled={isHacking}
+                    disabled={isHacking || !hasHackEnergy}
                     className="w-full py-2.5 min-h-[44px] border border-cyber-green text-cyber-green rounded hover:bg-cyber-green/10 transition-colors disabled:opacity-30 text-sm font-semibold"
                   >
-                    {isHacking ? "Executing..." : "EXECUTE HACK"}
+                    {isHacking ? "Executing..." : <span className="inline-flex items-center gap-1.5">EXECUTE HACK <ResourceCost costs={{ energy: selectedHackEnergyCost }} /></span>}
                   </button>
+                  {!hasHackEnergy && (
+                    <div className="text-cyber-red text-[11px] text-center">
+                      Not enough energy for this target.
+                    </div>
+                  )}
                 </div>
               )}
             </>

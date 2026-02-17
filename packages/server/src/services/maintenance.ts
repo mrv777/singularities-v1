@@ -140,6 +140,236 @@ export async function repairSystem(playerId: string, systemType: string) {
   });
 }
 
+type RepairAllSkipReason =
+  | "full_health"
+  | "cooldown"
+  | "insufficient_energy"
+  | "insufficient_credits"
+  | "budget_exhausted";
+
+interface RepairAllSkipped {
+  systemType: string;
+  reason: RepairAllSkipReason;
+}
+
+interface PlannedRepair {
+  rowId: string;
+  systemType: string;
+  newHealth: number;
+  newStatus: string;
+  creditCost: number;
+}
+
+interface RepairCandidate {
+  rowId: string;
+  systemType: string;
+  currentHealth: number;
+}
+
+/**
+ * One-click maintenance helper.
+ * Economy parity: each repaired system pays the same costs as manual repair,
+ * with no discounts and no bypass of per-system cooldown.
+ */
+export async function repairAllSystems(playerId: string) {
+  const effects = await getActiveModifierEffects();
+  const energyCostPerRepair = Math.round(
+    ENERGY_COSTS.repair * (effects.energyCostMultiplier ?? 1)
+  );
+
+  return withTransaction(async (client: TxClient) => {
+    const playerResult = await client.query(
+      "SELECT * FROM players WHERE id = $1 FOR UPDATE",
+      [playerId]
+    );
+    if (playerResult.rows.length === 0) {
+      throw new RepairError("Player not found", 404);
+    }
+
+    const playerRow = computeEnergy(playerResult.rows[0]);
+    const systemsResult = await client.query(
+      "SELECT * FROM player_systems WHERE player_id = $1 FOR UPDATE",
+      [playerId]
+    );
+
+    const computedSystems = systemsResult.rows
+      .map((row) => computeSystemHealth(row, effects))
+      .sort((a, b) => (a.health as number) - (b.health as number));
+
+    const damagedCount = computedSystems.filter((s) => (s.health as number) < 100).length;
+    if (damagedCount === 0) {
+      throw new RepairError("All systems are already at full health", 400);
+    }
+
+    const planned: PlannedRepair[] = [];
+    const skipReasonBySystem = new Map<string, RepairAllSkipReason>();
+    let remainingEnergy = playerRow.energy as number;
+    let remainingCredits = playerRow.credits as number;
+    let budgetExhausted = false;
+    const repairCandidates: RepairCandidate[] = [];
+
+    for (const system of computedSystems) {
+      const systemType = system.system_type as string;
+      const currentHealth = system.health as number;
+      const rowId = system.id as string;
+
+      if (currentHealth >= 100) {
+        skipReasonBySystem.set(systemType, "full_health");
+        continue;
+      }
+
+      repairCandidates.push({ rowId, systemType, currentHealth });
+
+      if (budgetExhausted) {
+        skipReasonBySystem.set(systemType, "budget_exhausted");
+        continue;
+      }
+
+      const cooldownKey = `repair_cd:${playerId}:${systemType}`;
+      const cooldownActive = await redis.get(cooldownKey);
+      if (cooldownActive) {
+        skipReasonBySystem.set(systemType, "cooldown");
+        continue;
+      }
+
+      if (remainingEnergy < energyCostPerRepair) {
+        skipReasonBySystem.set(systemType, "insufficient_energy");
+        budgetExhausted = true;
+        continue;
+      }
+
+      const creditCost = Math.round(
+        getRepairCreditCostForHealth(currentHealth)
+        * (effects.repairCostMultiplier ?? 1)
+      );
+      if (remainingCredits < creditCost) {
+        skipReasonBySystem.set(systemType, "insufficient_credits");
+        budgetExhausted = true;
+        continue;
+      }
+
+      const newHealth = Math.min(100, currentHealth + REPAIR_HEALTH_AMOUNT);
+      const newStatus = getStatusForHealth(newHealth);
+
+      planned.push({
+        rowId,
+        systemType,
+        newHealth,
+        newStatus,
+        creditCost,
+      });
+      skipReasonBySystem.delete(systemType);
+
+      remainingEnergy -= energyCostPerRepair;
+      remainingCredits -= creditCost;
+    }
+
+    // Preserve worst-health-first, but if that would repair none, repair the
+    // worst damaged system that is actually affordable.
+    if (planned.length === 0) {
+      for (const candidate of repairCandidates) {
+        const cooldownKey = `repair_cd:${playerId}:${candidate.systemType}`;
+        const cooldownActive = await redis.get(cooldownKey);
+        if (cooldownActive) continue;
+
+        const creditCost = Math.round(
+          getRepairCreditCostForHealth(candidate.currentHealth)
+          * (effects.repairCostMultiplier ?? 1)
+        );
+        if (remainingEnergy < energyCostPerRepair) break;
+        if (remainingCredits < creditCost) continue;
+
+        const newHealth = Math.min(100, candidate.currentHealth + REPAIR_HEALTH_AMOUNT);
+        const newStatus = getStatusForHealth(newHealth);
+        planned.push({
+          rowId: candidate.rowId,
+          systemType: candidate.systemType,
+          newHealth,
+          newStatus,
+          creditCost,
+        });
+        skipReasonBySystem.delete(candidate.systemType);
+        remainingEnergy -= energyCostPerRepair;
+        remainingCredits -= creditCost;
+        break;
+      }
+    }
+
+    const skipped: RepairAllSkipped[] = computedSystems
+      .map((system) => {
+        const systemType = system.system_type as string;
+        const reason = skipReasonBySystem.get(systemType);
+        return reason ? { systemType, reason } : null;
+      })
+      .filter((item): item is RepairAllSkipped => item !== null);
+
+    if (planned.length === 0) {
+      if (skipped.some((s) => s.reason === "cooldown")) {
+        throw new RepairError("All damaged systems are on repair cooldown", 429);
+      }
+      if (skipped.some((s) => s.reason === "insufficient_energy")) {
+        throw new RepairError(
+          `Not enough energy. Need at least ${energyCostPerRepair}.`,
+          400
+        );
+      }
+      throw new RepairError("Not enough credits to repair damaged systems", 400);
+    }
+
+    const energySpent = planned.length * energyCostPerRepair;
+    const creditsSpent = planned.reduce((sum, item) => sum + item.creditCost, 0);
+
+    await client.query(
+      `UPDATE players
+       SET energy = $2,
+           energy_updated_at = NOW(),
+           credits = $3
+       WHERE id = $1`,
+      [playerId, remainingEnergy, remainingCredits]
+    );
+
+    for (const item of planned) {
+      await client.query(
+        `UPDATE player_systems
+         SET health = $2, status = $3, updated_at = NOW()
+         WHERE id = $1`,
+        [item.rowId, item.newHealth, item.newStatus]
+      );
+    }
+
+    for (const item of planned) {
+      const cooldownKey = `repair_cd:${playerId}:${item.systemType}`;
+      await redis.set(cooldownKey, "1", "EX", REPAIR_COOLDOWN_SECONDS);
+    }
+
+    const [updatedPlayerResult, updatedSystemsResult] = await Promise.all([
+      client.query("SELECT * FROM players WHERE id = $1", [playerId]),
+      client.query("SELECT * FROM player_systems WHERE player_id = $1", [playerId]),
+    ]);
+
+    const systemByType = new Map(
+      updatedSystemsResult.rows.map((row) => [row.system_type as string, mapSystemRow(row)])
+    );
+
+    return {
+      repaired: planned.map((item) => ({
+        system: systemByType.get(item.systemType)!,
+        energyCost: energyCostPerRepair,
+        creditCost: item.creditCost,
+      })),
+      skipped,
+      totals: {
+        repairedCount: planned.length,
+        skippedCount: skipped.length,
+        damagedCount,
+        energySpent,
+        creditsSpent,
+      },
+      player: mapPlayerRow(computeEnergy(updatedPlayerResult.rows[0])),
+    };
+  });
+}
+
 export class RepairError extends Error {
   constructor(
     message: string,

@@ -1,9 +1,12 @@
 import {
   ALL_MODULES,
+  DATA_VAULT_BALANCE,
+  DATA_VAULT_PROTOCOLS,
   ENERGY_BASE_MAX,
   ENERGY_BASE_REGEN_PER_HOUR,
   ENERGY_MAX_PER_LEVEL,
   ENERGY_REGEN_PER_LEVEL,
+  MODULE_PURCHASE_XP,
   PROGRESSION_BALANCE,
   SCAN_ENERGY_COST,
   SCANNER_BALANCE,
@@ -22,29 +25,59 @@ interface SimState {
   data: number;
   energy: number;
   energyMax: number;
-  hackPower: number;
   modules: Record<string, number>;
   hacks: number;
   successes: number;
   firstTwentyHacks: number;
   firstTwentySuccesses: number;
   targetsBuffered: number;
+  dataVaultActiveUntil: number;
+  dataVaultCooldownUntil: number;
+  dataVaultUsesToday: number;
 }
 
 interface SimResult {
+  minutesToLevel5: number;
+  minutesToLevel6: number;
+  minutesToLevel7: number;
+  minutesToLevel9: number;
   minutesToLevel4: number;
   minutesToLevel10: number;
   first20SuccessRate: number;
+  dataVaultActivations: number;
 }
 
 const HACK_MODULES = ALL_MODULES.filter((m) => (m.effects.hackPower ?? 0) > 0);
 const MODULE_LEVEL_CAP_FOR_SIM = 3;
+const DATA_VAULT_RECOMMENDED_PROTOCOL =
+  DATA_VAULT_PROTOCOLS.find((p) => p.recommended) ?? DATA_VAULT_PROTOCOLS[0];
+const DATA_VAULT_HACK_BONUS = DATA_VAULT_RECOMMENDED_PROTOCOL.buffs.hackPower ?? 0;
+
+function parseDataVaultMode(argv: string[]): "off" | "on" {
+  for (const arg of argv) {
+    if (arg.startsWith("--data-vault=")) {
+      const value = arg.slice("--data-vault=".length);
+      if (value === "off" || value === "on") return value;
+    }
+  }
+  return "off";
+}
 
 function regenPerMinute(level: number): number {
   return (ENERGY_BASE_REGEN_PER_HOUR + (level - 1) * ENERGY_REGEN_PER_LEVEL) / 60;
 }
 
-function runSingle(seed: number): SimResult {
+function getEffectiveHackPower(modules: Record<string, number>): number {
+  // Live gameplay only applies equipped modules (3 loadout slots).
+  // Approximate this in sim by taking top 3 hack-power contributions.
+  const contributions = HACK_MODULES
+    .map((m) => (m.effects.hackPower ?? 0) * (modules[m.id] ?? 0))
+    .filter((v) => v > 0)
+    .sort((a, b) => b - a);
+  return contributions.slice(0, 3).reduce((sum, v) => sum + v, 0);
+}
+
+function runSingle(seed: number, dataVaultEnabled: boolean): SimResult {
   const rng = new Rng(seed);
   const state: SimState = {
     minutes: 0,
@@ -54,16 +87,22 @@ function runSingle(seed: number): SimResult {
     data: 50,
     energy: ENERGY_BASE_MAX,
     energyMax: ENERGY_BASE_MAX,
-    hackPower: 0,
     modules: {},
     hacks: 0,
     successes: 0,
     firstTwentyHacks: 0,
     firstTwentySuccesses: 0,
     targetsBuffered: 0,
+    dataVaultActiveUntil: -1,
+    dataVaultCooldownUntil: -1,
+    dataVaultUsesToday: 0,
   };
 
   let level4At = -1;
+  let level5At = -1;
+  let level6At = -1;
+  let level7At = -1;
+  let level9At = -1;
   let level10At = -1;
 
   const waitForEnergy = (requiredEnergy: number) => {
@@ -80,8 +119,33 @@ function runSingle(seed: number): SimResult {
       state.energyMax = ENERGY_BASE_MAX + (state.level - 1) * ENERGY_MAX_PER_LEVEL;
       state.energy = Math.min(state.energyMax, state.energy);
       if (state.level >= 4 && level4At < 0) level4At = state.minutes;
+      if (state.level >= 5 && level5At < 0) level5At = state.minutes;
+      if (state.level >= 6 && level6At < 0) level6At = state.minutes;
+      if (state.level >= 7 && level7At < 0) level7At = state.minutes;
+      if (state.level >= 9 && level9At < 0) level9At = state.minutes;
       if (state.level >= 10 && level10At < 0) level10At = state.minutes;
     }
+  };
+
+  const maybeActivateDataVault = () => {
+    if (!dataVaultEnabled) return;
+    if (state.level < PROGRESSION_BALANCE.unlockLevels.data_vault) return;
+    if (state.dataVaultUsesToday >= DATA_VAULT_BALANCE.dailyUseCap) return;
+    if (state.minutes < state.dataVaultActiveUntil) return;
+    if (state.minutes < state.dataVaultCooldownUntil) return;
+    if (
+      state.credits < DATA_VAULT_RECOMMENDED_PROTOCOL.costs.credits
+      || state.data < DATA_VAULT_RECOMMENDED_PROTOCOL.costs.data
+    ) {
+      return;
+    }
+
+    state.credits -= DATA_VAULT_RECOMMENDED_PROTOCOL.costs.credits;
+    state.data -= DATA_VAULT_RECOMMENDED_PROTOCOL.costs.data;
+    state.dataVaultUsesToday += 1;
+    state.dataVaultActiveUntil = state.minutes + DATA_VAULT_RECOMMENDED_PROTOCOL.durationSeconds / 60;
+    state.dataVaultCooldownUntil = state.minutes
+      + (DATA_VAULT_RECOMMENDED_PROTOCOL.durationSeconds + DATA_VAULT_BALANCE.cooldownSeconds) / 60;
   };
 
   const buyBestModuleUpgrade = (): boolean => {
@@ -97,25 +161,29 @@ function runSingle(seed: number): SimResult {
             credits: m.baseCost.credits + m.costPerLevel.credits * current,
             data: m.baseCost.data + m.costPerLevel.data * current,
           };
-        const deltaHackPower = m.effects.hackPower ?? 0;
-        return { id: m.id, cost, deltaHackPower };
+        const currentEffective = getEffectiveHackPower(state.modules);
+        const nextModules = { ...state.modules, [m.id]: current + 1 };
+        const nextEffective = getEffectiveHackPower(nextModules);
+        const deltaEffective = nextEffective - currentEffective;
+        const rawDelta = m.effects.hackPower ?? 0;
+        const score = (deltaEffective > 0 ? deltaEffective : rawDelta * 0.2)
+          / (cost.credits + cost.data * 2);
+        return { id: m.id, cost, score };
       })
       .filter((c): c is NonNullable<typeof c> => c !== null)
       .filter((c) => c.cost.credits <= state.credits && c.cost.data <= state.data);
 
     if (candidates.length === 0) return false;
 
-    candidates.sort((a, b) => {
-      const scoreA = a.deltaHackPower / (a.cost.credits + a.cost.data * 2);
-      const scoreB = b.deltaHackPower / (b.cost.credits + b.cost.data * 2);
-      return scoreB - scoreA;
-    });
+    candidates.sort((a, b) => b.score - a.score);
+    if (candidates[0].score <= 0) return false;
 
     const chosen = candidates[0];
     state.credits -= chosen.cost.credits;
     state.data -= chosen.cost.data;
     state.modules[chosen.id] = (state.modules[chosen.id] ?? 0) + 1;
-    state.hackPower += chosen.deltaHackPower;
+    state.xp += MODULE_PURCHASE_XP;
+    applyLeveling();
     return true;
   };
 
@@ -123,6 +191,7 @@ function runSingle(seed: number): SimResult {
     while (buyBestModuleUpgrade()) {
       // Keep buying while upgrades are affordable.
     }
+    maybeActivateDataVault();
 
     if (state.targetsBuffered <= 0) {
       waitForEnergy(SCAN_ENERGY_COST);
@@ -153,7 +222,11 @@ function runSingle(seed: number): SimResult {
     if (state.firstTwentyHacks < 20) {
       state.firstTwentyHacks += 1;
     }
-    const baseChance = SCANNER_BALANCE.hackSuccess.baseChance + (state.hackPower - security);
+    const dataVaultHackBonus = state.minutes < state.dataVaultActiveUntil
+      ? DATA_VAULT_HACK_BONUS
+      : 0;
+    const effectiveHackPower = getEffectiveHackPower(state.modules) + dataVaultHackBonus;
+    const baseChance = SCANNER_BALANCE.hackSuccess.baseChance + (effectiveHackPower - security);
     const chance = Math.max(
       getEarlyHackSuccessFloor(state.level),
       Math.min(SCANNER_BALANCE.hackSuccess.maxChance, baseChance)
@@ -174,36 +247,66 @@ function runSingle(seed: number): SimResult {
   }
 
   return {
+    minutesToLevel5: level5At,
+    minutesToLevel6: level6At,
+    minutesToLevel7: level7At,
+    minutesToLevel9: level9At,
     minutesToLevel4: level4At,
     minutesToLevel10: level10At,
     first20SuccessRate: state.firstTwentyHacks > 0
       ? state.firstTwentySuccesses / state.firstTwentyHacks
       : 0,
+    dataVaultActivations: state.dataVaultUsesToday,
   };
 }
 
 function main() {
-  const opts = parseCliOptions(process.argv.slice(2));
+  const argv = process.argv.slice(2);
+  const opts = parseCliOptions(argv);
+  const dataVaultMode = parseDataVaultMode(argv);
+  const dataVaultEnabled = dataVaultMode === "on";
   const results: SimResult[] = [];
   for (let i = 0; i < opts.runs; i++) {
-    results.push(runSingle(opts.seed + i));
+    results.push(runSingle(opts.seed + i, dataVaultEnabled));
   }
 
   const level4Times = results.map((r) => r.minutesToLevel4).filter((v) => v >= 0);
+  const level5Times = results.map((r) => r.minutesToLevel5).filter((v) => v >= 0);
+  const level6Times = results.map((r) => r.minutesToLevel6).filter((v) => v >= 0);
+  const level7Times = results.map((r) => r.minutesToLevel7).filter((v) => v >= 0);
+  const level9Times = results.map((r) => r.minutesToLevel9).filter((v) => v >= 0);
   const level10Times = results.map((r) => r.minutesToLevel10).filter((v) => v >= 0);
   const successRates = results.map((r) => r.first20SuccessRate * 100);
+  const dataVaultActivations = results.map((r) => r.dataVaultActivations);
 
   console.log("=== Progression Simulation ===");
-  console.log(`runs=${opts.runs} seed=${opts.seed}`);
+  console.log(`runs=${opts.runs} seed=${opts.seed} data_vault=${dataVaultMode}`);
   console.log(`Reached level 4: ${level4Times.length}/${opts.runs}`);
+  console.log(`Reached level 5: ${level5Times.length}/${opts.runs}`);
+  console.log(`Reached level 6: ${level6Times.length}/${opts.runs}`);
+  console.log(`Reached level 7: ${level7Times.length}/${opts.runs}`);
+  console.log(`Reached level 9: ${level9Times.length}/${opts.runs}`);
   console.log(`Reached level 10: ${level10Times.length}/${opts.runs}`);
   console.log(
     `Level 4 minutes (p50/p75/p90): ${percentile(level4Times, 50).toFixed(1)} / ${percentile(level4Times, 75).toFixed(1)} / ${percentile(level4Times, 90).toFixed(1)}`
   );
   console.log(
+    `Level 5 minutes (p50/p75/p90): ${percentile(level5Times, 50).toFixed(1)} / ${percentile(level5Times, 75).toFixed(1)} / ${percentile(level5Times, 90).toFixed(1)}`
+  );
+  console.log(
+    `Level 6 minutes (p50/p75/p90): ${percentile(level6Times, 50).toFixed(1)} / ${percentile(level6Times, 75).toFixed(1)} / ${percentile(level6Times, 90).toFixed(1)}`
+  );
+  console.log(
+    `Level 7 minutes (p50/p75/p90): ${percentile(level7Times, 50).toFixed(1)} / ${percentile(level7Times, 75).toFixed(1)} / ${percentile(level7Times, 90).toFixed(1)}`
+  );
+  console.log(
+    `Level 9 minutes (p50/p75/p90): ${percentile(level9Times, 50).toFixed(1)} / ${percentile(level9Times, 75).toFixed(1)} / ${percentile(level9Times, 90).toFixed(1)}`
+  );
+  console.log(
     `Level 10 minutes (p50/p75/p90): ${percentile(level10Times, 50).toFixed(1)} / ${percentile(level10Times, 75).toFixed(1)} / ${percentile(level10Times, 90).toFixed(1)}`
   );
   console.log(`First-20 hack success rate avg: ${average(successRates).toFixed(1)}%`);
+  console.log(`Data Vault activations avg: ${average(dataVaultActivations).toFixed(2)}`);
 }
 
 main();

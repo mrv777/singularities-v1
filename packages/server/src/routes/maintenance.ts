@@ -1,6 +1,11 @@
 import type { FastifyInstance } from "fastify";
 import { authGuard, type AuthPayload } from "../middleware/auth.js";
-import { fullScan, repairSystem, RepairError } from "../services/maintenance.js";
+import {
+  fullScan,
+  repairSystem,
+  repairAllSystems,
+  RepairError,
+} from "../services/maintenance.js";
 
 export async function maintenanceRoutes(app: FastifyInstance) {
   app.post(
@@ -30,6 +35,28 @@ export async function maintenanceRoutes(app: FastifyInstance) {
 
       try {
         const result = await repairSystem(playerId, systemType);
+        return result;
+      } catch (err) {
+        if (err instanceof RepairError) {
+          return reply.code(err.statusCode).send({
+            error: "Repair Failed",
+            message: err.message,
+            statusCode: err.statusCode,
+          });
+        }
+        throw err;
+      }
+    }
+  );
+
+  app.post(
+    "/api/maintenance/repair-all",
+    { preHandler: [authGuard] },
+    async (request, reply) => {
+      const { sub: playerId } = request.user as AuthPayload;
+
+      try {
+        const result = await repairAllSystems(playerId);
         return result;
       } catch (err) {
         if (err instanceof RepairError) {

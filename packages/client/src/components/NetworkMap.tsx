@@ -31,8 +31,8 @@ const NODES: NodeDef[] = [
   { id: "pvp_arena", label: "Arena", x: 400, y: 440, unlockLevel: LEVEL_UNLOCKS.pvp_arena, icon: <Swords size={20} /> },
   { id: "security_center", label: "Security", x: 660, y: 400, unlockLevel: LEVEL_UNLOCKS.security_center, icon: <ShieldAlert size={20} /> },
   { id: "network_stats", label: "Net Stats", x: 720, y: 300, unlockLevel: LEVEL_UNLOCKS.network_stats, icon: <BarChart3 size={20} /> },
-  { id: "quantum_lab", label: "???", x: 120, y: 100, unlockLevel: 99, comingSoon: true, icon: <FlaskConical size={20} /> },
-  { id: "data_vault", label: "???", x: 680, y: 80, unlockLevel: 99, comingSoon: true, icon: <DatabaseIcon size={20} /> },
+  { id: "quantum_lab", label: "Quantum Lab", x: 120, y: 100, unlockLevel: LEVEL_UNLOCKS.quantum_lab, comingSoon: true, icon: <FlaskConical size={20} /> },
+  { id: "data_vault", label: "Data Vault", x: 680, y: 80, unlockLevel: LEVEL_UNLOCKS.data_vault, icon: <DatabaseIcon size={20} /> },
 ];
 
 interface NetworkMapProps {

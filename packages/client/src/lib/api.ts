@@ -19,7 +19,11 @@ import type {
   ExitSandboxResponse,
   RepairRequest,
   RepairResponse,
+  RepairAllResponse,
   FullScanResponse,
+  DataVaultStatusResponse,
+  DataVaultActivateRequest,
+  DataVaultActivateResponse,
   ModifierResponse,
   ScriptCreateRequest,
   ScriptListResponse,
@@ -182,9 +186,27 @@ class ApiClient {
     });
   }
 
+  repairAllSystems() {
+    return this.fetch<RepairAllResponse>("/maintenance/repair-all", {
+      method: "POST",
+    });
+  }
+
   fullScan() {
     return this.fetch<FullScanResponse>("/maintenance/full-scan", {
       method: "POST",
+    });
+  }
+
+  // Data Vault
+  getDataVaultStatus() {
+    return this.fetch<DataVaultStatusResponse>("/data-vault/status");
+  }
+
+  activateDataVaultProtocol(data: DataVaultActivateRequest) {
+    return this.fetch<DataVaultActivateResponse>("/data-vault/activate", {
+      method: "POST",
+      body: JSON.stringify(data),
     });
   }
 

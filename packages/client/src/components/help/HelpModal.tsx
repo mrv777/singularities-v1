@@ -3,6 +3,15 @@ import { useUIStore } from "@/stores/ui";
 import { useState } from "react";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import {
+  SANDBOX_EXIT_LEVEL,
+  SCAN_ENERGY_COST,
+  DAY_PHASE_HOURS,
+  ENERGY_COSTS,
+  MUTATION_COST,
+  PVP_ENERGY_COST,
+  getRepairCreditCostForHealth,
+} from "@singularities/shared";
+import {
   Rocket,
   Coins,
   Zap,
@@ -26,6 +35,7 @@ type Section =
   | "tech_tree"
   | "maintenance"
   | "scripts"
+  | "data_vault"
   | "arena"
   | "security";
 
@@ -36,9 +46,14 @@ const SECTIONS: { id: Section; label: string; icon: React.ReactNode }[] = [
   { id: "tech_tree", label: "Tech Tree", icon: <GitBranch size={14} /> },
   { id: "maintenance", label: "System Maintenance", icon: <Wrench size={14} /> },
   { id: "scripts", label: "Scripts", icon: <Code2 size={14} /> },
+  { id: "data_vault", label: "Data Vault", icon: <Database size={14} /> },
   { id: "arena", label: "PvP Arena", icon: <Swords size={14} /> },
   { id: "security", label: "Security Center", icon: <ShieldAlert size={14} /> },
 ];
+
+function formatUtcHour(hour: number): string {
+  return `${hour.toString().padStart(2, "0")}:00`;
+}
 
 function SectionContent({ section }: { section: Section }) {
   switch (section) {
@@ -60,7 +75,7 @@ function SectionContent({ section }: { section: Section }) {
             </ol>
           </div>
           <p className="text-text-muted">
-            New players start in Sandbox mode. Reach level 3 to exit and enter the live network.
+            New players start in Sandbox mode. Reach level {SANDBOX_EXIT_LEVEL} to exit and enter the live network.
           </p>
         </div>
       );
@@ -92,7 +107,7 @@ function SectionContent({ section }: { section: Section }) {
           <div className="space-y-1">
             <div className="text-text-primary font-semibold text-[11px]">How it works</div>
             <ul className="list-disc list-inside space-y-1 text-text-muted">
-              <li>Scanning costs <span className="text-cyber-cyan">5 energy</span> and reveals 5 targets</li>
+              <li>Scanning costs <span className="text-cyber-cyan">{SCAN_ENERGY_COST} energy</span> and reveals 5 targets</li>
               <li>Targets expire after 10 minutes — hack or re-scan</li>
               <li>Each target has a security level, risk rating, and reward preview</li>
               <li>Higher security = higher rewards but more energy cost and detection risk</li>
@@ -124,7 +139,7 @@ function SectionContent({ section }: { section: Section }) {
             <div className="text-text-primary font-semibold text-[11px]">Upgrades & Mutations</div>
             <p className="text-text-muted">
               Each module can be upgraded to level 5. At level 3+, you can attempt a mutation (65% success rate)
-              which adds a unique variant with bonus effects. Mutations cost 500 credits, 200 data, and 100 processing power.
+              which adds a unique variant with bonus effects. Mutations cost {MUTATION_COST.credits} credits, {MUTATION_COST.data} data, and {MUTATION_COST.processingPower} processing power.
             </p>
           </div>
         </div>
@@ -145,7 +160,9 @@ function SectionContent({ section }: { section: Section }) {
           <div className="space-y-1">
             <div className="text-text-primary font-semibold text-[11px]">Repair & Cascade</div>
             <p className="text-text-muted">
-              Repairs cost 15 energy + 25 credits and restore 30 HP. Adjacent systems take cascade damage
+              Repairs cost {ENERGY_COSTS.repair} energy + variable credits based on missing health
+              (about {getRepairCreditCostForHealth(50)} credits at 50% health) and restore 30 HP.
+              Adjacent systems take cascade damage
               from critical/corrupted neighbors — keep systems healthy to prevent chain failures.
             </p>
           </div>
@@ -166,6 +183,23 @@ function SectionContent({ section }: { section: Section }) {
           </div>
         </div>
       );
+    case "data_vault":
+      return (
+        <div className="space-y-3 text-xs text-text-secondary leading-relaxed">
+          <p>
+            Data Vault converts saved telemetry into short, reliable combat boosts.
+          </p>
+          <div className="space-y-1">
+            <div className="text-text-primary font-semibold text-[11px]">How it works</div>
+            <ul className="list-disc list-inside space-y-1 text-text-muted">
+              <li>Activate one protocol at a time (deterministic, no failure roll)</li>
+              <li>Protocols consume credits + data and run for a short duration</li>
+              <li>You have a short cooldown and a daily activation cap</li>
+              <li>Use Focus Cache for faster progression, Ghost Cache for safer hacks</li>
+            </ul>
+          </div>
+        </div>
+      );
     case "arena":
       return (
         <div className="space-y-3 text-xs text-text-secondary leading-relaxed">
@@ -173,14 +207,24 @@ function SectionContent({ section }: { section: Section }) {
           <div className="space-y-1">
             <div className="text-text-primary font-semibold text-[11px]">Day Phases</div>
             <ul className="list-disc list-inside space-y-1 text-text-muted">
-              <li><span className="text-cyber-green">PvE Phase (06:00-18:00 UTC)</span> — Focus on hacking and upgrades</li>
-              <li><span className="text-cyber-magenta">PvP Phase (18:00-06:00 UTC)</span> — Arena opens for combat</li>
+              <li>
+                <span className="text-cyber-green">
+                  PvE Phase ({formatUtcHour(DAY_PHASE_HOURS.pve.start)}-{formatUtcHour(DAY_PHASE_HOURS.pve.end)} UTC)
+                </span>
+                {" "}— Focus on hacking and upgrades
+              </li>
+              <li>
+                <span className="text-cyber-magenta">
+                  PvP Phase ({formatUtcHour(DAY_PHASE_HOURS.pvp.start)}-{formatUtcHour(DAY_PHASE_HOURS.pvp.end)} UTC)
+                </span>
+                {" "}— Arena opens for combat
+              </li>
             </ul>
           </div>
           <div className="space-y-1">
             <div className="text-text-primary font-semibold text-[11px]">Combat</div>
             <p className="text-text-muted">
-              Attacks cost 25 energy. Your infiltration loadout attacks, their defense loadout defends.
+              Attacks cost {PVP_ENERGY_COST} energy. Your infiltration loadout attacks, their defense loadout defends.
               Winners earn credits, reputation, and XP. Losers may take system damage.
             </p>
           </div>
