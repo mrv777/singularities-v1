@@ -8,10 +8,12 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test src/**/*.test.ts",
     "db:migrate": "tsx src/db/migrate.ts",
     "sim:progression": "node --import tsx src/simulations/progressionSimulation.ts",
     "sim:economy": "node --import tsx src/simulations/economySimulation.ts",
     "sim:day1": "node --import tsx src/simulations/day1HookSimulation.ts",
+    "sim:bots": "node --import tsx src/simulations/botArenaSimulation.ts",
     "sim:all": "pnpm run sim:progression && pnpm run sim:economy"
   },
   "dependencies": {

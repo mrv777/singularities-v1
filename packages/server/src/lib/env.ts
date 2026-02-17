@@ -1,4 +1,21 @@
-import "dotenv/config";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import dotenv from "dotenv";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const repoRoot = path.resolve(__dirname, "../../../..");
+const candidateEnvPaths = [
+  process.env.DOTENV_CONFIG_PATH,
+  path.resolve(process.cwd(), ".env"),
+  path.resolve(repoRoot, ".env"),
+].filter((p): p is string => Boolean(p));
+
+for (const envPath of candidateEnvPaths) {
+  if (!fs.existsSync(envPath)) continue;
+  dotenv.config({ path: envPath });
+  break;
+}
 
 export const env = {
   DATABASE_URL:
@@ -18,4 +35,7 @@ export const env = {
   PROGRAM_ID: process.env.PROGRAM_ID ?? "",
   SERVER_KEYPAIR_PATH:
     process.env.SERVER_KEYPAIR_PATH ?? "./server-keypair.json",
+  ADMIN_ENABLED: process.env.ADMIN_ENABLED === "true",
+  ADMIN_PLAYER_IDS: process.env.ADMIN_PLAYER_IDS ?? "",
+  ADMIN_WALLET_ADDRESSES: process.env.ADMIN_WALLET_ADDRESSES ?? "",
 } as const;

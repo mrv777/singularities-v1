@@ -20,6 +20,7 @@ import { worldRoutes } from "./routes/world.js";
 import { decisionRoutes } from "./routes/decisions.js";
 import { mutationRoutes } from "./routes/mutations.js";
 import { seasonRoutes } from "./routes/seasons.js";
+import { adminRoutes } from "./routes/admin.js";
 import { wsRoutes } from "./routes/ws.js";
 import { startWorker, stopWorker } from "./worker/index.js";
 
@@ -68,6 +69,7 @@ await app.register(worldRoutes);
 await app.register(decisionRoutes);
 await app.register(mutationRoutes);
 await app.register(seasonRoutes);
+await app.register(adminRoutes);
 await app.register(wsRoutes);
 
 // Start

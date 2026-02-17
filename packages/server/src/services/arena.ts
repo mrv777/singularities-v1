@@ -17,6 +17,17 @@ import { shiftAlignment } from "./alignment.js";
 import { triggerDecision } from "./decisions.js";
 import { ALIGNMENT_SHIFTS } from "@singularities/shared";
 import { broadcastSystem, sendActivity } from "./ws.js";
+import { getArenaBotsEnabled } from "./admin.js";
+import {
+  BOT_MAX_ATTACKS_PER_DAY,
+  type ArenaBotProfile,
+  getBotAttackRedisKey,
+  isBotTargetAllowedForPlayer,
+  isBotTargetId,
+  parseBotTargetId,
+  resolveAttackAgainstBot,
+  withBotBackfill,
+} from "./arenaBots.js";
 
 function getTodayKey(): string {
   return new Date().toISOString().slice(0, 10); // YYYY-MM-DD
@@ -70,7 +81,14 @@ export async function getAvailableOpponents(playerId: string, playerLevel: numbe
     });
   }
 
-  return opponents;
+  const botsEnabled = await getArenaBotsEnabled();
+  if (!botsEnabled) return opponents;
+
+  const botAttackCountStr = await redis.get(getBotAttackRedisKey(playerId, dateKey));
+  const botCapReached = (botAttackCountStr ? parseInt(botAttackCountStr, 10) : 0) >= BOT_MAX_ATTACKS_PER_DAY;
+  if (botCapReached) return opponents;
+
+  return withBotBackfill(playerId, playerLevel, dateKey, opponents);
 }
 
 /**
@@ -137,6 +155,17 @@ export async function executeAttack(attackerId: string, targetId: string) {
   // Validate PvP hours
   if (!isPvpHours()) {
     throw { statusCode: 400, message: "PvP attacks only during PvP hours (12:00-24:00 UTC)" };
+  }
+
+  if (isBotTargetId(targetId)) {
+    if (!(await getArenaBotsEnabled())) {
+      throw { statusCode: 400, message: "Simulated opponents are currently disabled" };
+    }
+    const bot = parseBotTargetId(targetId, dateKey);
+    if (!bot) {
+      throw { statusCode: 400, message: "Invalid simulated opponent target" };
+    }
+    return executeBotAttack(attackerId, bot, dateKey, resourceMultiplier);
   }
 
   const txResult = await withTransaction(async (client) => {
@@ -334,6 +363,133 @@ export async function executeAttack(attackerId: string, targetId: string) {
   // Phase 4: Trigger decision after combat (fire-and-forget, outside transaction)
   try {
     await triggerDecision(attackerId, "afterCombat");
+  } catch {
+    // Non-critical
+  }
+
+  return txResult;
+}
+
+async function executeBotAttack(
+  attackerId: string,
+  bot: ArenaBotProfile,
+  dateKey: string,
+  resourceMultiplier: number
+) {
+  const txResult = await withTransaction(async (client) => {
+    const attackerRes = await client.query("SELECT * FROM players WHERE id = $1 FOR UPDATE", [attackerId]);
+    const attackerRow = attackerRes.rows[0];
+    if (!attackerRow) throw { statusCode: 404, message: "Player not found" };
+
+    const attacker = computeEnergy(attackerRow);
+    if (!(attacker.is_alive as boolean)) throw { statusCode: 400, message: "You are dead" };
+    if (attacker.is_in_sandbox as boolean) throw { statusCode: 400, message: "Cannot attack from sandbox" };
+    if (!(attacker.in_pvp_arena as boolean)) throw { statusCode: 400, message: "Must enter arena first" };
+
+    const attackerLevel = attacker.level as number;
+    if (!isBotTargetAllowedForPlayer(attackerId, attackerLevel, bot.id, dateKey)) {
+      throw { statusCode: 400, message: "Simulated opponent is unavailable for your level band" };
+    }
+
+    const botAttackKey = getBotAttackRedisKey(attackerId, dateKey);
+    const botAttackCountStr = await redis.get(botAttackKey);
+    const botAttackCount = botAttackCountStr ? parseInt(botAttackCountStr, 10) : 0;
+    if (botAttackCount >= BOT_MAX_ATTACKS_PER_DAY) {
+      throw { statusCode: 400, message: "Daily simulated-opponent attack limit reached" };
+    }
+
+    const energy = attacker.energy as number;
+    if (energy < PVP_ENERGY_COST) {
+      throw { statusCode: 400, message: `Not enough energy. Need ${PVP_ENERGY_COST}, have ${energy}` };
+    }
+    await client.query(
+      "UPDATE players SET energy = $2, energy_updated_at = NOW() WHERE id = $1",
+      [attackerId, energy - PVP_ENERGY_COST]
+    );
+
+    const outcome = await resolveAttackAgainstBot(attackerId, bot, client);
+    let appliedRewards: CombatOutcome["rewards"] | undefined = outcome.rewards;
+
+    if (outcome.result === "attacker_win") {
+      const credits = Math.max(1, Math.floor((outcome.rewards?.credits ?? 0) * resourceMultiplier));
+      const processingPower = Math.max(
+        0,
+        Math.floor((outcome.rewards?.processingPower ?? 0) * resourceMultiplier)
+      );
+      const reputation = 0;
+      const xp = outcome.rewards?.xp ?? 0;
+      appliedRewards = { credits, reputation, xp, processingPower };
+
+      await client.query(
+        `UPDATE players
+         SET credits = credits + $2,
+             processing_power = processing_power + $3
+         WHERE id = $1`,
+        [attackerId, credits, processingPower]
+      );
+      await awardXP(attackerId, xp, client);
+    } else if (outcome.damage) {
+      await applyCombatDamage(attackerId, outcome.damage.systems, client);
+    }
+
+    if (outcome.result === "defender_win" && outcome.damage) {
+      await checkDeath(attackerId, client);
+    }
+
+    const logRes = await client.query(
+      `INSERT INTO combat_logs (
+         attacker_id, defender_id, attacker_loadout, defender_loadout, result, damage_dealt,
+         credits_transferred, reputation_change, combat_log, xp_awarded, is_bot_match, bot_profile
+       )
+       VALUES ($1, NULL, $2, $3, $4, $5, $6, $7, $8, $9, true, $10)
+       RETURNING *`,
+      [
+        attackerId,
+        JSON.stringify({}),
+        JSON.stringify({}),
+        outcome.result,
+        outcome.damage
+          ? JSON.stringify(outcome.damage.systems.reduce((acc, d) => ({ ...acc, [d.systemType]: d.damage }), {}))
+          : null,
+        appliedRewards?.credits ?? 0,
+        0,
+        JSON.stringify(outcome.combatLogEntries),
+        appliedRewards?.xp ?? 0,
+        JSON.stringify({
+          botId: bot.id,
+          aiName: bot.aiName,
+          tier: bot.tier,
+          level: bot.level,
+          playstyle: bot.playstyle,
+          rewardMultiplier: bot.rewardMultiplier,
+        }),
+      ]
+    );
+
+    const finalRes = await client.query("SELECT * FROM players WHERE id = $1", [attackerId]);
+    const finalPlayer = computeEnergy(finalRes.rows[0]);
+
+    return {
+      result: outcome.result,
+      narrative: outcome.narrative,
+      rewards: appliedRewards,
+      damage: outcome.damage,
+      player: mapPlayerRow({ ...finalRes.rows[0], energy: finalPlayer.energy }),
+      combatLog: mapCombatLogRow(logRes.rows[0]),
+    };
+  });
+
+  const botAttackKey = getBotAttackRedisKey(attackerId, dateKey);
+  await redis.incr(botAttackKey);
+  await redis.expire(botAttackKey, 86400);
+
+  try {
+    sendActivity(
+      attackerId,
+      `Simulated combat ${txResult.result === "attacker_win" ? "victory" : "defeat"}${
+        txResult.rewards ? ` — +${txResult.rewards.credits} CR, +${txResult.rewards.processingPower ?? 0} PP` : ""
+      }`
+    );
   } catch {
     // Non-critical
   }

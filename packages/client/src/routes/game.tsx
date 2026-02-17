@@ -103,6 +103,7 @@ function RegistrationForm() {
 
 function GamePage() {
   const { isAuthenticated, player, setPlayer } = useAuthStore();
+  const hasStoredToken = Boolean(api.getToken());
   const queryClient = useQueryClient();
   const setWorldEvents = useGameStore((s) => s.setWorldEvents);
   const setPendingDecision = useGameStore((s) => s.setPendingDecision);
@@ -134,6 +135,18 @@ function GamePage() {
       return () => wsManager.disconnect();
     }
   }, [player?.isAlive, addChatMessage, setChatHistory, setChatConnected]);
+
+  if (!isAuthenticated && hasStoredToken) {
+    return (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="py-8 text-text-secondary text-sm"
+      >
+        Restoring session...
+      </motion.div>
+    );
+  }
 
   if (!isAuthenticated) {
     return <Navigate to="/" />;

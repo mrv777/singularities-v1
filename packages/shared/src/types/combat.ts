@@ -12,7 +12,7 @@ export interface CombatLogEntry {
 export interface CombatLog {
   id: string;
   attackerId: string;
-  defenderId: string;
+  defenderId: string | null;
   attackerLoadout: Record<string, unknown>;
   defenderLoadout: Record<string, unknown>;
   result: CombatResult;
@@ -20,6 +20,16 @@ export interface CombatLog {
   creditsTransferred: number;
   reputationChange: number;
   combatLog: CombatLogEntry[];
+  xpAwarded: number;
+  isBotMatch: boolean;
+  botProfile: {
+    botId: string;
+    aiName: string;
+    tier: "novice" | "adaptive" | "elite";
+    level: number;
+    playstyle: string;
+    rewardMultiplier: number;
+  } | null;
   createdAt: string;
 }
 

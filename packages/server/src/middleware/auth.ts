@@ -9,6 +9,10 @@ export async function authGuard(request: FastifyRequest, reply: FastifyReply) {
   try {
     await request.jwtVerify();
   } catch {
-    reply.code(401).send({ error: "Unauthorized", message: "Invalid or missing token", statusCode: 401 });
+    return reply.code(401).send({
+      error: "Unauthorized",
+      message: "Invalid or missing token",
+      statusCode: 401,
+    });
   }
 }

@@ -22,6 +22,11 @@ export function OpponentCard({ opponent, onAttack, isAttacking }: OpponentCardPr
           <span className="text-text-primary text-sm font-semibold truncate">
             {opponent.aiName}
           </span>
+          {opponent.isBot && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded border border-cyber-yellow text-cyber-yellow">
+              SIM
+            </span>
+          )}
           <span className={`text-[10px] px-1.5 py-0.5 rounded border border-current ${PLAYSTYLE_COLORS[opponent.playstyle] ?? "text-text-muted"}`}>
             {opponent.playstyle}
           </span>
@@ -34,6 +39,9 @@ export function OpponentCard({ opponent, onAttack, isAttacking }: OpponentCardPr
           ) : opponent.alignment < -0.3 ? (
             <span className="text-cyber-red">Domination</span>
           ) : null}
+          {opponent.isBot && (
+            <span className="text-cyber-yellow/90">Reduced rewards</span>
+          )}
         </div>
       </div>
       <button

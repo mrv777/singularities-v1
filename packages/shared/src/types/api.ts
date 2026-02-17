@@ -234,6 +234,9 @@ export interface ArenaOpponent {
   reputation: number;
   playstyle: string;
   alignment: number;
+  isBot?: boolean;
+  botTier?: "novice" | "adaptive" | "elite";
+  disclosureLabel?: string;
 }
 
 export interface ArenaAvailableResponse {
@@ -357,6 +360,78 @@ export interface CurrentSeasonResponse {
 export interface SeasonLeaderboardResponse {
   leaderboard: SeasonLeaderboardEntry[];
   playerRank: number | null;
+}
+
+// Admin
+export interface AdminStatusResponse {
+  adminEnabled: boolean;
+  isAdmin: true;
+  actor: {
+    playerId: string;
+    walletAddress: string;
+  };
+  serverTime: string;
+}
+
+export interface AdminOverviewResponse {
+  generatedAt: string;
+  season: {
+    id: number;
+    name: string;
+    endsAt: string;
+    daysRemaining: number;
+  } | null;
+  metrics: {
+    alivePlayers: number;
+    activePlayers24h: number;
+    inArenaNow: number;
+    hacksToday: number;
+    pvpHumanToday: number;
+    pvpBotToday: number;
+    deathsToday: number;
+    botMatchShareToday: number;
+  };
+  pvpDailySeries: Array<{
+    date: string;
+    humanMatches: number;
+    botMatches: number;
+  }>;
+  arenaBots: {
+    enabled: boolean;
+    targetOpponentFloor: number;
+    maxBackfillPerRequest: number;
+    maxAttacksPerDay: number;
+    maxPlayerLevel: number;
+  };
+  recentAdminActions: Array<{
+    id: string;
+    adminPlayerId: string;
+    action: string;
+    details: Record<string, unknown> | null;
+    ipAddress: string | null;
+    userAgent: string | null;
+    createdAt: string;
+  }>;
+}
+
+export interface AdminArenaBotSettingsRequest {
+  enabled: boolean;
+  note?: string;
+}
+
+export interface AdminArenaBotSettingsResponse {
+  success: boolean;
+  enabled: boolean;
+}
+
+export interface AdminArenaBotPreviewResponse {
+  requestedLevel: number;
+  bots: ArenaOpponent[];
+}
+
+export interface AdminSeasonEndRequest {
+  confirmation: "END SEASON";
+  reason?: string;
 }
 
 // Generic error

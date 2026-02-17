@@ -93,7 +93,7 @@ export function mapCombatLogRow(row: Record<string, unknown>) {
   return {
     id: row.id as string,
     attackerId: row.attacker_id as string,
-    defenderId: row.defender_id as string,
+    defenderId: (row.defender_id as string) ?? null,
     attackerLoadout: (row.attacker_loadout as Record<string, unknown>) ?? {},
     defenderLoadout: (row.defender_loadout as Record<string, unknown>) ?? {},
     result: row.result as string,
@@ -102,6 +102,15 @@ export function mapCombatLogRow(row: Record<string, unknown>) {
     reputationChange: row.reputation_change as number,
     combatLog: (row.combat_log as unknown[]) ?? [],
     xpAwarded: (row.xp_awarded as number) ?? 0,
+    isBotMatch: (row.is_bot_match as boolean) ?? false,
+    botProfile: (row.bot_profile as {
+      botId: string;
+      aiName: string;
+      tier: "novice" | "adaptive" | "elite";
+      level: number;
+      playstyle: string;
+      rewardMultiplier: number;
+    }) ?? null,
     createdAt: row.created_at as string,
   };
 }

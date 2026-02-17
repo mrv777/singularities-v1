@@ -29,7 +29,7 @@ export async function getNetworkStats(): Promise<NetworkStats> {
       [today]
     ),
     query(
-      "SELECT COUNT(*) as count FROM combat_logs WHERE created_at::date = $1",
+      "SELECT COUNT(*) as count FROM combat_logs WHERE created_at::date = $1 AND COALESCE(is_bot_match, false) = false",
       [today]
     ),
     query(

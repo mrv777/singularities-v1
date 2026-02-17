@@ -46,6 +46,12 @@ import type {
   MutateModuleResponse,
   CurrentSeasonResponse,
   SeasonLeaderboardResponse,
+  AdminStatusResponse,
+  AdminOverviewResponse,
+  AdminArenaBotSettingsRequest,
+  AdminArenaBotSettingsResponse,
+  AdminArenaBotPreviewResponse,
+  AdminSeasonEndRequest,
 } from "@singularities/shared";
 
 const API_BASE = "/api";
@@ -320,6 +326,33 @@ class ApiClient {
 
   getSeasonLeaderboard() {
     return this.fetch<SeasonLeaderboardResponse>("/seasons/leaderboard");
+  }
+
+  // Admin
+  getAdminStatus() {
+    return this.fetch<AdminStatusResponse>("/admin/status");
+  }
+
+  getAdminOverview() {
+    return this.fetch<AdminOverviewResponse>("/admin/overview");
+  }
+
+  getAdminBotPreview(level: number) {
+    return this.fetch<AdminArenaBotPreviewResponse>(`/admin/bots/preview?level=${encodeURIComponent(level)}`);
+  }
+
+  setAdminBotsEnabled(data: AdminArenaBotSettingsRequest) {
+    return this.fetch<AdminArenaBotSettingsResponse>("/admin/bots/enabled", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  adminEndSeason(data: AdminSeasonEndRequest) {
+    return this.fetch<{ success: boolean }>("/admin/season/end", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
   }
 }
 

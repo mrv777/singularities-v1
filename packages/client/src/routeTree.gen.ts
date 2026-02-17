@@ -9,9 +9,15 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from "./routes/__root"
+import { Route as OpsNexus8fohConsoleRouteImport } from "./routes/ops-nexus-8foh-console"
 import { Route as GameRouteImport } from "./routes/game"
 import { Route as IndexRouteImport } from "./routes/index"
 
+const OpsNexus8fohConsoleRoute = OpsNexus8fohConsoleRouteImport.update({
+  id: "/ops-nexus-8foh-console",
+  path: "/ops-nexus-8foh-console",
+  getParentRoute: () => rootRouteImport,
+} as any)
 const GameRoute = GameRouteImport.update({
   id: "/game",
   path: "/game",
@@ -26,31 +32,42 @@ const IndexRoute = IndexRouteImport.update({
 export interface FileRoutesByFullPath {
   "/": typeof IndexRoute
   "/game": typeof GameRoute
+  "/ops-nexus-8foh-console": typeof OpsNexus8fohConsoleRoute
 }
 export interface FileRoutesByTo {
   "/": typeof IndexRoute
   "/game": typeof GameRoute
+  "/ops-nexus-8foh-console": typeof OpsNexus8fohConsoleRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   "/": typeof IndexRoute
   "/game": typeof GameRoute
+  "/ops-nexus-8foh-console": typeof OpsNexus8fohConsoleRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: "/" | "/game"
+  fullPaths: "/" | "/game" | "/ops-nexus-8foh-console"
   fileRoutesByTo: FileRoutesByTo
-  to: "/" | "/game"
-  id: "__root__" | "/" | "/game"
+  to: "/" | "/game" | "/ops-nexus-8foh-console"
+  id: "__root__" | "/" | "/game" | "/ops-nexus-8foh-console"
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   GameRoute: typeof GameRoute
+  OpsNexus8fohConsoleRoute: typeof OpsNexus8fohConsoleRoute
 }
 
 declare module "@tanstack/react-router" {
   interface FileRoutesByPath {
+    "/ops-nexus-8foh-console": {
+      id: "/ops-nexus-8foh-console"
+      path: "/ops-nexus-8foh-console"
+      fullPath: "/ops-nexus-8foh-console"
+      preLoaderRoute: typeof OpsNexus8fohConsoleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     "/game": {
       id: "/game"
       path: "/game"
@@ -71,6 +88,7 @@ declare module "@tanstack/react-router" {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   GameRoute: GameRoute,
+  OpsNexus8fohConsoleRoute: OpsNexus8fohConsoleRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
