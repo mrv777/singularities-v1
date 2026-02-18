@@ -89,11 +89,11 @@ import {
   PASSIVE_CREDITS_PER_HOUR,
   PASSIVE_DATA_PER_HOUR,
   PASSIVE_MAX_HOURS,
+  SCAN_ENERGY_COST,
   XP_THRESHOLDS,
   getLevelForXP,
   getEnergyAfterLevelUp,
   getBaseReward,
-  getHackEnergyCost,
   getEarlyHackSuccessFloor,
   getRepairCreditCostForHealth,
   type SystemType,
@@ -213,8 +213,7 @@ export function simulateHack(
     + state.level * SCANNER_BALANCE.targetSecurity.levelStep
   );
 
-  const hackCost = getHackEnergyCost(security);
-  state.energy -= hackCost;
+  state.energy -= SCAN_ENERGY_COST;
 
   const effectiveHackPower = 6 + state.level * 2;
   const baseChance = SCANNER_BALANCE.hackSuccess.baseChance + (effectiveHackPower - security);

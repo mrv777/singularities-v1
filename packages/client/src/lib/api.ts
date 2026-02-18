@@ -10,6 +10,12 @@ import type {
   ScanResponse,
   HackRequest,
   HackResult,
+  StartGameRequest,
+  StartGameResponse,
+  GameMoveRequest,
+  GameMoveResponse,
+  GameResolveResponse,
+  GameStatusResponse,
   ModulesResponse,
   ModulePurchaseRequest,
   ModulePurchaseResponse,
@@ -155,11 +161,37 @@ class ApiClient {
     return this.fetch<ScanResponse>("/scanner/scan", { method: "POST" });
   }
 
+  /** @deprecated Use startGame + submitMove + resolveGame instead */
   hack(data: HackRequest) {
     return this.fetch<HackResult>("/scanner/hack", {
       method: "POST",
       body: JSON.stringify(data),
     });
+  }
+
+  // Mini-games
+  startGame(data: StartGameRequest) {
+    return this.fetch<StartGameResponse>("/scanner/start-game", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  submitMove(data: GameMoveRequest) {
+    return this.fetch<GameMoveResponse>("/scanner/move", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  resolveGame() {
+    return this.fetch<GameResolveResponse>("/scanner/resolve", {
+      method: "POST",
+    });
+  }
+
+  getGameStatus() {
+    return this.fetch<GameStatusResponse>("/scanner/game-status");
   }
 
   // Modules

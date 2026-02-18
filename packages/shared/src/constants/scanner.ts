@@ -1,4 +1,5 @@
 import { SCANNER_BALANCE } from "./balance.js";
+import { type MinigameType, TARGET_GAME_MAP } from "./minigame.js";
 
 export const TARGET_TYPES = [
   "database",
@@ -72,6 +73,7 @@ export interface ScanTarget {
   index: number;
   name: string;
   type: TargetType;
+  gameType: MinigameType;
   securityLevel: number;
   riskRating: RiskRating;
   detectionChance: number;
@@ -81,4 +83,8 @@ export interface ScanTarget {
     reputation: number;
     xp: number;
   };
+}
+
+export function getGameTypeForTarget(type: TargetType): MinigameType {
+  return TARGET_GAME_MAP[type];
 }

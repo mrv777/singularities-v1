@@ -2,6 +2,7 @@ import { query } from "../db/pool.js";
 import { redis } from "../db/redis.js";
 import {
   RIPPLE_THRESHOLDS,
+  RIPPLE_MIN_ACTIVE_PLAYERS,
   RIPPLE_EVENTS,
   type RippleEvent,
   type WorldEvent,
@@ -35,7 +36,7 @@ export async function analyzeAndGenerateRipples(): Promise<WorldEvent[]> {
   if (existingRes.rows.length > 0) return [];
 
   // Aggregate yesterday's activity
-  const [hacksRes, pvpRes, deathsRes, upgradesRes] = await Promise.all([
+  const [hacksRes, pvpRes, deathsRes, upgradesRes, activePlayersRes] = await Promise.all([
     query(
       "SELECT COUNT(*) as count FROM infiltration_logs WHERE created_at::date = $1",
       [yesterday]
@@ -52,21 +53,39 @@ export async function analyzeAndGenerateRipples(): Promise<WorldEvent[]> {
       "SELECT COUNT(*) as count FROM player_modules WHERE purchased_at::date = $1",
       [yesterday]
     ),
+    // Distinct players who did at least one activity yesterday
+    query(
+      `SELECT COUNT(DISTINCT player_id) as count FROM (
+         SELECT player_id FROM infiltration_logs WHERE created_at::date = $1 AND player_id IS NOT NULL
+         UNION
+         SELECT attacker_id AS player_id FROM combat_logs WHERE created_at::date = $1 AND COALESCE(is_bot_match, false) = false
+         UNION
+         SELECT player_id FROM player_modules WHERE purchased_at::date = $1
+       ) active`,
+      [yesterday]
+    ),
   ]);
 
+  const activePlayerCount = parseInt(activePlayersRes.rows[0]?.count as string, 10) || 0;
+  // Use a floor so a single hyper-active player can't trigger world events alone
+  const effectivePlayerCount = Math.max(RIPPLE_MIN_ACTIVE_PLAYERS, activePlayerCount);
+
+  const totalHacks = parseInt(hacksRes.rows[0]?.count as string, 10) || 0;
   const metrics: Record<string, number> = {
-    totalHacks: parseInt(hacksRes.rows[0]?.count as string, 10) || 0,
-    stealthUsage: Math.floor((parseInt(hacksRes.rows[0]?.count as string, 10) || 0) * 0.4), // Approximate
+    totalHacks,
+    stealthUsage: Math.floor(totalHacks * 0.4), // Approximate stealth as 40% of hacks
     pvpBattles: parseInt(pvpRes.rows[0]?.count as string, 10) || 0,
     deaths: parseInt(deathsRes.rows[0]?.count as string, 10) || 0,
     moduleUpgrades: parseInt(upgradesRes.rows[0]?.count as string, 10) || 0,
+    activePlayerCount,
   };
 
-  // Check which thresholds are met
+  // Check which per-capita thresholds are met
   const triggeredEvents: RippleEvent[] = [];
   for (const threshold of RIPPLE_THRESHOLDS) {
     const value = metrics[threshold.metric] ?? 0;
-    if (value >= threshold.threshold) {
+    const scaledThreshold = Math.max(threshold.absoluteMin, threshold.perPlayerRate * effectivePlayerCount);
+    if (value >= scaledThreshold) {
       const event = RIPPLE_EVENTS.find((e) => e.triggerMetric === threshold.metric);
       if (event) triggeredEvents.push(event);
     }

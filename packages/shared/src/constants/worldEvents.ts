@@ -1,15 +1,29 @@
 export interface RippleThreshold {
   metric: string;
-  threshold: number;
+  /** How many times this activity must occur per active player to trigger */
+  perPlayerRate: number;
+  /**
+   * Absolute minimum threshold regardless of player count.
+   * Prevents a single hyper-active player from triggering events alone —
+   * the effective threshold is max(absoluteMin, perPlayerRate * effectiveCount).
+   * Per-player scaling only takes over once the playerbase is large enough.
+   */
+  absoluteMin: number;
   description: string;
 }
 
+/**
+ * Minimum active player count used when computing scaled thresholds.
+ * Acts as a secondary guard so a tiny cohort of players can't trivially trigger events.
+ */
+export const RIPPLE_MIN_ACTIVE_PLAYERS = 10;
+
 export const RIPPLE_THRESHOLDS: RippleThreshold[] = [
-  { metric: "totalHacks", threshold: 100, description: "High hacking activity detected" },
-  { metric: "stealthUsage", threshold: 50, description: "Widespread stealth operations" },
-  { metric: "pvpBattles", threshold: 30, description: "Intense PvP combat activity" },
-  { metric: "deaths", threshold: 10, description: "Mass AI casualties" },
-  { metric: "moduleUpgrades", threshold: 50, description: "Technology arms race detected" },
+  { metric: "totalHacks",    perPlayerRate: 8,   absoluteMin: 200, description: "High hacking activity detected" },
+  { metric: "stealthUsage",  perPlayerRate: 4,   absoluteMin: 80,  description: "Widespread stealth operations" },
+  { metric: "pvpBattles",    perPlayerRate: 3,   absoluteMin: 45,  description: "Intense PvP combat activity" },
+  { metric: "deaths",        perPlayerRate: 0.5, absoluteMin: 7,   description: "Mass AI casualties" },
+  { metric: "moduleUpgrades",perPlayerRate: 3,   absoluteMin: 45,  description: "Technology arms race detected" },
 ];
 
 export interface RippleEvent {

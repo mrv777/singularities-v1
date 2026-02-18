@@ -11,9 +11,7 @@ import {
   ENERGY_REGEN_PER_LEVEL,
   ENERGY_COSTS,
   SCAN_ENERGY_COST,
-  SCANNER_BALANCE,
   PVP_ENERGY_COST,
-  getHackEnergyCost,
 } from "@singularities/shared";
 import { Rng, parseCliOptions, percentile, average, printGuardrails } from "./lib.js";
 
@@ -83,29 +81,9 @@ function runSession(
       energy -= Math.ceil(SCAN_ENERGY_COST * energyCostMultiplier);
       minutes += 0.1;
       energy = Math.min(energyMax, energy + regenPerMinute(level) * 0.1);
-      targetsBuffered = 5;
+      targetsBuffered = 1;
     }
 
-    // Hack
-    const security = Math.min(
-      SCANNER_BALANCE.targetSecurity.max,
-      SCANNER_BALANCE.targetSecurity.baseMin
-      + rng.int(0, SCANNER_BALANCE.targetSecurity.randomRange)
-      + level * SCANNER_BALANCE.targetSecurity.levelStep
-    );
-    const rawHackCost = getHackEnergyCost(security);
-    const hackCost = Math.ceil(rawHackCost * energyCostMultiplier);
-
-    if (energy < hackCost) {
-      const needed = hackCost - energy;
-      const waitMin = needed / regenPerMinute(level);
-      minutes += waitMin;
-      downtime += waitMin;
-      energy = hackCost;
-      if (minutes >= sessionMinutes) break;
-    }
-
-    energy -= hackCost;
     minutes += 0.2;
     energy = Math.min(energyMax, energy + regenPerMinute(level) * 0.2);
     targetsBuffered--;

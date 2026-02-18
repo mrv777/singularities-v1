@@ -46,6 +46,10 @@ pnpm --filter server sim:exploits -- --runs=400 --seed=1337
 
 ## Script Coverage
 
+- Scanner/minigame model note:
+  - Simulations assume one-target-per-scan flow (each infiltration spends scan energy).
+  - There is no additional per-hack energy cost in the sim model.
+
 - `sim:progression`: level pacing, unlock timing, full season 1-25 lifecycle, XP source split, XP walls.
 - `sim:economy`: gross/net credits, repairs, mutation readiness, and archetype viability.
 - `sim:day1`: baseline vs tuned first-session onboarding outcomes.

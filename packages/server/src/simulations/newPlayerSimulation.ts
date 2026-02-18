@@ -15,7 +15,6 @@ import {
   XP_THRESHOLDS,
   getLevelForXP,
   getBaseReward,
-  getHackEnergyCost,
   getEarlyHackSuccessFloor,
   getEnergyAfterLevelUp,
   SCAN_ENERGY_COST,
@@ -104,7 +103,7 @@ function runSingle(seed: number): NewPlayerResult {
       energy -= SCAN_ENERGY_COST;
       minutes += 0.1;
       energy = Math.min(energyMax, energy + regenPerMinute(level) * 0.1);
-      targetsBuffered = 5;
+      targetsBuffered = 1;
     }
 
     // Hack
@@ -114,16 +113,6 @@ function runSingle(seed: number): NewPlayerResult {
       + rng.int(0, SCANNER_BALANCE.targetSecurity.randomRange)
       + level * SCANNER_BALANCE.targetSecurity.levelStep
     );
-    const hackCost = getHackEnergyCost(security);
-    waitForEnergy(hackCost);
-    if (minutes >= 120) break;
-
-    if (energy < hackCost) {
-      energyDepleted = true;
-      break;
-    }
-
-    energy -= hackCost;
     minutes += 0.2;
     energy = Math.min(energyMax, energy + regenPerMinute(level) * 0.2);
     targetsBuffered--;

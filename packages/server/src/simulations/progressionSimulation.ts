@@ -20,7 +20,6 @@ import {
   getBaseReward,
   getEarlyHackSuccessFloor,
   getEnergyAfterLevelUp,
-  getHackEnergyCost,
   getLevelForXP,
 } from "@singularities/shared";
 import { Rng, average, parseCliOptions, percentile, printGuardrails } from "./lib.js";
@@ -207,7 +206,7 @@ function runSingle(seed: number, dataVaultEnabled: boolean): SimResult {
       state.energy -= SCAN_ENERGY_COST;
       state.minutes += 0.1;
       state.energy = Math.min(state.energyMax, state.energy + regenPerMinute(state.level) * 0.1);
-      state.targetsBuffered = 5;
+      state.targetsBuffered = 1;
     }
 
     const security = Math.min(
@@ -216,12 +215,7 @@ function runSingle(seed: number, dataVaultEnabled: boolean): SimResult {
       + rng.int(0, SCANNER_BALANCE.targetSecurity.randomRange)
       + state.level * SCANNER_BALANCE.targetSecurity.levelStep
     );
-    const hackCost = getHackEnergyCost(security);
-    waitForEnergy(hackCost);
-    if (state.minutes >= 720) break;
-
     // Simulate hack execution time.
-    state.energy -= hackCost;
     state.minutes += 0.2;
     state.energy = Math.min(state.energyMax, state.energy + regenPerMinute(state.level) * 0.2);
     state.targetsBuffered -= 1;
@@ -394,7 +388,7 @@ function runFullLifecycle(
         totalMinutes += 0.1;
         bandMinutes[getBandIndex(level)] += 0.1;
         energy += regenPerMin() * 0.1;
-        targetsBuffered = 5;
+        targetsBuffered = 1;
       }
 
       // Hack
@@ -404,18 +398,6 @@ function runFullLifecycle(
         + rng.int(0, SCANNER_BALANCE.targetSecurity.randomRange)
         + level * SCANNER_BALANCE.targetSecurity.levelStep
       );
-      const hackCost = getHackEnergyCost(security);
-
-      if (energy < hackCost) {
-        const waitMin = (hackCost - energy) / regenPerMin();
-        sessionMinutes += waitMin;
-        totalMinutes += waitMin;
-        bandMinutes[getBandIndex(level)] += waitMin;
-        energy = hackCost;
-        if (sessionMinutes >= sessionMax) break;
-      }
-
-      energy -= hackCost;
       sessionMinutes += 0.2;
       totalMinutes += 0.2;
       bandMinutes[getBandIndex(level)] += 0.2;

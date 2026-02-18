@@ -15,7 +15,11 @@ export type SoundType =
   | "pvpLoss"
   | "decision"
   | "death"
-  | "notification";
+  | "notification"
+  | "gameMove"
+  | "gameCorrect"
+  | "gameWrong"
+  | "gameComplete";
 
 const SOUND_FILES: Record<SoundType, string> = {
   click: "sounds/click.mp3",
@@ -35,6 +39,10 @@ const SOUND_FILES: Record<SoundType, string> = {
   decision: "sounds/decision.mp3",
   death: "sounds/death.mp3",
   notification: "sounds/notification.mp3",
+  gameMove: "sounds/click.mp3",
+  gameCorrect: "sounds/hack-success.mp3",
+  gameWrong: "sounds/hack-fail.mp3",
+  gameComplete: "sounds/level-up.mp3",
 };
 
 const LS_KEY = "singularities_sound_enabled";
@@ -65,6 +73,10 @@ const SYNTH_PROFILES: Record<SoundType, SynthProfile> = {
   decision: { type: "triangle", frequency: 460, duration: 0.22, gain: 0.06, sweepTo: 760 },
   death: { type: "sawtooth", frequency: 240, duration: 0.38, gain: 0.1, sweepTo: 90 },
   notification: { type: "triangle", frequency: 880, duration: 0.09, gain: 0.05, sweepTo: 1040 },
+  gameMove: { type: "square", frequency: 720, duration: 0.05, gain: 0.03, sweepTo: 580 },
+  gameCorrect: { type: "triangle", frequency: 660, duration: 0.12, gain: 0.06, sweepTo: 1100 },
+  gameWrong: { type: "sawtooth", frequency: 320, duration: 0.15, gain: 0.06, sweepTo: 180 },
+  gameComplete: { type: "triangle", frequency: 550, duration: 0.28, gain: 0.08, sweepTo: 1300 },
 };
 
 function resolveSoundPath(path: string): string {

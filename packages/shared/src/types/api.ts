@@ -21,6 +21,10 @@ import type {
   IceLayerType,
   DaemonType,
   DaemonMissionDuration,
+  MinigameType,
+  SignalCrackDifficulty,
+  PortSweepDifficulty,
+  NetworkRelinkDifficulty,
 } from "../constants/index.js";
 
 // Auth
@@ -519,6 +523,147 @@ export interface DaemonForgeCollectResponse {
   rewards: { credits: number; data: number };
   buffApplied?: { stat: string; amount: number; durationSeconds: number };
   player: Player;
+}
+
+// Mini-game types
+export type SignalCrackFeedback = "EXACT" | "PRESENT" | "MISS";
+
+export interface StartGameRequest {
+  targetIndex: number;
+}
+
+export interface StartGameResponse {
+  gameId: string;
+  gameType: MinigameType;
+  config: SignalCrackConfig | PortSweepConfig | NetworkRelinkConfig;
+  expiresAt: string;
+}
+
+export interface SignalCrackConfig {
+  type: "signal_crack";
+  codeLength: number;
+  digitPool: number;
+  maxGuesses: number;
+  timeLimitMs: number;
+}
+
+export interface PortSweepConfig {
+  type: "port_sweep";
+  gridSize: number;
+  portCount: number;
+  maxProbes: number;
+  timeLimitMs: number;
+}
+
+export interface NetworkRelinkConfig {
+  type: "network_relink";
+  gridSize: number;
+  pairs: number;
+  timeLimitMs: number;
+  /** Endpoint positions for each pair: [pairIndex] => [[r,c], [r,c]] */
+  endpoints: Array<[[number, number], [number, number]]>;
+}
+
+export type GameConfig = SignalCrackConfig | PortSweepConfig | NetworkRelinkConfig;
+
+// Moves
+export interface SignalCrackMove {
+  type: "signal_crack";
+  guess: number[];
+}
+
+export interface PortSweepMove {
+  type: "port_sweep";
+  row: number;
+  col: number;
+}
+
+export interface NetworkRelinkMove {
+  type: "network_relink";
+  paths: Array<{ pairIndex: number; cells: [number, number][] }>;
+  drawCount: number;
+}
+
+export type GameMove = SignalCrackMove | PortSweepMove | NetworkRelinkMove;
+
+export interface GameMoveRequest {
+  move: GameMove;
+}
+
+// Move feedback
+export interface SignalCrackMoveResult {
+  type: "signal_crack";
+  guess: number[];
+  feedback: SignalCrackFeedback[];
+  solved: boolean;
+  guessesUsed: number;
+  guessesRemaining: number;
+  possibilitiesRemaining: number;
+  gameOver: boolean;
+}
+
+export interface PortSweepMoveResult {
+  type: "port_sweep";
+  row: number;
+  col: number;
+  hit: boolean;
+  adjacency: number | null; // null if hit, number of adjacent ports if miss
+  portsFound: number;
+  probesUsed: number;
+  probesRemaining: number;
+  allFound: boolean;
+  gameOver: boolean;
+}
+
+export interface NetworkRelinkMoveResult {
+  type: "network_relink";
+  connectedPairs: number;
+  totalPairs: number;
+  filledCells: number;
+  totalCells: number;
+  score: number;
+  gameOver: boolean;
+}
+
+export type GameMoveResult = SignalCrackMoveResult | PortSweepMoveResult | NetworkRelinkMoveResult;
+
+export interface GameMoveResponse {
+  result: GameMoveResult;
+}
+
+// Resolve
+export interface GameResolveResponse {
+  score: number;
+  rewards?: {
+    credits: number;
+    data: number;
+    reputation: number;
+    xp: number;
+    processingPower?: number;
+  };
+  detected: boolean;
+  damage?: {
+    systems: Array<{ systemType: string; damage: number }>;
+  };
+  narrative: string;
+  levelUp?: boolean;
+  newLevel?: number;
+  player: Player;
+  chainVerified?: boolean;
+  txSignature?: string | null;
+}
+
+// Game status (for resume on reconnect)
+export interface GameStatusResponse {
+  active: boolean;
+  gameId?: string;
+  gameType?: MinigameType;
+  config?: GameConfig;
+  /** Partial state for the client to resume from */
+  moveHistory?: GameMoveResult[];
+  expiresAt?: string;
+  startedAt?: string;
+  expired?: boolean;
 }
 
 // Generic error

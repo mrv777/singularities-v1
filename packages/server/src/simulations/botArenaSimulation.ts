@@ -15,8 +15,8 @@ import {
   PVP_WIN_CHANCE_MIN,
   PVP_WIN_CHANCE_SCALE,
   PVP_ENERGY_COST,
+  SCAN_ENERGY_COST,
   getBaseReward,
-  getHackEnergyCost,
 } from "@singularities/shared";
 import { BOT_MAX_ATTACKS_PER_DAY, buildBotPool } from "../services/arenaBots.js";
 import { Rng, parseCliOptions, average, printGuardrails } from "./lib.js";
@@ -192,7 +192,7 @@ function main() {
   // Bots: credits/energy = creditsPerAttack / PVP_ENERGY_COST
   const referenceSecurity = 30;
   const hackRewardCredits = getBaseReward(referenceSecurity).credits;
-  const hackEnergyCost = getHackEnergyCost(referenceSecurity);
+  const hackEnergyCost = SCAN_ENERGY_COST;
   const botCredPerEnergy = summary.creditsPerAttack / PVP_ENERGY_COST;
   const hackCredPerEnergy = hackRewardCredits / hackEnergyCost;
   const botVsHackRatio = botCredPerEnergy / hackCredPerEnergy;

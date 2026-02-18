@@ -20,3 +20,4 @@ export * from "./balance.js";
 export * from "./dataVault.js";
 export * from "./iceBreaker.js";
 export * from "./daemonForge.js";
+export * from "./minigame.js";

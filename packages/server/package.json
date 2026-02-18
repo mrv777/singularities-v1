@@ -25,7 +25,8 @@
     "sim:catchup": "node --import tsx src/simulations/catchUpSimulation.ts",
     "sim:endgame": "node --import tsx src/simulations/endgameAnalysis.ts",
     "sim:exploits": "node --import tsx src/simulations/exploitDetectionSimulation.ts",
-    "sim:all": "set -e; pnpm -C ../shared build; pnpm run sim:progression; pnpm run sim:economy; pnpm run sim:day1; pnpm run sim:bots; pnpm run sim:health; pnpm run sim:newplayer; pnpm run sim:energy; pnpm run sim:pvp; pnpm run sim:modules; pnpm run sim:death; pnpm run sim:decisions; pnpm run sim:modifiers; pnpm run sim:catchup; pnpm run sim:endgame; pnpm run sim:exploits"
+    "sim:worldEvents": "node --import tsx src/simulations/worldEventSimulation.ts",
+    "sim:all": "set -e; pnpm -C ../shared build; pnpm run sim:progression; pnpm run sim:economy; pnpm run sim:day1; pnpm run sim:bots; pnpm run sim:health; pnpm run sim:newplayer; pnpm run sim:energy; pnpm run sim:pvp; pnpm run sim:modules; pnpm run sim:death; pnpm run sim:decisions; pnpm run sim:modifiers; pnpm run sim:catchup; pnpm run sim:endgame; pnpm run sim:exploits; pnpm run sim:worldEvents"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.32.1",

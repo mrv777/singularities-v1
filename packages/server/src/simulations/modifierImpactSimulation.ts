@@ -11,12 +11,12 @@ import {
   SCANNER_BALANCE,
   DEGRADATION_RATE_PER_HOUR,
   getBaseReward,
-  getHackEnergyCost,
   getEarlyHackSuccessFloor,
   getRepairCreditCostForHealth,
   PASSIVE_CREDITS_PER_HOUR,
   PASSIVE_DATA_PER_HOUR,
   ENERGY_COSTS,
+  SCAN_ENERGY_COST,
 } from "@singularities/shared";
 import {
   Rng,
@@ -76,7 +76,7 @@ function simulateDay(
         + rng.int(0, SCANNER_BALANCE.targetSecurity.randomRange)
         + state.level * SCANNER_BALANCE.targetSecurity.levelStep
       );
-      const hackCost = Math.ceil(getHackEnergyCost(security) * energyCostMult);
+      const hackCost = Math.ceil(SCAN_ENERGY_COST * energyCostMult);
       if (state.energy < hackCost) continue;
 
       state.energy -= hackCost;

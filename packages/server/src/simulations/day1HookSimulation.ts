@@ -10,7 +10,6 @@ import {
   SCANNER_BALANCE,
   getBaseReward,
   getEnergyAfterLevelUp,
-  getHackEnergyCost,
   getLevelForXP,
 } from "@singularities/shared";
 import { Rng, parseCliOptions, percentile } from "./lib.js";
@@ -283,7 +282,7 @@ function runSingle(seed: number, profile: BalanceProfile): ProfileResult {
       state.energy -= 3;
       state.minutes += 0.1;
       state.energy = Math.min(state.energyMax, state.energy + regenPerMinute(state.level) * 0.1);
-      state.targetsBuffered = 5;
+      state.targetsBuffered = 1;
       checkpointLevels();
     }
 
@@ -292,11 +291,6 @@ function runSingle(seed: number, profile: BalanceProfile): ProfileResult {
       profile.securityBaseMin + rng.int(0, SCANNER_BALANCE.targetSecurity.randomRange)
       + state.level * profile.securityStep
     );
-    const hackCost = getHackEnergyCost(security);
-    waitForEnergy(hackCost);
-    if (state.minutes >= 360) break;
-
-    state.energy -= hackCost;
     state.minutes += 0.2;
     state.energy = Math.min(state.energyMax, state.energy + regenPerMinute(state.level) * 0.2);
     state.targetsBuffered -= 1;
