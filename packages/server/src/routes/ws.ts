@@ -30,7 +30,7 @@ export async function wsRoutes(app: FastifyInstance) {
       }
 
       const row = res.rows[0];
-      handleConnection(
+      await handleConnection(
         socket,
         playerId,
         row.ai_name as string,

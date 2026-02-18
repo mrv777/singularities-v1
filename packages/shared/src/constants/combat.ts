@@ -2,7 +2,7 @@ import { PVP_BALANCE } from "./balance.js";
 
 // PvP Combat Constants
 
-export const PVP_ENERGY_COST = 18;
+export const PVP_ENERGY_COST = 17;
 
 // Daily damage cap: 240 HP total (40% of 600 total HP across 6 systems at 100 each)
 export const PVP_DAILY_DAMAGE_CAP = 240;

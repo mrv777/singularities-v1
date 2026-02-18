@@ -20,8 +20,13 @@ This runbook documents the simulation suite used to validate progression, econom
 # Sanity check
 pnpm --filter server typecheck
 
-# Run entire suite
+# Run entire suite (stops on first failing sim)
 pnpm --filter server sim:all
+
+# Full census even when some sims fail guardrails
+for sim in sim:progression sim:economy sim:day1 sim:bots sim:health sim:newplayer sim:energy sim:pvp sim:modules sim:death sim:decisions sim:modifiers sim:catchup sim:endgame sim:exploits sim:worldEvents; do
+  pnpm --filter server "$sim" -- --runs=400 --seed=1337 || true
+done
 ```
 
 ## Day-1 / Day-30 / Day-90 Review Commands
@@ -36,6 +41,7 @@ pnpm --filter server sim:energy -- --runs=400 --seed=1337
 pnpm --filter server sim:economy -- --runs=400 --days=30 --seed=1337 --profile=current --data-vault=on
 pnpm --filter server sim:pvp -- --runs=400 --seed=1337
 pnpm --filter server sim:decisions -- --runs=400 --seed=1337
+pnpm --filter server sim:worldEvents -- --days=30 --seed=1337
 
 # Day 90 endgame and seasonal durability
 pnpm --filter server sim:progression -- --runs=400 --seed=1337 --data-vault=on
@@ -65,6 +71,7 @@ pnpm --filter server sim:exploits -- --runs=400 --seed=1337
 - `sim:catchup`: late-joiner catch-up speed and anti-perverse-incentive validation.
 - `sim:endgame`: max-level sink pressure and activity variety.
 - `sim:exploits`: passive farming, decision reset value, bot farming ceiling, energy abuse.
+- `sim:worldEvents`: ripple trigger frequency by population size and activity mix.
 
 ## Guardrail Semantics
 
@@ -77,6 +84,7 @@ pnpm --filter server sim:exploits -- --runs=400 --seed=1337
 - Verify at least one run each for day-1, day-30, and day-90 command groups.
 - Confirm at least one economy archetype per playstyle is net-positive.
 - Confirm no obvious stuck-state loop (energy lock, repair debt lock, death spiral).
+- Confirm world-event frequencies over at least 30 days to reduce 7-day sampling noise.
 - Confirm decision and module paths do not collapse to one dominant strategy.
 - Confirm endgame has meaningful sinks and does not accumulate runaway idle resources.
 - Confirm progression does not cap-rush (median season-end player should remain below level cap).

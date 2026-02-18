@@ -135,6 +135,8 @@ export async function enterArena(playerId: string) {
 
   await query("UPDATE players SET in_pvp_arena = true WHERE id = $1", [playerId]);
 
+  sendActivity(playerId, "Protocol established: Synchronized with PvP arena network.");
+
   const updated = await query("SELECT * FROM players WHERE id = $1", [playerId]);
   return mapPlayerRow(computeEnergy(updated.rows[0]));
 }

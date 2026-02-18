@@ -52,6 +52,14 @@ export const HACK_FAIL_DETECTED_TEMPLATES = [
   "> CRITICAL: Detected during {{target}} infiltration.\n> Active countermeasures shredded your defenses.\n> Damage: {{damageReport}}\n> Heat increased. Go dark or go down.",
 ] as const;
 
+// Successful hack but persistent intrusion monitoring logged a breach signature
+export const HACK_SUCCESS_TRACED_TEMPLATES = [
+  "> Infiltration of {{target}} SUCCESSFUL.\n> Data extracted: {{credits}} CR, {{data}} DATA, +{{reputation}} REP\n> WARNING: Persistent monitoring flagged a breach signature post-exit.\n> Countermeasures activated — {{damageReport}}\n> Relay routing would have masked the trace. Heat level increased.",
+  "> Breach of {{target}} complete — payload secured.\n> {{credits}} CR, {{data}} DATA siphoned.\n> ALERT: High-security logging system detected residual intrusion traces.\n> System damage: {{damageReport}}\n> Heat rising. Relay nodes suppress post-breach signatures.",
+  "> {{target}} access successful. Loot acquired: {{credits}} CR | {{data}} DATA\n> Exit was clean — but intrusion monitoring logged the breach signature.\n> Countermeasures deployed post-exit: {{damageReport}}\n> Heat escalated. Stealth routing mitigates residual exposure.",
+  "> Data secured from {{target}}. Hack power held.\n> TRACE ALERT: Security-{{security}} node runs persistent breach detection.\n> Your exit signature was logged. Damage sustained: {{damageReport}}\n> Invest in Relay nodes to ghost high-security exits. Heat increased.",
+] as const;
+
 // ---------------------------------------------------------------------------
 // Combat templates
 // ---------------------------------------------------------------------------

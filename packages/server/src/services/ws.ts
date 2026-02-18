@@ -8,6 +8,7 @@ import type {
   ClientChatPayload,
 } from "@singularities/shared";
 import { randomUUID } from "crypto";
+import { redis } from "../db/redis.js";
 
 interface ConnectedClient {
   socket: WebSocket;
@@ -20,17 +21,37 @@ interface ConnectedClient {
 
 const clients = new Map<string, ConnectedClient>();
 
-// Rolling message buffers per channel
+// Rolling message buffers per channel (in-memory cache + Redis persistence)
 const MAX_HISTORY = 50;
-const globalHistory: ServerChatMessage[] = [];
-const eventsHistory: ServerChatMessage[] = [];
-const activityHistory: Map<string, ServerChatMessage[]> = new Map();
 
-const RATE_LIMIT_MS = 5000; // 1 msg per 5s
+const REDIS_KEYS = {
+  global: "chat:history:global",
+  events: "chat:history:events",
+  activity: (pid: string) => `chat:history:activity:${pid}`,
+};
 
-function pushHistory(arr: ServerChatMessage[], msg: ServerChatMessage) {
-  arr.push(msg);
-  if (arr.length > MAX_HISTORY) arr.shift();
+const RATE_LIMIT_MS = 2000; // 1 msg per 2s
+
+async function persistMessage(key: string, msg: ServerChatMessage) {
+  try {
+    await redis.pipeline()
+      .rpush(key, JSON.stringify(msg))
+      .ltrim(key, -MAX_HISTORY, -1)
+      .expire(key, 86400 * 3) // 3 days TTL
+      .exec();
+  } catch (err) {
+    console.error(`Failed to persist message to Redis (${key}):`, err);
+  }
+}
+
+async function getHistoryFromRedis(key: string): Promise<ServerChatMessage[]> {
+  try {
+    const raw = await redis.lrange(key, 0, -1);
+    return raw.map((r) => JSON.parse(r));
+  } catch (err) {
+    console.error(`Failed to fetch history from Redis (${key}):`, err);
+    return [];
+  }
 }
 
 function send(socket: WebSocket, envelope: ServerChatEnvelope) {
@@ -39,7 +60,7 @@ function send(socket: WebSocket, envelope: ServerChatEnvelope) {
   }
 }
 
-export function handleConnection(
+export async function handleConnection(
   socket: WebSocket,
   playerId: string,
   playerName: string,
@@ -62,18 +83,21 @@ export function handleConnection(
   };
   clients.set(playerId, client);
 
-  // Send channel history
-  const playerActivity = activityHistory.get(playerId) ?? [];
-  const history = [
-    ...globalHistory.slice(-30),
-    ...eventsHistory.slice(-20),
-    ...playerActivity.slice(-50),
-  ].sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+  // Send channel history from Redis
+  const [global, events, activity] = await Promise.all([
+    getHistoryFromRedis(REDIS_KEYS.global),
+    getHistoryFromRedis(REDIS_KEYS.events),
+    getHistoryFromRedis(REDIS_KEYS.activity(playerId)),
+  ]);
+
+  const history = [...global, ...events, ...activity].sort(
+    (a, b) => a.timestamp.localeCompare(b.timestamp)
+  );
 
   send(socket, { action: "history", messages: history });
 
   // Handle incoming messages
-  socket.on("message", (raw: unknown) => {
+  socket.on("message", async (raw: unknown) => {
     try {
       const data = JSON.parse(String(raw)) as ClientChatPayload;
       if (data.action !== "chat") return;
@@ -98,7 +122,7 @@ export function handleConnection(
         timestamp: new Date().toISOString(),
       };
 
-      pushHistory(globalHistory, msg);
+      await persistMessage(REDIS_KEYS.global, msg);
       broadcastToAll({ action: "message", message: msg });
     } catch {
       // Invalid JSON — ignore
@@ -122,7 +146,7 @@ function broadcastToAll(envelope: ServerChatEnvelope) {
 }
 
 /** Broadcast a system event to all connected clients */
-export function broadcastSystem(content: string) {
+export async function broadcastSystem(content: string) {
   const msg: SystemEventMessage = {
     type: "system",
     channel: "events",
@@ -130,12 +154,12 @@ export function broadcastSystem(content: string) {
     content,
     timestamp: new Date().toISOString(),
   };
-  pushHistory(eventsHistory, msg);
+  await persistMessage(REDIS_KEYS.events, msg);
   broadcastToAll({ action: "message", message: msg });
 }
 
 /** Send an activity message to a specific player */
-export function sendActivity(playerId: string, content: string) {
+export async function sendActivity(playerId: string, content: string) {
   const msg: ActivityLogMessage = {
     type: "activity",
     channel: "activity",
@@ -144,13 +168,7 @@ export function sendActivity(playerId: string, content: string) {
     timestamp: new Date().toISOString(),
   };
 
-  // Store in per-player history
-  let history = activityHistory.get(playerId);
-  if (!history) {
-    history = [];
-    activityHistory.set(playerId, history);
-  }
-  pushHistory(history, msg);
+  await persistMessage(REDIS_KEYS.activity(playerId), msg);
 
   // Send to player if connected
   const client = clients.get(playerId);

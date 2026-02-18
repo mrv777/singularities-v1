@@ -38,6 +38,7 @@ import {
   pickTemplate,
   fillTemplate,
   HACK_SUCCESS_TEMPLATES,
+  HACK_SUCCESS_TRACED_TEMPLATES,
   HACK_FAIL_UNDETECTED_TEMPLATES,
   HACK_FAIL_DETECTED_TEMPLATES,
 } from "@singularities/shared";
@@ -436,10 +437,16 @@ export function computeNetworkRelinkScore(
   connectedPairs: number,
   totalPairs: number,
   filledCells: number,
-  totalCells: number
+  totalCells: number,
+  elapsedMs: number,
+  timeLimitMs: number,
 ): number {
+  const graceMs = totalPairs * 2_000;
+  const timeEfficiency = timeLimitMs > graceMs
+    ? Math.max(0, 1 - Math.max(0, elapsedMs - graceMs) / (timeLimitMs - graceMs))
+    : 1;
   const pairsScore = totalPairs > 0 ? (connectedPairs / totalPairs) * 60 : 0;
-  const coverageScore = totalCells > 0 ? (filledCells / totalCells) * 40 : 0;
+  const coverageScore = totalCells > 0 ? (filledCells / totalCells) * timeEfficiency * 40 : 0;
   return Math.round(pairsScore + coverageScore);
 }
 
@@ -707,6 +714,9 @@ export async function startGame(playerId: string, targetIndex: number) {
 
     // Build client config (strip secrets)
     const clientConfig: GameConfig = gameState.config;
+
+    // Log activity
+    sendActivity(playerId, `Infiltration sequence initiated: ${target.name} (${target.gameType.replaceAll("_", " ")})`);
 
     return {
       gameId: seedHex.slice(0, 16),
@@ -995,7 +1005,8 @@ function processNetworkRelinkMove(
   state.submitted = true;
 
   const filledCells = usedCells.size;
-  const score = computeNetworkRelinkScore(connectedPairs, totalPairs, filledCells, totalCells);
+  const elapsedMs = Date.now() - state.startedAt;
+  const score = computeNetworkRelinkScore(connectedPairs, totalPairs, filledCells, totalCells, elapsedMs, state.config.timeLimitMs);
 
   return {
     type: "network_relink",
@@ -1086,41 +1097,57 @@ export async function resolveGame(playerId: string) {
         ));
         const detectionRoll = randomInt(1, 100);
         detected = detectionRoll <= effectiveDetection;
+      }
 
-        if (detected) {
-          const heatLevel = playerRow.heat_level as number;
-          const config = getHeatDamageConfig(heatLevel);
-
-          const systemsRes = await client.query(
-            "SELECT * FROM player_systems WHERE player_id = $1 FOR UPDATE",
-            [playerId]
-          );
-          const systems = systemsRes.rows;
-          const affectedCount = Math.min(config.systemsAffected, systems.length);
-          const shuffled = systems.sort(() => Math.random() - 0.5);
-          const affected = shuffled.slice(0, affectedCount);
-
-          const damageSystems: Array<{ systemType: string; damage: number }> = [];
-          for (const sys of affected) {
-            const computed = computeSystemHealth(sys, {});
-            const currentHealth = computed.health as number;
-            const dmg = randomInt(config.minDamage, config.maxDamage);
-            const newHealth = Math.max(0, currentHealth - dmg);
-            const newStatus = getStatusForHealth(newHealth);
-            await client.query(
-              `UPDATE player_systems SET health = $2, status = $3, updated_at = NOW() WHERE id = $1`,
-              [sys.id, newHealth, newStatus]
-            );
-            damageSystems.push({ systemType: sys.system_type as string, damage: dmg });
-          }
-
-          await client.query(
-            `UPDATE players SET heat_level = heat_level + 1 WHERE id = $1`,
-            [playerId]
-          );
-
-          damage = { systems: damageSystems };
+      // Residual detection on clean hacks at high security.
+      // High-security targets run persistent intrusion monitoring that logs breach
+      // signatures even on clean exits. Relay routing (stealth) masks the traces.
+      if (!detected && score >= 50) {
+        const { securityThreshold, securityScale, stealthDivisor } = SCANNER_BALANCE.residualDetection;
+        const residual = Math.max(0,
+          (target.securityLevel - securityThreshold) * securityScale - statsSnap.stealth / stealthDivisor
+        );
+        if (residual > 0) {
+          detected = randomInt(1, 100) <= residual;
         }
+      }
+
+      if (detected) {
+        const heatLevel = playerRow.heat_level as number;
+        const config = getHeatDamageConfig(heatLevel);
+
+        const systemsRes = await client.query(
+          "SELECT * FROM player_systems WHERE player_id = $1 FOR UPDATE",
+          [playerId]
+        );
+        const systems = systemsRes.rows;
+        const affectedCount = Math.min(config.systemsAffected, systems.length);
+        for (let i = systems.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [systems[i], systems[j]] = [systems[j], systems[i]];
+        }
+        const affected = systems.slice(0, affectedCount);
+
+        const damageSystems: Array<{ systemType: string; damage: number }> = [];
+        for (const sys of affected) {
+          const computed = computeSystemHealth(sys, {});
+          const currentHealth = computed.health as number;
+          const dmg = randomInt(config.minDamage, config.maxDamage);
+          const newHealth = Math.max(0, currentHealth - dmg);
+          const newStatus = getStatusForHealth(newHealth);
+          await client.query(
+            `UPDATE player_systems SET health = $2, status = $3, updated_at = NOW() WHERE id = $1`,
+            [sys.id, newHealth, newStatus]
+          );
+          damageSystems.push({ systemType: sys.system_type as string, damage: dmg });
+        }
+
+        await client.query(
+          `UPDATE players SET heat_level = heat_level + 1 WHERE id = $1`,
+          [playerId]
+        );
+
+        damage = { systems: damageSystems };
       }
 
       // Apply rewards
@@ -1181,7 +1208,21 @@ export async function resolveGame(playerId: string) {
 
       // Build narrative
       let narrative: string;
-      if (score >= 50) {
+      if (score >= 50 && detected) {
+        // Clean hack, but high-security persistent monitoring logged the breach signature
+        const damageReport = damage?.systems.map(d => `${d.systemType}: -${d.damage}HP`).join(", ") ?? "";
+        narrative = fillTemplate(pickTemplate(HACK_SUCCESS_TRACED_TEMPLATES), {
+          target: target.name,
+          security: target.securityLevel,
+          credits: finalCredits,
+          data: finalData,
+          reputation: finalReputation,
+          damageReport,
+        });
+        if (xpResult.levelUp) {
+          narrative += `\n> LEVEL UP! Now level ${xpResult.newLevel}`;
+        }
+      } else if (score >= 50) {
         narrative = fillTemplate(pickTemplate(HACK_SUCCESS_TEMPLATES), {
           target: target.name,
           security: target.securityLevel,

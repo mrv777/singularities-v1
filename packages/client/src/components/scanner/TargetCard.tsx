@@ -79,7 +79,9 @@ export function TargetCard({ target, selected, onSelect }: TargetCardProps) {
           <span className="text-cyber-red">{target.detectionChance}%</span>
         </div>
         <div>
-          <span className="text-text-muted">Reward:</span>{" "}
+          <span className="text-text-muted">Reward</span>{" "}
+          <span className="text-text-muted/60" title="Final reward scales with your score">~est</span>
+          <span className="text-text-muted">:</span>{" "}
           <ResourceCost
             costs={{
               credits: target.rewards.credits,

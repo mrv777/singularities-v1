@@ -11,8 +11,10 @@ import {
   SCAN_ENERGY_COST,
   SCAN_TARGET_COUNT,
   SCAN_TTL_SECONDS,
+  MINIGAME_BALANCE,
 } from "@singularities/shared";
 import { computeEnergy } from "./player.js";
+import { sendActivity } from "./ws.js";
 
 function randomInt(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -41,7 +43,13 @@ export function generateTargets(playerLevel: number): ScanTarget[] {
       + playerLevel * SCANNER_BALANCE.targetSecurity.levelStep
     );
     const detectionChance = Math.max(5, Math.min(95, securityLevel * 0.6 + randomInt(-10, 10)));
-    const rewards = getBaseReward(securityLevel);
+    const baseRewards = getBaseReward(securityLevel);
+    const rewards = {
+      credits: Math.floor(baseRewards.credits * MINIGAME_BALANCE.rewardMultiplier),
+      data: Math.floor(baseRewards.data * MINIGAME_BALANCE.rewardMultiplier),
+      reputation: Math.floor(baseRewards.reputation * MINIGAME_BALANCE.rewardMultiplier),
+      xp: Math.floor(baseRewards.xp * MINIGAME_BALANCE.rewardMultiplier),
+    };
     targets.push({
       index: i,
       name: generateTargetName(type, i),
@@ -62,7 +70,7 @@ export async function scanTargets(playerId: string) {
     throw { statusCode: 409, message: "You have an active infiltration. Resolve it before scanning again." };
   }
 
-  return withTransaction(async (client) => {
+  const { targets, expiresAt } = await withTransaction(async (client) => {
     // Lock player row and compute energy
     const res = await client.query("SELECT * FROM players WHERE id = $1 FOR UPDATE", [playerId]);
     const row = res.rows[0];
@@ -90,4 +98,9 @@ export async function scanTargets(playerId: string) {
     const expiresAt = new Date(Date.now() + SCAN_TTL_SECONDS * 1000).toISOString();
     return { targets, expiresAt };
   });
+
+  // Log activity after transaction commits
+  sendActivity(playerId, `Network scan completed: ${targets.length} potential targets identified.`);
+
+  return { targets, expiresAt };
 }

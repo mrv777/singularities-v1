@@ -109,7 +109,7 @@ export async function evaluateAndExecuteScripts(): Promise<void> {
   // Get all active scripts with their player data (including last_active_at)
   const result = await query(
     `SELECT ps.*, p.energy, p.energy_max, p.energy_updated_at, p.level,
-            p.credits, p.heat_level, p.last_active_at, p.id as pid
+            p.credits, p.data, p.heat_level, p.last_active_at, p.id as pid
      FROM player_scripts ps
      JOIN players p ON ps.player_id = p.id
      WHERE ps.is_active = true AND p.is_alive = true`
@@ -127,20 +127,28 @@ export async function evaluateAndExecuteScripts(): Promise<void> {
       const energyMax = row.energy_max as number;
       const level = row.level as number;
       const credits = row.credits as number;
+      const data = row.data as number;
       const heatLevel = row.heat_level as number;
       const playerId = row.player_id as string;
       const triggerCondition = row.trigger_condition as string;
       const action = row.action as string;
       const scriptId = row.id as string;
 
-      // For system_critical trigger, check if player has any critical systems
+      // For system_critical / system_corrupted triggers, check player systems
       let hasCriticalSystem = false;
+      let hasCorruptedSystem = false;
       if (triggerCondition === "system_critical") {
         const sysResult = await query(
           `SELECT 1 FROM player_systems WHERE player_id = $1 AND health > 0 AND health < 30 LIMIT 1`,
           [playerId]
         );
         hasCriticalSystem = sysResult.rows.length > 0;
+      } else if (triggerCondition === "system_corrupted") {
+        const sysResult = await query(
+          `SELECT 1 FROM player_systems WHERE player_id = $1 AND health = 0 LIMIT 1`,
+          [playerId]
+        );
+        hasCorruptedSystem = sysResult.rows.length > 0;
       }
 
       // Evaluate trigger
@@ -148,9 +156,11 @@ export async function evaluateAndExecuteScripts(): Promise<void> {
         currentEnergy,
         energyMax,
         credits,
+        data,
         heatLevel,
         lastActiveAt: row.last_active_at as string,
         hasCriticalSystem,
+        hasCorruptedSystem,
       });
 
       if (!triggered) continue;
@@ -168,9 +178,11 @@ interface TriggerContext {
   currentEnergy: number;
   energyMax: number;
   credits: number;
+  data: number;
   heatLevel: number;
   lastActiveAt: string;
   hasCriticalSystem: boolean;
+  hasCorruptedSystem: boolean;
 }
 
 function evaluateTrigger(trigger: string, ctx: TriggerContext): boolean {
@@ -181,13 +193,22 @@ function evaluateTrigger(trigger: string, ctx: TriggerContext): boolean {
       return ctx.currentEnergy < ctx.energyMax * 0.2;
     case "system_critical":
       return ctx.hasCriticalSystem;
+    case "system_corrupted":
+      return ctx.hasCorruptedSystem;
     case "heat_high":
       return ctx.heatLevel >= 2;
+    case "heat_medium":
+      return ctx.heatLevel >= 1;
     case "credits_above_500":
       return ctx.credits > 500;
+    case "data_above_1000":
+      return ctx.data > 1000;
     case "idle_1h": {
       const lastActive = new Date(ctx.lastActiveAt).getTime();
-      return Date.now() - lastActive > 3600_000;
+      return Date.now() - lastActive > 3_600_000;
+    }
+    case "idle_4h": {
+      return Date.now() - new Date(ctx.lastActiveAt).getTime() > 14_400_000;
     }
     default:
       return false;
@@ -269,6 +290,55 @@ async function executeAction(
           [playerId]
         );
         await logScriptExecution(client, playerId, scriptId, "reduce_heat", action, true, 0, 0, 0);
+      });
+      break;
+    }
+    case "auto_repair_all": {
+      const energyCost = Math.round(ENERGY_COSTS.repair * SCRIPT_ENERGY_COST_MULTIPLIER * energyCostMultiplier);
+      await withTransaction(async (client) => {
+        const player = await client.query(
+          "SELECT * FROM players WHERE id = $1 FOR UPDATE",
+          [playerId]
+        );
+        const row = computeEnergy(player.rows[0]);
+        if ((row.energy as number) < energyCost) return;
+
+        const systems = await client.query(
+          "SELECT * FROM player_systems WHERE player_id = $1 AND health < 100",
+          [playerId]
+        );
+        if (systems.rows.length === 0) return;
+
+        const repairAmount = Math.round(10 * SCRIPT_EFFICIENCY);
+        await client.query(
+          "UPDATE players SET energy = $2, energy_updated_at = NOW() WHERE id = $1",
+          [playerId, (row.energy as number) - energyCost]
+        );
+        for (const sys of systems.rows) {
+          await client.query(
+            "UPDATE player_systems SET health = LEAST(100, health + $2), updated_at = NOW() WHERE id = $1",
+            [sys.id, repairAmount]
+          );
+        }
+        await logScriptExecution(client, playerId, scriptId, "auto_repair_all", action, true, 0, 0, energyCost);
+      });
+      break;
+    }
+    case "emergency_cooldown": {
+      const energyCost = Math.round(ENERGY_COSTS.repair * SCRIPT_ENERGY_COST_MULTIPLIER * energyCostMultiplier);
+      await withTransaction(async (client) => {
+        const player = await client.query(
+          "SELECT * FROM players WHERE id = $1 FOR UPDATE",
+          [playerId]
+        );
+        const row = computeEnergy(player.rows[0]);
+        if ((row.energy as number) < energyCost) return;
+
+        await client.query(
+          "UPDATE players SET energy = $2, energy_updated_at = NOW(), heat_level = GREATEST(0, heat_level - 2) WHERE id = $1",
+          [playerId, (row.energy as number) - energyCost]
+        );
+        await logScriptExecution(client, playerId, scriptId, "emergency_cooldown", action, true, 0, 0, energyCost);
       });
       break;
     }

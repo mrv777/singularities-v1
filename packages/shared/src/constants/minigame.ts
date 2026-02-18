@@ -136,15 +136,21 @@ export function scorePortSweep(
   return Math.round(Math.min(100, findScore + efficiencyScore));
 }
 
-/** Network Relink: 60% for connected pairs + 40% for grid coverage */
+/** Network Relink: 60% for connected pairs + up to 40% for grid coverage (time-gated) */
 export function scoreNetworkRelink(
   connectedPairs: number,
   totalPairs: number,
   filledCells: number,
-  totalCells: number
+  totalCells: number,
+  elapsedMs: number,
+  timeLimitMs: number,
 ): number {
+  const graceMs = totalPairs * 2_000;
+  const timeEfficiency = timeLimitMs > graceMs
+    ? Math.max(0, 1 - Math.max(0, elapsedMs - graceMs) / (timeLimitMs - graceMs))
+    : 1;
   const pairsScore = totalPairs > 0 ? (connectedPairs / totalPairs) * 60 : 0;
-  const coverageScore = totalCells > 0 ? (filledCells / totalCells) * 40 : 0;
+  const coverageScore = totalCells > 0 ? (filledCells / totalCells) * timeEfficiency * 40 : 0;
   return Math.round(pairsScore + coverageScore);
 }
 

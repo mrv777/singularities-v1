@@ -51,6 +51,11 @@ export const SCANNER_BALANCE = {
     min: 1,
     max: 2,
   },
+  residualDetection: {
+    securityThreshold: 60,  // No residual below this security level
+    securityScale: 0.5,     // (secLevel - 60) * 0.5 → max ~20% at sec 100
+    stealthDivisor: 4,      // stealth / 4 subtracted from residual chance
+  },
 } as const;
 
 export const REPAIR_BALANCE = {

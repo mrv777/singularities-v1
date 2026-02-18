@@ -123,8 +123,9 @@ function SectionContent({ section }: { section: Section }) {
           <div className="space-y-1">
             <div className="text-text-primary font-semibold text-[11px]">Detection Risk</div>
             <p className="text-text-muted">
-              Failed hacks can trigger detection and increase heat. Detection damages random systems, and higher heat
-              increases severity. Stealth and detection-reduction effects help lower this risk.
+              Failed hacks can trigger detection and increase heat. High-security targets also run persistent breach
+              monitoring — even a clean exit can log a trace. Detection damages random systems, and higher heat increases
+              severity. Relay (stealth) modules reduce residual trace risk on high-security targets.
             </p>
           </div>
         </div>

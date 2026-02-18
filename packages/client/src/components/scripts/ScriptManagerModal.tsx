@@ -6,6 +6,8 @@ import { useState, useEffect } from "react";
 import {
   SCRIPT_TRIGGERS,
   SCRIPT_ACTIONS,
+  SCRIPT_TRIGGER_MAP,
+  SCRIPT_ACTION_MAP,
   MAX_SCRIPTS,
   MAX_ACTIVE_SCRIPTS,
 } from "@singularities/shared";
@@ -123,10 +125,13 @@ export function ScriptManagerModal() {
               >
                 {SCRIPT_TRIGGERS.map((t) => (
                   <option key={t.id} value={t.id}>
-                    {t.label} — {t.description}
+                    {t.label}
                   </option>
                 ))}
               </select>
+              <p className="text-[10px] text-cyber-amber mt-1">
+                {SCRIPT_TRIGGER_MAP[trigger]?.description}
+              </p>
             </div>
 
             <div>
@@ -140,10 +145,13 @@ export function ScriptManagerModal() {
               >
                 {SCRIPT_ACTIONS.map((a) => (
                   <option key={a.id} value={a.id}>
-                    {a.label} — {a.description}
+                    {a.label}
                   </option>
                 ))}
               </select>
+              <p className="text-[10px] text-cyber-cyan mt-1">
+                {SCRIPT_ACTION_MAP[action]?.description}
+              </p>
             </div>
 
             <div className="flex gap-2">

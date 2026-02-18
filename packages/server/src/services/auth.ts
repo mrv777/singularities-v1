@@ -80,22 +80,19 @@ export async function findOrCreatePlayer(walletAddress: string) {
     [walletAddress, aiName]
   );
 
-  if (inserted.rows.length > 0) {
-    // New player — create 6 default subsystems
-    const playerId = inserted.rows[0].id;
-    const values = SYSTEM_TYPES.map(
-      (_, i) => `($1, $${i + 2})`
-    ).join(", ");
-    await query(
-      `INSERT INTO player_systems (player_id, system_type) VALUES ${values}`,
-      [playerId, ...SYSTEM_TYPES]
-    );
-  }
-
   // Always SELECT the final state (works for both new and existing)
   const result = await query(
     "SELECT * FROM players WHERE wallet_address = $1",
     [walletAddress]
+  );
+
+  // Idempotent: ensure all 6 systems exist for this player (backfills existing players too)
+  const playerId = result.rows[0].id;
+  const values = SYSTEM_TYPES.map((_, i) => `($1, $${i + 2})`).join(", ");
+  await query(
+    `INSERT INTO player_systems (player_id, system_type) VALUES ${values}
+     ON CONFLICT (player_id, system_type) DO NOTHING`,
+    [playerId, ...SYSTEM_TYPES]
   );
 
   return mapPlayerRow(result.rows[0]);
