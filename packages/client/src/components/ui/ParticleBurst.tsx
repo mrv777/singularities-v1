@@ -15,7 +15,7 @@ export function emitParticle(x: number, y: number, color = "var(--color-cyber-cy
   particleListeners.forEach((l) => l({ x, y, color }));
 }
 
-const PARTICLE_COUNT = 10;
+const PARTICLE_COUNT = 6;
 
 function SingleBurst({
   x,
@@ -52,7 +52,7 @@ function SingleBurst({
               height: 3 + Math.random() * 3,
               borderRadius: "50%",
               backgroundColor: color,
-              boxShadow: `0 0 6px ${color}, 0 0 12px ${color}80`,
+              boxShadow: `0 0 4px ${color}`,
               pointerEvents: "none",
               animation: `particle-burst 0.7s ${delay}s ease-out forwards`,
               "--dx": `${dx}px`,

@@ -1,4 +1,3 @@
-import { motion } from "framer-motion";
 import type { NodeDef } from "./NetworkNode";
 
 const AI_CORE_POS = { x: 400, y: 260 };
@@ -44,16 +43,14 @@ export function NetworkConnections({ nodes, playerLevel, unlockedSystems }: Netw
 
             {/* Animated dash flow from core to node */}
             {isUnlocked && (
-              <motion.path
+              <path
                 d={path}
                 fill="none"
                 stroke="var(--color-cyber-cyan)"
                 strokeWidth={1.5}
                 strokeDasharray="4 12"
                 opacity={0.4}
-                initial={{ strokeDashoffset: 0 }}
-                animate={{ strokeDashoffset: -32 }}
-                transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                style={{ animation: "dash-flow 3s linear infinite" }}
               />
             )}
 
@@ -91,13 +88,12 @@ export function NetworkConnections({ nodes, playerLevel, unlockedSystems }: Netw
 
             {/* Pulsing connection point at node end */}
             {isUnlocked && (
-              <motion.circle
+              <circle
                 cx={node.x}
                 cy={node.y}
                 r={2}
                 fill="var(--color-cyber-cyan)"
-                animate={{ scale: [1, 1.5, 1], opacity: [0.5, 1, 0.5] }}
-                transition={{ duration: 2, repeat: Infinity }}
+                style={{ transformOrigin: `${node.x}px ${node.y}px`, animation: "pulse-endpoint 2s ease-in-out infinite" }}
               />
             )}
           </g>

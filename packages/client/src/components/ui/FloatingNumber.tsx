@@ -63,7 +63,7 @@ export function FloatingNumberLayer() {
               fontFamily: "var(--font-mono)",
               fontWeight: "bold",
               fontSize: "14px",
-              textShadow: `0 0 12px ${COLOR_MAP[f.color]}, 0 0 24px ${COLOR_MAP[f.color]}80`,
+              textShadow: `0 0 6px ${COLOR_MAP[f.color]}`,
               pointerEvents: "none",
               userSelect: "none",
               transform: "translateX(-50%)",

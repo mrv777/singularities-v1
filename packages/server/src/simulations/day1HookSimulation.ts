@@ -6,11 +6,17 @@ import {
   ENERGY_BASE_REGEN_PER_HOUR,
   ENERGY_MAX_PER_LEVEL,
   ENERGY_REGEN_PER_LEVEL,
+  MINIGAME_BALANCE,
   PROGRESSION_BALANCE,
+  SCAN_ENERGY_COST,
   SCANNER_BALANCE,
+  TIER_UNLOCK_REQUIREMENT,
   getBaseReward,
   getEnergyAfterLevelUp,
   getLevelForXP,
+  getScoreMultiplier,
+  type ModuleDefinition,
+  type ModuleTier,
 } from "@singularities/shared";
 import { Rng, parseCliOptions, percentile } from "./lib.js";
 
@@ -23,11 +29,11 @@ interface BalanceProfile {
   dataVaultEnabled: boolean;
   securityBaseMin: number;
   securityStep: number;
-  successBaseChance: number;
-  successMinChance: number;
-  earlyFloorBase: number;
-  earlyFloorDropPerLevel: number;
-  earlyFloorUntilLevel: number;
+  solveBaseChance: number;
+  solveMinChance: number;
+  solvedScoreMean: number;
+  solvedScoreSpread: number;
+  failScoreMean: number;
 }
 
 interface ProfileResult {
@@ -61,7 +67,6 @@ interface SimState {
   hacks: number;
   firstTwentyHacks: number;
   firstTwentySuccesses: number;
-  targetsBuffered: number;
   levelAt30: number;
   levelAt60: number;
   creditsAt30: number;
@@ -90,11 +95,11 @@ const BASELINE_PROFILE: BalanceProfile = {
   dataVaultEnabled: false,
   securityBaseMin: 15,
   securityStep: 4,
-  successBaseChance: 58,
-  successMinChance: 20,
-  earlyFloorBase: 35,
-  earlyFloorDropPerLevel: 3,
-  earlyFloorUntilLevel: 4,
+  solveBaseChance: 76,
+  solveMinChance: 60,
+  solvedScoreMean: 70,
+  solvedScoreSpread: 18,
+  failScoreMean: 22,
 };
 
 const TUNED_PROFILE_NO_VAULT: BalanceProfile = {
@@ -106,11 +111,11 @@ const TUNED_PROFILE_NO_VAULT: BalanceProfile = {
   dataVaultEnabled: false,
   securityBaseMin: SCANNER_BALANCE.targetSecurity.baseMin,
   securityStep: SCANNER_BALANCE.targetSecurity.levelStep,
-  successBaseChance: SCANNER_BALANCE.hackSuccess.baseChance,
-  successMinChance: SCANNER_BALANCE.hackSuccess.minChance,
-  earlyFloorBase: SCANNER_BALANCE.hackSuccess.earlyFloorBase,
-  earlyFloorDropPerLevel: SCANNER_BALANCE.hackSuccess.earlyFloorDropPerLevel,
-  earlyFloorUntilLevel: SCANNER_BALANCE.hackSuccess.earlyFloorUntilLevel,
+  solveBaseChance: 86,
+  solveMinChance: 72,
+  solvedScoreMean: 79,
+  solvedScoreSpread: 12,
+  failScoreMean: 26,
 };
 
 const TUNED_PROFILE_WITH_VAULT: BalanceProfile = {
@@ -123,18 +128,70 @@ function regenPerMinute(level: number): number {
   return (ENERGY_BASE_REGEN_PER_HOUR + (level - 1) * ENERGY_REGEN_PER_LEVEL) / 60;
 }
 
-function getEarlyFloor(profile: BalanceProfile, level: number): number {
-  if (level > profile.earlyFloorUntilLevel) return profile.successMinChance;
-  const floor = profile.earlyFloorBase - (level - 1) * profile.earlyFloorDropPerLevel;
-  return Math.max(profile.successMinChance, floor);
-}
-
 function getEffectiveHackPower(modules: Record<string, number>): number {
   const contributions = HACK_MODULES
     .map((m) => (m.effects.hackPower ?? 0) * (modules[m.id] ?? 0))
     .filter((v) => v > 0)
     .sort((a, b) => b - a);
   return contributions.slice(0, 3).reduce((sum, v) => sum + v, 0);
+}
+
+function getTierIndex(securityLevel: number): number {
+  if (securityLevel >= 75) return 3;
+  if (securityLevel >= 55) return 2;
+  if (securityLevel >= 30) return 1;
+  return 0;
+}
+
+function getPrevTier(tier: ModuleTier): ModuleTier | null {
+  if (tier === "elite") return "advanced";
+  if (tier === "advanced") return "basic";
+  return null;
+}
+
+function canUnlockModule(mod: ModuleDefinition, modules: Record<string, number>): boolean {
+  if ((modules[mod.id] ?? 0) > 0) return true;
+  const prevTier = getPrevTier(mod.tier);
+  if (!prevTier) return true;
+  const ownedPrevTier = ALL_MODULES.filter(
+    (m) => m.category === mod.category && m.tier === prevTier && (modules[m.id] ?? 0) > 0
+  ).length;
+  return ownedPrevTier >= TIER_UNLOCK_REQUIREMENT;
+}
+
+function costForNextLevel(mod: ModuleDefinition, currentLevel: number): { credits: number; data: number } {
+  if (currentLevel <= 0) return mod.baseCost;
+  return {
+    credits: mod.baseCost.credits + mod.costPerLevel.credits * currentLevel,
+    data: mod.baseCost.data + mod.costPerLevel.data * currentLevel,
+  };
+}
+
+function sampleMinigameTarget(
+  rng: Rng,
+  level: number,
+  profile: BalanceProfile,
+): { security: number; rewards: { credits: number; data: number; xp: number } } {
+  let bestSecurity = 0;
+  for (let i = 0; i < 5; i++) {
+    const security = Math.min(
+      SCANNER_BALANCE.targetSecurity.max,
+      profile.securityBaseMin + rng.int(0, SCANNER_BALANCE.targetSecurity.randomRange)
+      + level * profile.securityStep
+    );
+    if (security > bestSecurity) bestSecurity = security;
+  }
+
+  const base = getBaseReward(bestSecurity);
+  const economicMult = MINIGAME_BALANCE.economicMultiplierByTier[getTierIndex(bestSecurity)];
+  return {
+    security: bestSecurity,
+    rewards: {
+      credits: Math.floor(base.credits * economicMult * MINIGAME_BALANCE.globalRewardMultiplier),
+      data: Math.floor(base.data * economicMult * MINIGAME_BALANCE.globalRewardMultiplier),
+      xp: Math.floor(base.xp * MINIGAME_BALANCE.rewardMultiplier * MINIGAME_BALANCE.globalRewardMultiplier),
+    },
+  };
 }
 
 function runSingle(seed: number, profile: BalanceProfile): ProfileResult {
@@ -151,7 +208,6 @@ function runSingle(seed: number, profile: BalanceProfile): ProfileResult {
     hacks: 0,
     firstTwentyHacks: 0,
     firstTwentySuccesses: 0,
-    targetsBuffered: 0,
     levelAt30: 1,
     levelAt60: 1,
     creditsAt30: 100,
@@ -239,12 +295,8 @@ function runSingle(seed: number, profile: BalanceProfile): ProfileResult {
       .map((m) => {
         const current = state.modules[m.id] ?? 0;
         if (current >= MODULE_LEVEL_CAP_FOR_SIM) return null;
-        const cost = current === 0
-          ? m.baseCost
-          : {
-            credits: m.baseCost.credits + m.costPerLevel.credits * current,
-            data: m.baseCost.data + m.costPerLevel.data * current,
-          };
+        if (current === 0 && !canUnlockModule(m, state.modules)) return null;
+        const cost = costForNextLevel(m, current);
         if (cost.credits > state.credits || cost.data > state.data) return null;
 
         const nextModules = { ...state.modules, [m.id]: current + 1 };
@@ -276,24 +328,15 @@ function runSingle(seed: number, profile: BalanceProfile): ProfileResult {
 
     maybeActivateDataVault();
 
-    if (state.targetsBuffered <= 0) {
-      waitForEnergy(3);
-      if (state.minutes >= 360) break;
-      state.energy -= 3;
-      state.minutes += 0.1;
-      state.energy = Math.min(state.energyMax, state.energy + regenPerMinute(state.level) * 0.1);
-      state.targetsBuffered = 1;
-      checkpointLevels();
-    }
+    // Live loop: scan -> choose one target -> play one minigame -> resolve -> repeat.
+    waitForEnergy(SCAN_ENERGY_COST);
+    if (state.minutes >= 360) break;
+    state.energy -= SCAN_ENERGY_COST;
+    state.minutes += 0.1; // scan request + target selection overhead
+    state.energy = Math.min(state.energyMax, state.energy + regenPerMinute(state.level) * 0.1);
+    checkpointLevels();
 
-    const security = Math.min(
-      SCANNER_BALANCE.targetSecurity.max,
-      profile.securityBaseMin + rng.int(0, SCANNER_BALANCE.targetSecurity.randomRange)
-      + state.level * profile.securityStep
-    );
-    state.minutes += 0.2;
-    state.energy = Math.min(state.energyMax, state.energy + regenPerMinute(state.level) * 0.2);
-    state.targetsBuffered -= 1;
+    const target = sampleMinigameTarget(rng, state.level, profile);
     state.hacks += 1;
     if (state.firstTwentyHacks < 20) state.firstTwentyHacks += 1;
 
@@ -301,22 +344,39 @@ function runSingle(seed: number, profile: BalanceProfile): ProfileResult {
       ? DATA_VAULT_HACK_BONUS
       : 0;
     const effectiveHackPower = getEffectiveHackPower(state.modules) + dataVaultHackBonus;
-    const chance = Math.max(
-      getEarlyFloor(profile, state.level),
-      Math.min(
-        SCANNER_BALANCE.hackSuccess.maxChance,
-        profile.successBaseChance + (effectiveHackPower - security)
+
+    const levelPenalty = Math.max(0, state.level - 5) * 0.85;
+    const solveChance = Math.min(
+      98,
+      Math.max(
+        profile.solveMinChance,
+        profile.solveBaseChance
+          + state.level * 0.45
+          + effectiveHackPower * 0.65
+          - Math.max(0, target.security - 28) * 0.60
+          - levelPenalty
       )
     );
-    const success = rng.int(1, 100) <= chance;
-    if (success) {
-      if (state.hacks <= 20) state.firstTwentySuccesses += 1;
-      const reward = getBaseReward(security);
-      state.credits += reward.credits;
-      state.data += reward.data;
-      state.xp += reward.xp;
-      applyLeveling();
-    }
+    const solved = rng.int(1, 100) <= solveChance;
+    const solvedScoreMean = profile.solvedScoreMean - Math.max(0, state.level - 6) * 0.55;
+    const solvedScore = solvedScoreMean + rng.int(-profile.solvedScoreSpread, profile.solvedScoreSpread);
+    const failScore = profile.failScoreMean + rng.int(-8, 8);
+    const score = solved
+      ? Math.max(50, Math.min(100, solvedScore))
+      : Math.max(1, Math.min(49, failScore));
+    const scoreMult = getScoreMultiplier(score);
+
+    if (solved && state.hacks <= 20) state.firstTwentySuccesses += 1;
+    state.credits += Math.floor(target.rewards.credits * scoreMult);
+    state.data += Math.floor(target.rewards.data * scoreMult);
+    state.xp += Math.floor(target.rewards.xp * scoreMult);
+    applyLeveling();
+
+    const playMinutes = solved
+      ? 1.2 + rng.next() * 1.2
+      : 1.5 + rng.next() * 1.5;
+    state.minutes += playMinutes;
+    state.energy = Math.min(state.energyMax, state.energy + regenPerMinute(state.level) * playMinutes);
 
     checkpointLevels();
   }

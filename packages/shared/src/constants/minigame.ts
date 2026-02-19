@@ -131,7 +131,7 @@ export function scorePortSweep(
 ): number {
   if (probesUsed === 0) return 0;
   const findScore = totalPorts > 0 ? (portsFound / totalPorts) * 50 : 0;
-  const efficiency = maxProbes > 0 ? Math.max(0, 1 - (probesUsed - portsFound) / (maxProbes - portsFound)) : 0;
+  const efficiency = maxProbes > 0 ? Math.max(0, 1 - (probesUsed - portsFound) / Math.max(1, maxProbes - portsFound)) : 0;
   const efficiencyScore = efficiency * 50;
   return Math.round(Math.min(100, findScore + efficiencyScore));
 }
@@ -195,6 +195,10 @@ export function getDetectionMultiplier(score: number): number {
 export const MINIGAME_BALANCE = {
   /** Base rewards are ~3x current scanner values since only 1 target per scan */
   rewardMultiplier: 3,
+  /** Global scalar applied to credits, data, and XP minigame rewards */
+  globalRewardMultiplier: 0.5,
+  /** Credits & data multipliers by tier [T0, T1, T2, T3] — XP/rep stay at rewardMultiplier */
+  economicMultiplierByTier: [1.45, 1.75, 1.95, 2.15] as const,
   /** Minimum score to earn processing power */
   processingPowerScoreThreshold: 75,
   /** Minimum security for processing power drop */
@@ -208,6 +212,42 @@ export const MINIGAME_BALANCE = {
   gameStateRetentionSeconds: 2_592_000,
   /** Energy cost covered entirely by SCAN_ENERGY_COST; no separate per-hack cost */
   energyCost: 0,
+} as const;
+
+// ---------------------------------------------------------------------------
+// Modifiers
+// ---------------------------------------------------------------------------
+
+export type SignalCrackModifier = "blackout" | "corrupted";
+export type PortSweepModifier = "decoys" | "mines";
+export type NetworkRelinkModifier = "relay" | "interference";
+export type MinigameModifier = SignalCrackModifier | PortSweepModifier | NetworkRelinkModifier;
+
+export const MODIFIER_LABELS: Record<MinigameModifier, string> = {
+  blackout: "Blackout",
+  corrupted: "Corrupted",
+  decoys: "Decoys",
+  mines: "Mines",
+  relay: "Relay",
+  interference: "Interference",
+};
+
+export const MODIFIER_DESCRIPTIONS: Record<MinigameModifier, string> = {
+  blackout: "Possibilities counter hidden",
+  corrupted: "One feedback digit per guess is corrupted",
+  decoys: "Some non-port cells appear as hits",
+  mines: "Some non-port cells cost 2 probes on miss",
+  relay: "Paths must pass through relay nodes",
+  interference: "Some cells are permanently blocked",
+};
+
+export const MODIFIER_ROLL = {
+  /** Chance to get any modifier at T2 */
+  T2_CHANCE: 0.60,
+  /** Chance to get any modifier at T3 */
+  T3_CHANCE: 0.75,
+  /** At T3, probability to roll the T3-specific modifier vs the T2 modifier */
+  T3_WEIGHT_OWN: 0.80,
 } as const;
 
 // ---------------------------------------------------------------------------

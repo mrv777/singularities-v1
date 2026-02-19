@@ -29,6 +29,7 @@ import {
   getNetworkRelinkDifficulty,
   getDetectionMultiplier,
   MINIGAME_BALANCE,
+  MODIFIER_ROLL,
   SCANNER_BALANCE,
   getBaseReward,
   getHeatDamageConfig,
@@ -41,6 +42,10 @@ import {
   HACK_SUCCESS_TRACED_TEMPLATES,
   HACK_FAIL_UNDETECTED_TEMPLATES,
   HACK_FAIL_DETECTED_TEMPLATES,
+  scoreSignalCrack,
+  scorePortSweep,
+  scoreNetworkRelink,
+  getScoreMultiplier,
 } from "@singularities/shared";
 
 // ---------------------------------------------------------------------------
@@ -145,7 +150,7 @@ interface SignalCrackState extends BaseGameState {
   solved: boolean;
   /** All guesses submitted so far (needed for possibilities counter) */
   guesses: number[][];
-  /** All feedbacks for each guess */
+  /** Real (unmodified) feedbacks for each guess — used for possibilities computation */
   feedbacks: SignalCrackFeedback[][];
   config: SignalCrackConfig;
 }
@@ -159,6 +164,10 @@ interface PortSweepState extends BaseGameState {
   /** Cells already probed (to prevent re-probing) */
   probed: string[];
   config: PortSweepConfig;
+  /** Decoy cell positions (modifier "decoys"); not sent to client in config */
+  decoyPorts?: string[];
+  /** Mine cell positions (modifier "mines"); not sent to client in config */
+  mineCells?: string[];
 }
 
 interface NetworkRelinkState extends BaseGameState {
@@ -199,6 +208,8 @@ function generateSignalCrackPuzzle(rng: Xorshift128, securityLevel: number): {
     }
   }
 
+  const modifier = rollModifier(getTierIndex(securityLevel), "blackout" as const, "corrupted" as const);
+
   return {
     secret,
     config: {
@@ -207,6 +218,7 @@ function generateSignalCrackPuzzle(rng: Xorshift128, securityLevel: number): {
       digitPool: diff.digitPool,
       maxGuesses: diff.maxGuesses,
       timeLimitMs: diff.timeLimitMs,
+      ...(modifier ? { modifier } : {}),
     },
   };
 }
@@ -214,6 +226,8 @@ function generateSignalCrackPuzzle(rng: Xorshift128, securityLevel: number): {
 function generatePortSweepPuzzle(rng: Xorshift128, securityLevel: number): {
   ports: string[];
   config: PortSweepConfig;
+  decoyPorts?: string[];
+  mineCells?: string[];
 } {
   const diff = getPortSweepDifficulty(securityLevel);
   const allCells: string[] = [];
@@ -225,6 +239,22 @@ function generatePortSweepPuzzle(rng: Xorshift128, securityLevel: number): {
   rng.shuffle(allCells);
   const ports = allCells.slice(0, diff.portCount);
 
+  const modifier = rollModifier(getTierIndex(securityLevel), "decoys" as const, "mines" as const);
+
+  let decoyPorts: string[] | undefined;
+  let mineCells: string[] | undefined;
+
+  if (modifier === "decoys") {
+    // 2-3 non-port cells are decoys
+    const nonPorts = allCells.slice(diff.portCount);
+    const decoyCount = rng.int(2, 3);
+    decoyPorts = nonPorts.slice(0, Math.min(decoyCount, nonPorts.length));
+  } else if (modifier === "mines") {
+    // 3 non-port cells are mines
+    const nonPorts = allCells.slice(diff.portCount);
+    mineCells = nonPorts.slice(0, Math.min(3, nonPorts.length));
+  }
+
   return {
     ports,
     config: {
@@ -233,7 +263,10 @@ function generatePortSweepPuzzle(rng: Xorshift128, securityLevel: number): {
       portCount: diff.portCount,
       maxProbes: diff.maxProbes,
       timeLimitMs: diff.timeLimitMs,
+      ...(modifier ? { modifier } : {}),
     },
+    ...(decoyPorts ? { decoyPorts } : {}),
+    ...(mineCells ? { mineCells } : {}),
   };
 }
 
@@ -250,7 +283,6 @@ function generateNetworkRelinkPuzzle(rng: Xorshift128, securityLevel: number): {
 } {
   const diff = getNetworkRelinkDifficulty(securityLevel);
   const N = diff.gridSize;
-  const totalCells = N * N;
 
   // Generate Hamiltonian path using randomized Warnsdorff's rule + backtracking
   const path = generateHamiltonianPath(rng, N);
@@ -260,25 +292,68 @@ function generateNetworkRelinkPuzzle(rng: Xorshift128, securityLevel: number): {
   const cutPoints = selectCutPoints(rng, path.length, K);
 
   const endpoints: Array<[[number, number], [number, number]]> = [];
+  const segmentRanges: Array<[number, number]> = []; // [startIdx, endIdx] into path
   let start = 0;
   for (let i = 0; i < cutPoints.length; i++) {
     const end = cutPoints[i];
     endpoints.push([path[start], path[end]]);
+    segmentRanges.push([start, end]);
     start = end + 1;
   }
-  // Last segment
   endpoints.push([path[start], path[path.length - 1]]);
+  segmentRanges.push([start, path.length - 1]);
+
+  const modifier = rollModifier(getTierIndex(securityLevel), "relay" as const, "interference" as const);
+
+  // Build set of endpoint cell keys (to avoid placing relay/blocked there)
+  const endpointKeys = new Set<string>();
+  for (const [[r1, c1], [r2, c2]] of endpoints) {
+    endpointKeys.add(`${r1},${c1}`);
+    endpointKeys.add(`${r2},${c2}`);
+  }
+
+  let relayNodes: Array<[number, number]> | undefined;
+  let blockedCells: Array<[number, number]> | undefined;
+
+  if (modifier === "relay") {
+    // One relay node per pair: pick a non-endpoint cell from the middle of each segment
+    relayNodes = segmentRanges.map(([segStart, segEnd]) => {
+      // Middle cell of the segment (excluding endpoints)
+      const innerStart = segStart + 1;
+      const innerEnd = segEnd - 1;
+      if (innerStart > innerEnd) {
+        // Segment too short — fall back to any non-endpoint cell in path
+        return path[segStart + Math.floor((segEnd - segStart) / 2)];
+      }
+      const midIdx = innerStart + rng.int(0, innerEnd - innerStart);
+      return path[midIdx];
+    });
+  } else if (modifier === "interference") {
+    // 3-4 blocked cells not at endpoints
+    const nonEndpointCells: [number, number][] = path.filter(
+      ([r, c]) => !endpointKeys.has(`${r},${c}`)
+    );
+    // Shuffle and pick
+    rng.shuffle(nonEndpointCells);
+    const blockCount = rng.int(3, Math.min(4, nonEndpointCells.length));
+    blockedCells = nonEndpointCells.slice(0, blockCount);
+  }
+
+  const config: NetworkRelinkConfig = {
+    type: "network_relink",
+    gridSize: N,
+    pairs: K,
+    timeLimitMs: diff.timeLimitMs,
+    endpoints,
+    ...(modifier ? { modifier } : {}),
+    ...(relayNodes ? { relayNodes } : {}),
+    ...(blockedCells ? { blockedCells } : {}),
+  };
 
   return {
     solutionPath: path,
     endpoints,
-    config: {
-      type: "network_relink",
-      gridSize: N,
-      pairs: K,
-      timeLimitMs: diff.timeLimitMs,
-      endpoints,
-    },
+    config,
   };
 }
 
@@ -410,57 +485,35 @@ function randomInt(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-export function computeSignalCrackScore(guessesUsed: number, maxGuesses: number, solved: boolean): number {
-  if (!solved) return 0;
-  if (maxGuesses <= 1) return 100;
-  const efficiency = (maxGuesses - guessesUsed) / (maxGuesses - 1);
-  return Math.round(50 + 50 * efficiency);
+/** Returns 0=T0, 1=T1, 2=T2, 3=T3 based on security level */
+function getTierIndex(securityLevel: number): number {
+  if (securityLevel >= 75) return 3;
+  if (securityLevel >= 55) return 2;
+  if (securityLevel >= 30) return 1;
+  return 0;
 }
 
-export function computePortSweepScore(
-  portsFound: number,
-  totalPorts: number,
-  probesUsed: number,
-  maxProbes: number
-): number {
-  if (probesUsed === 0) return 0;
-  const findScore = totalPorts > 0 ? (portsFound / totalPorts) * 50 : 0;
-  const efficiency =
-    maxProbes > 0
-      ? Math.max(0, 1 - (probesUsed - portsFound) / (maxProbes - portsFound))
-      : 0;
-  const efficiencyScore = efficiency * 50;
-  return Math.round(Math.min(100, findScore + efficiencyScore));
-}
-
-export function computeNetworkRelinkScore(
-  connectedPairs: number,
-  totalPairs: number,
-  filledCells: number,
-  totalCells: number,
-  elapsedMs: number,
-  timeLimitMs: number,
-): number {
-  const graceMs = totalPairs * 2_000;
-  const timeEfficiency = timeLimitMs > graceMs
-    ? Math.max(0, 1 - Math.max(0, elapsedMs - graceMs) / (timeLimitMs - graceMs))
-    : 1;
-  const pairsScore = totalPairs > 0 ? (connectedPairs / totalPairs) * 60 : 0;
-  const coverageScore = totalCells > 0 ? (filledCells / totalCells) * timeEfficiency * 40 : 0;
-  return Math.round(pairsScore + coverageScore);
-}
-
-export function computeRewardMultiplier(score: number): number {
-  const clamped = Math.max(0, Math.min(100, score));
-  if (clamped === 0) return 0;
-  if (clamped < 25) {
-    return (clamped / 25) * 0.08;
+/**
+ * Roll for a modifier at T2 or T3.
+ * Returns null if no modifier rolled, or the winning modifier string.
+ */
+function rollModifier<T extends string>(tierIndex: number, t2mod: T, t3mod: T): T | null {
+  if (tierIndex < 2) return null;
+  const roll = Math.random();
+  if (tierIndex === 2) {
+    return roll < MODIFIER_ROLL.T2_CHANCE ? t2mod : null;
   }
-  if (clamped < 50) {
-    return 0.08 + ((clamped - 25) / 25) * 0.62;
-  }
-  return 0.7 + ((clamped - 50) / 50) * 0.55;
+  // T3
+  if (roll >= MODIFIER_ROLL.T3_CHANCE) return null;
+  const innerRoll = Math.random();
+  return innerRoll < MODIFIER_ROLL.T3_WEIGHT_OWN ? t3mod : t2mod;
 }
+
+// Re-export shared scoring functions under legacy names for test compatibility
+export const computeSignalCrackScore = scoreSignalCrack;
+export const computePortSweepScore = scorePortSweep;
+export const computeNetworkRelinkScore = scoreNetworkRelink;
+export const computeRewardMultiplier = getScoreMultiplier;
 
 export function hasMinigameRewardEligibility(gameType: MinigameType, moveCount: number): boolean {
   if (moveCount <= 0) return false;
@@ -660,7 +713,7 @@ export async function startGame(playerId: string, targetIndex: number) {
         config,
       };
     } else if (gameType === "port_sweep") {
-      const { ports, config } = generatePortSweepPuzzle(rng, target.securityLevel);
+      const { ports, config, decoyPorts, mineCells } = generatePortSweepPuzzle(rng, target.securityLevel);
       const now = Date.now();
       gameState = {
         gameType: "port_sweep",
@@ -678,6 +731,8 @@ export async function startGame(playerId: string, targetIndex: number) {
         portsFound: 0,
         probed: [],
         config,
+        ...(decoyPorts ? { decoyPorts } : {}),
+        ...(mineCells ? { mineCells } : {}),
       };
     } else {
       const { solutionPath, endpoints, config } = generateNetworkRelinkPuzzle(rng, target.securityLevel);
@@ -855,13 +910,14 @@ function processSignalCrackMove(state: SignalCrackState, guess: number[]): Signa
 
   state.guessesUsed++;
   state.guesses.push(guess);
+  // Store the REAL feedback for server-side possibilities computation
   state.feedbacks.push(feedback);
   const solved = feedback.every((f) => f === "EXACT");
   state.solved = solved;
 
   const gameOver = solved || state.guessesUsed >= maxGuesses;
 
-  // Compute possibilities remaining using all guesses + feedbacks
+  // Compute possibilities remaining using real feedbacks (unaffected by corruption)
   const possibilitiesRemaining = solved ? 1 : computePossibilitiesRemaining(
     state.config.digitPool,
     state.config.codeLength,
@@ -870,14 +926,29 @@ function processSignalCrackMove(state: SignalCrackState, guess: number[]): Signa
     state.feedbacks,
   );
 
+  // Apply "corrupted" modifier: flip one random feedback digit for the client
+  let clientFeedback = feedback;
+  let corruptedIndex: number | undefined;
+  if (!solved && state.config.modifier === "corrupted") {
+    const idx = Math.floor(Math.random() * feedback.length);
+    const orig = feedback[idx];
+    const others: SignalCrackFeedback[] = (["EXACT", "PRESENT", "MISS"] as SignalCrackFeedback[]).filter(
+      (f) => f !== orig
+    );
+    const corrupted: SignalCrackFeedback = others[Math.floor(Math.random() * others.length)];
+    clientFeedback = [...feedback];
+    clientFeedback[idx] = corrupted;
+    corruptedIndex = idx;
+  }
+
   return {
     type: "signal_crack",
     guess,
-    feedback,
+    feedback: clientFeedback,
     solved,
     guessesUsed: state.guessesUsed,
     guessesRemaining: maxGuesses - state.guessesUsed,
-    possibilitiesRemaining,
+    possibilitiesRemaining: state.config.modifier === "blackout" ? null : possibilitiesRemaining,
     gameOver,
   };
 }
@@ -902,16 +973,24 @@ function processPortSweepMove(state: PortSweepState, row: number, col: number): 
     throw new MinigameError("No probes remaining", 400);
   }
 
-  state.probesUsed++;
   state.probed.push(cellKey);
 
-  const hit = state.ports.includes(cellKey);
+  const isRealPort = state.ports.includes(cellKey);
+  const isDecoy = !isRealPort && (state.decoyPorts?.includes(cellKey) ?? false);
+  const isMine = !isRealPort && !isDecoy && (state.mineCells?.includes(cellKey) ?? false);
+
+  // Mines cost 2 probes on miss
+  const probeCost = isMine ? 2 : 1;
+  state.probesUsed = Math.min(maxProbes, state.probesUsed + probeCost);
+
+  // For the client, decoys appear as hits (hit=true) but don't count toward portsFound
+  const clientHit = isRealPort || isDecoy;
   let adjacency: number | null = null;
 
-  if (hit) {
+  if (isRealPort) {
     state.portsFound++;
-  } else {
-    // Count adjacent ports (8-connected)
+  } else if (!isDecoy) {
+    // Miss: count adjacent real ports (8-connected)
     adjacency = 0;
     for (let dr = -1; dr <= 1; dr++) {
       for (let dc = -1; dc <= 1; dc++) {
@@ -930,13 +1009,14 @@ function processPortSweepMove(state: PortSweepState, row: number, col: number): 
     type: "port_sweep",
     row,
     col,
-    hit,
+    hit: clientHit,
     adjacency,
     portsFound: state.portsFound,
     probesUsed: state.probesUsed,
     probesRemaining: maxProbes - state.probesUsed,
     allFound,
     gameOver,
+    ...(isMine ? { mineSurge: true } : {}),
   };
 }
 
@@ -952,6 +1032,21 @@ function processNetworkRelinkMove(
   const N = state.config.gridSize;
   const totalCells = N * N;
   const totalPairs = state.totalPairs;
+
+  // Build modifier lookup sets
+  const relayMap = new Map<number, string>(); // pairIndex → "r,c" of relay node
+  if (state.config.modifier === "relay" && state.config.relayNodes) {
+    state.config.relayNodes.forEach(([r, c], i) => {
+      relayMap.set(i, `${r},${c}`);
+    });
+  }
+
+  const blockedSet = new Set<string>();
+  if (state.config.modifier === "interference" && state.config.blockedCells) {
+    for (const [r, c] of state.config.blockedCells) {
+      blockedSet.add(`${r},${c}`);
+    }
+  }
 
   // Validate and score the submitted paths
   const usedCells = new Set<string>();
@@ -973,7 +1068,7 @@ function processNetworkRelinkMove(
       || (startR === ep2r && startC === ep2c && endR === ep1r && endC === ep1c);
     if (!startsAtEp) continue;
 
-    // Validate adjacency and bounds for each step
+    // Validate adjacency, bounds, and modifier constraints for each step
     let valid = true;
     const pathCells = new Set<string>();
     for (let i = 0; i < path.cells.length; i++) {
@@ -981,6 +1076,10 @@ function processNetworkRelinkMove(
       if (r < 0 || r >= N || c < 0 || c >= N) { valid = false; break; }
 
       const key = `${r},${c}`;
+
+      // Interference: path cannot use blocked cells
+      if (blockedSet.has(key)) { valid = false; break; }
+
       if (usedCells.has(key) || pathCells.has(key)) { valid = false; break; }
       pathCells.add(key);
 
@@ -994,6 +1093,12 @@ function processNetworkRelinkMove(
     }
 
     if (!valid) continue;
+
+    // Relay: path must pass through its relay node
+    if (relayMap.has(path.pairIndex)) {
+      const relayKey = relayMap.get(path.pairIndex)!;
+      if (!pathCells.has(relayKey)) continue;
+    }
 
     // Mark cells as used
     for (const [r, c] of path.cells) {
@@ -1060,18 +1165,20 @@ export async function resolveGame(playerId: string) {
       const scoreMult = rewardsEligible ? computeRewardMultiplier(score) : 0;
       const creditMultiplier = 1 + statsSnap.creditBonus / 100;
       const dataMultiplier = 1 + statsSnap.dataBonus / 100;
+      const economicMult = MINIGAME_BALANCE.economicMultiplierByTier[getTierIndex(target.securityLevel)];
 
       const finalCredits = Math.floor(
-        baseRewards.credits * MINIGAME_BALANCE.rewardMultiplier * scoreMult * creditMultiplier
-        * statsSnap.hackRewardMultiplier * resourceMultiplier
+        baseRewards.credits * economicMult * scoreMult * creditMultiplier
+        * statsSnap.hackRewardMultiplier * resourceMultiplier * MINIGAME_BALANCE.globalRewardMultiplier
       );
       const finalData = Math.floor(
-        baseRewards.data * MINIGAME_BALANCE.rewardMultiplier * scoreMult * dataMultiplier
-        * statsSnap.hackRewardMultiplier * resourceMultiplier
+        baseRewards.data * economicMult * scoreMult * dataMultiplier
+        * statsSnap.hackRewardMultiplier * resourceMultiplier * MINIGAME_BALANCE.globalRewardMultiplier
       );
       const finalReputation = Math.floor(baseRewards.reputation * MINIGAME_BALANCE.rewardMultiplier * scoreMult);
       const finalXp = Math.floor(
-        baseRewards.xp * MINIGAME_BALANCE.rewardMultiplier * scoreMult * statsSnap.xpGainMultiplier
+        baseRewards.xp * MINIGAME_BALANCE.rewardMultiplier * scoreMult
+        * statsSnap.xpGainMultiplier * MINIGAME_BALANCE.globalRewardMultiplier
       );
 
       // Processing power only at score >= 75% on security >= 65

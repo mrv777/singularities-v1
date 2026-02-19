@@ -198,21 +198,18 @@ export function Header() {
                         {player.energy}/{player.energyMax}
                       </span>
                       <div className="w-10 h-2.5 bg-bg-primary/50 rounded-full overflow-hidden border border-white/5">
-                        <motion.div
-                          initial={{ width: 0 }}
-                          animate={{
+                        <div
+                          className={`h-full transition-[width] duration-[600ms] ease-out ${
+                            energyPercent < 20
+                              ? "shadow-[0_0_6px_var(--color-cyber-amber)]"
+                              : "bg-cyber-cyan shadow-[0_0_6px_var(--color-cyber-cyan)]"
+                          }`}
+                          style={{
                             width: `${energyPercent}%`,
-                            backgroundColor: energyPercent < 20
-                              ? ["#ffaa00", "#332200", "#ffaa00"]
-                              : "var(--color-cyber-cyan)",
+                            ...(energyPercent < 20
+                              ? { animation: "energy-pulse-low 1.5s ease-in-out infinite" }
+                              : { backgroundColor: "var(--color-cyber-cyan)" }),
                           }}
-                          transition={{
-                            width: { duration: 0.6, ease: "easeOut" },
-                            backgroundColor: energyPercent < 20
-                              ? { duration: 1.5, repeat: Infinity, ease: "easeInOut" }
-                              : { duration: 0.3 },
-                          }}
-                          className="h-full shadow-[0_0_6px_var(--color-cyber-cyan)]"
                         />
                       </div>
                     </div>

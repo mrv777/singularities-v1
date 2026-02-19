@@ -2,7 +2,7 @@ import { Modal } from "@/components/Modal";
 import { useUIStore } from "@/stores/ui";
 import { usePlayer } from "@/hooks/usePlayer";
 import { useAuthStore } from "@/stores/auth";
-import { TRAIT_MAP, ALL_MODULES } from "@singularities/shared";
+import { TRAIT_MAP, getXPForNextLevel } from "@singularities/shared";
 import type { NetworkStats, SeasonLeaderboardEntry } from "@singularities/shared";
 import { api } from "@/lib/api";
 import { useState, useEffect } from "react";
@@ -31,7 +31,7 @@ export function NetStatsModal() {
 
   if (!open || !data) return null;
 
-  const { player, modules, traits, passiveIncome } = data;
+  const { player, traits, passiveIncome } = data;
 
   const alignmentLabel =
     player.alignment > 0.3
@@ -57,7 +57,7 @@ export function NetStatsModal() {
           </h3>
           <div className="grid grid-cols-2 gap-2 text-xs">
             <Stat label="Level" value={player.level} />
-            <Stat label="XP" value={`${player.xp} / ${player.level * 550}`} />
+            <Stat label="XP" value={`${player.xp} / ${getXPForNextLevel(player.level) ?? "MAX"}`} />
             <Stat label="Credits" value={player.credits} color="text-cyber-green" />
             <Stat label="Data" value={player.data} color="text-cyber-cyan" />
             <Stat label="Processing Power" value={player.processingPower} color="text-cyber-magenta" />
@@ -87,33 +87,6 @@ export function NetStatsModal() {
               <Badge label="DEAD" color="border-cyber-red text-cyber-red" />
             )}
           </div>
-        </section>
-
-        {/* Installed Modules */}
-        <section>
-          <h3 className="text-[10px] uppercase tracking-wider text-text-muted mb-2">
-            Installed Modules ({modules.length})
-          </h3>
-          {modules.length === 0 ? (
-            <p className="text-text-muted text-xs">No modules installed.</p>
-          ) : (
-            <div className="space-y-1">
-              {modules.map((m) => {
-                const def = ALL_MODULES.find((mod) => mod.id === m.moduleId);
-                return (
-                  <div
-                    key={m.id}
-                    className="flex items-center justify-between text-xs border border-border-default rounded px-2 py-1.5"
-                  >
-                    <span className="text-text-primary">
-                      {def?.name ?? m.moduleId}
-                    </span>
-                    <span className="text-cyber-cyan">LVL {m.level}</span>
-                  </div>
-                );
-              })}
-            </div>
-          )}
         </section>
 
         {/* Genetic Traits */}

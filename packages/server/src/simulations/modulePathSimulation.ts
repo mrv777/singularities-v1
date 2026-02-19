@@ -77,7 +77,9 @@ function parseCreditsPerHour(argv: string[]): number {
       if (!Number.isNaN(parsed) && parsed > 0) return parsed;
     }
   }
-  return 140;
+  // Minigame economy replaced old scanner-hack payouts; 140c/hr is now too low.
+  // Keep overrideable via --credits-per-hour for local calibration runs.
+  return 320;
 }
 
 function main() {

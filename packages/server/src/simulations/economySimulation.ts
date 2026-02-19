@@ -14,9 +14,11 @@ import {
   PVP_REWARD_PROCESSING_POWER_MIN,
   SCANNER_BALANCE,
   PROGRESSION_BALANCE,
+  MINIGAME_BALANCE,
   getBaseReward,
   getDecisionResourceCap,
   getLevelForXP,
+  getScoreMultiplier,
   getRepairCreditCostForHealth,
 } from "@singularities/shared";
 import { Rng, average, parseCliOptions, percentile, printGuardrails } from "./lib.js";
@@ -58,11 +60,11 @@ interface EconomyProfile {
   name: "baseline" | "current";
   securityBaseMin: number;
   securityStep: number;
-  successBaseChance: number;
-  successMinChance: number;
-  earlyFloorBase: number;
-  earlyFloorDropPerLevel: number;
-  earlyFloorUntilLevel: number;
+  solveBaseChance: number;
+  solveMinChance: number;
+  solvedScoreMean: number;
+  solvedScoreSpread: number;
+  failScoreMean: number;
 }
 
 const ARCHETYPES: Archetype[] = [
@@ -111,28 +113,75 @@ const ECONOMY_PROFILES: Record<EconomyProfile["name"], EconomyProfile> = {
     name: "baseline",
     securityBaseMin: 15,
     securityStep: 4,
-    successBaseChance: 58,
-    successMinChance: 20,
-    earlyFloorBase: 35,
-    earlyFloorDropPerLevel: 3,
-    earlyFloorUntilLevel: 4,
+    solveBaseChance: 76,
+    solveMinChance: 60,
+    solvedScoreMean: 70,
+    solvedScoreSpread: 18,
+    failScoreMean: 22,
   },
   current: {
     name: "current",
     securityBaseMin: SCANNER_BALANCE.targetSecurity.baseMin,
     securityStep: SCANNER_BALANCE.targetSecurity.levelStep,
-    successBaseChance: SCANNER_BALANCE.hackSuccess.baseChance,
-    successMinChance: SCANNER_BALANCE.hackSuccess.minChance,
-    earlyFloorBase: SCANNER_BALANCE.hackSuccess.earlyFloorBase,
-    earlyFloorDropPerLevel: SCANNER_BALANCE.hackSuccess.earlyFloorDropPerLevel,
-    earlyFloorUntilLevel: SCANNER_BALANCE.hackSuccess.earlyFloorUntilLevel,
+    solveBaseChance: 86,
+    solveMinChance: 72,
+    solvedScoreMean: 79,
+    solvedScoreSpread: 12,
+    failScoreMean: 26,
   },
 };
 
-function getEarlyFloor(profile: EconomyProfile, level: number): number {
-  if (level > profile.earlyFloorUntilLevel) return profile.successMinChance;
-  const floor = profile.earlyFloorBase - (level - 1) * profile.earlyFloorDropPerLevel;
-  return Math.max(profile.successMinChance, floor);
+function getTierIndex(securityLevel: number): number {
+  if (securityLevel >= 75) return 3;
+  if (securityLevel >= 55) return 2;
+  if (securityLevel >= 30) return 1;
+  return 0;
+}
+
+function sampleSecurityFromScan(rng: Rng, level: number, profile: EconomyProfile, profitBias: number): number {
+  const options: number[] = [];
+  for (let i = 0; i < 5; i++) {
+    const security = Math.min(
+      SCANNER_BALANCE.targetSecurity.max,
+      profile.securityBaseMin
+      + rng.int(0, SCANNER_BALANCE.targetSecurity.randomRange)
+      + level * profile.securityStep
+    );
+    options.push(security);
+  }
+  options.sort((a, b) => a - b);
+  // Profit-focused players are more likely to pick the highest-security target from the scan.
+  return rng.chance(profitBias) ? options[4] : rng.pick(options);
+}
+
+function sampleSolveAndScore(
+  rng: Rng,
+  level: number,
+  security: number,
+  effectiveHackPower: number,
+  profile: EconomyProfile,
+  profitBias: number,
+): { solved: boolean; score: number } {
+  const levelPenalty = Math.max(0, level - 5) * 0.85;
+  const solveChance = Math.min(
+    98,
+    Math.max(
+      profile.solveMinChance,
+      profile.solveBaseChance
+      + level * 0.45
+      + effectiveHackPower * 0.65
+      - Math.max(0, security - 28) * 0.60
+      - levelPenalty
+    )
+  );
+  const solved = rng.int(1, 100) <= solveChance;
+  const solvedScoreMean = profile.solvedScoreMean - Math.max(0, level - 6) * 0.55 + profitBias * 2;
+  const solvedScore = solvedScoreMean + rng.int(-profile.solvedScoreSpread, profile.solvedScoreSpread);
+  const failScore = profile.failScoreMean + rng.int(-8, 8);
+  const score = solved
+    ? Math.max(50, Math.min(100, solvedScore))
+    : Math.max(1, Math.min(49, failScore));
+  return { solved, score };
 }
 
 function normalizeDecisionGrant(
@@ -254,38 +303,56 @@ function runSingle(
     const hacksThisHour = archetype.hacksPerHour + (rng.chance(0.25) ? 1 : 0);
     for (let i = 0; i < hacksThisHour; i++) {
       const hackMinute = hourStartMinute + (i + 1) * (60 / Math.max(1, hacksThisHour));
-      const security = Math.min(
-        SCANNER_BALANCE.targetSecurity.max,
-        profile.securityBaseMin
-        + rng.int(0, SCANNER_BALANCE.targetSecurity.randomRange)
-        + state.level * profile.securityStep
-      );
+      const security = sampleSecurityFromScan(rng, state.level, profile, archetype.profitBias);
       const dataVaultHackBonus = dataVaultEnabled && hackMinute < state.dataVaultActiveUntilMinute
         ? DATA_VAULT_HACK_BONUS
         : 0;
-      const effectiveHackPower = 6 + state.level * 2 + Math.floor(archetype.profitBias * 4) + dataVaultHackBonus;
-      const chance = Math.max(
-        getEarlyFloor(profile, state.level),
-        Math.min(SCANNER_BALANCE.hackSuccess.maxChance, profile.successBaseChance + effectiveHackPower - security)
+      const effectiveHackPower = 8 + state.level * 2.2 + Math.floor(archetype.profitBias * 5) + dataVaultHackBonus;
+      const { solved, score } = sampleSolveAndScore(
+        rng, state.level, security, effectiveHackPower, profile, archetype.profitBias
       );
-      const success = rng.int(1, 100) <= chance;
+      const rewards = getBaseReward(security);
+      const economicMult = MINIGAME_BALANCE.economicMultiplierByTier[getTierIndex(security)];
+      const scoreMult = getScoreMultiplier(score);
 
-      if (success) {
-        const rewards = getBaseReward(security);
-        state.credits += Math.floor(rewards.credits * seasonCatchUpResourceMultiplier);
-        state.data += Math.floor(rewards.data * seasonCatchUpResourceMultiplier);
-        state.reputation += rewards.reputation;
-        state.xp += rewards.xp;
-        if (security >= SCANNER_BALANCE.highRiskProcessingPower.securityThreshold) {
-          state.processingPower += rng.int(
-            SCANNER_BALANCE.highRiskProcessingPower.min,
-            SCANNER_BALANCE.highRiskProcessingPower.max
-          );
-        }
-      } else {
-        const detected = rng.int(1, 100) <= Math.min(95, Math.max(5, security * 0.55));
-        if (detected) repairEvents += 1;
+      state.credits += Math.floor(
+        rewards.credits * economicMult * scoreMult * seasonCatchUpResourceMultiplier
+        * MINIGAME_BALANCE.globalRewardMultiplier
+      );
+      state.data += Math.floor(
+        rewards.data * economicMult * scoreMult * seasonCatchUpResourceMultiplier
+        * MINIGAME_BALANCE.globalRewardMultiplier
+      );
+      state.reputation += Math.floor(rewards.reputation * MINIGAME_BALANCE.rewardMultiplier * scoreMult);
+      state.xp += Math.floor(
+        rewards.xp * MINIGAME_BALANCE.rewardMultiplier * scoreMult * MINIGAME_BALANCE.globalRewardMultiplier
+      );
+
+      if (score >= MINIGAME_BALANCE.processingPowerScoreThreshold
+        && security >= MINIGAME_BALANCE.processingPowerSecurityThreshold) {
+        state.processingPower += rng.int(
+          SCANNER_BALANCE.highRiskProcessingPower.min,
+          SCANNER_BALANCE.highRiskProcessingPower.max
+        );
       }
+
+      // Minigame detection model (score-aware): poor score risks active detection,
+      // high score can still suffer residual detection on high-security targets.
+      let detected = false;
+      if (score < 50) {
+        const detectionMult = score >= 25 ? 0.5 : 1.0;
+        const activeDetectChance = Math.max(5, Math.min(95, security * 0.6 * detectionMult));
+        detected = rng.int(1, 100) <= activeDetectChance;
+      } else {
+        const stealthProxy = 6 + Math.floor(archetype.profitBias * 6) + Math.floor(state.level / 5);
+        const residual = Math.max(0,
+          (security - SCANNER_BALANCE.residualDetection.securityThreshold)
+          * SCANNER_BALANCE.residualDetection.securityScale
+          - stealthProxy / SCANNER_BALANCE.residualDetection.stealthDivisor
+        );
+        detected = residual > 0 && rng.int(1, 100) <= residual;
+      }
+      if (detected || !solved) repairEvents += 1;
 
       // Decision trigger chance mirrors afterHack default.
       if (rng.chance(0.1)) applyDecision(state, rng, archetype);

@@ -78,6 +78,28 @@ export function NetworkRelink({
     return map;
   }, [config.endpoints]);
 
+  // Build relay map: "r,c" → pairIndex
+  const relayMap = useMemo(() => {
+    const map = new Map<string, number>();
+    if (config.modifier === "relay" && config.relayNodes) {
+      config.relayNodes.forEach(([r, c], i) => {
+        map.set(`${r},${c}`, i);
+      });
+    }
+    return map;
+  }, [config.modifier, config.relayNodes]);
+
+  // Build blocked set
+  const blockedSet = useMemo(() => {
+    const s = new Set<string>();
+    if (config.modifier === "interference" && config.blockedCells) {
+      for (const [r, c] of config.blockedCells) {
+        s.add(`${r},${c}`);
+      }
+    }
+    return s;
+  }, [config.modifier, config.blockedCells]);
+
   const getEndpointPair = (r: number, c: number): number | undefined => {
     return endpointMap.get(`${r},${c}`);
   };
@@ -90,7 +112,7 @@ export function NetworkRelink({
     return config.endpoints[pairIndex];
   };
 
-  // Get completed pair count
+  // Get completed pair count (client-side preview; server re-validates on submit)
   const completedPairs = (() => {
     let count = 0;
     paths.forEach((cells, pairIndex) => {
@@ -100,7 +122,17 @@ export function NetworkRelink({
       const [er, ec] = cells[cells.length - 1];
       const connected = (sr === ep1r && sc === ep1c && er === ep2r && ec === ep2c)
         || (sr === ep2r && sc === ep2c && er === ep1r && ec === ep1c);
-      if (connected) count++;
+      if (!connected) return;
+      // Relay: path must pass through its relay node
+      if (config.modifier === "relay" && config.relayNodes) {
+        const relay = config.relayNodes[pairIndex];
+        if (relay) {
+          const relayKey = `${relay[0]},${relay[1]}`;
+          const cellKeys = new Set(cells.map(([r, c]) => `${r},${c}`));
+          if (!cellKeys.has(relayKey)) return;
+        }
+      }
+      count++;
     });
     return count;
   })();
@@ -125,6 +157,9 @@ export function NetworkRelink({
 
   const handleCellInteraction = useCallback((r: number, c: number) => {
     if (gameOver || isSubmitting) return;
+
+    // Blocked cells cannot be interacted with
+    if (blockedSet.has(`${r},${c}`)) return;
 
     const cellOwner = grid[r][c];
     const epPair = getEndpointPair(r, c);
@@ -180,7 +215,7 @@ export function NetworkRelink({
     if (activePair !== null && isDrawing.current) {
       extendPath(r, c);
     }
-  }, [gameOver, isSubmitting, grid, paths, activePair, clearPathFromGrid]);
+  }, [gameOver, isSubmitting, grid, paths, activePair, clearPathFromGrid, blockedSet]);
 
   const extendPath = useCallback((r: number, c: number) => {
     if (activePair === null) return;
@@ -197,6 +232,9 @@ export function NetworkRelink({
 
     // Check bounds
     if (r < 0 || r >= N || c < 0 || c >= N) return;
+
+    // Interference: cannot draw through blocked cells
+    if (blockedSet.has(`${r},${c}`)) return;
 
     // If cell is an endpoint for THIS pair, allow it (completing the path)
     const epPair = getEndpointPair(r, c);
@@ -245,7 +283,7 @@ export function NetworkRelink({
       next.set(activePair, newPath);
       return next;
     });
-  }, [activePair, paths, grid, N]);
+  }, [activePair, paths, grid, N, blockedSet]);
 
   const handleCellHover = useCallback((r: number, c: number) => {
     if (!isDrawing.current || activePair === null || gameOver || isSubmitting) return;
@@ -345,7 +383,14 @@ export function NetworkRelink({
             Draw paths between matching colored dots — fill every cell
           </p>
         </div>
-        <GameTimer expiresAt={expiresAt} onExpired={handleSubmit} />
+        <div className="flex items-center gap-2">
+          {config.modifier && (
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border border-cyber-amber/50 text-cyber-amber bg-cyber-amber/10">
+              ⚠ {config.modifier}
+            </span>
+          )}
+          <GameTimer expiresAt={expiresAt} onExpired={handleSubmit} />
+        </div>
       </div>
 
       {/* How to play hint */}
@@ -387,6 +432,11 @@ export function NetworkRelink({
               const cellColor = getCellColor(r, c);
               const isEp = isEndpoint(r, c);
               const ownerColor = cellColor || epColor;
+              const cellKey = `${r},${c}`;
+              const isBlocked = blockedSet.has(cellKey);
+              const relayPairIndex = relayMap.get(cellKey);
+              const isRelay = relayPairIndex !== undefined;
+              const relayColor = isRelay ? RELINK_COLORS[relayPairIndex % RELINK_COLORS.length] : null;
 
               return (
                 <div
@@ -400,23 +450,31 @@ export function NetworkRelink({
                     e.preventDefault();
                     handleCellInteraction(r, c);
                   }}
-                  className={`rounded flex items-center justify-center cursor-pointer transition-all duration-75 ${
-                    gameOver ? "pointer-events-none" : ""
-                  }`}
+                  className={`rounded flex items-center justify-center transition-all duration-75 ${
+                    isBlocked ? "cursor-not-allowed" : "cursor-pointer"
+                  } ${gameOver ? "pointer-events-none" : ""}`}
                   style={{
                     width: cellPx,
                     height: cellPx,
-                    backgroundColor: ownerColor
-                      ? `${ownerColor}${owner !== null ? "30" : "15"}`
-                      : "rgba(255,255,255,0.03)",
-                    border: isEp
-                      ? `2px solid ${epColor}`
-                      : owner !== null
-                        ? `1px solid ${cellColor}50`
-                        : "1px solid rgba(255,255,255,0.08)",
+                    backgroundColor: isBlocked
+                      ? "rgba(255,51,51,0.08)"
+                      : ownerColor
+                        ? `${ownerColor}${owner !== null ? "30" : "15"}`
+                        : "rgba(255,255,255,0.03)",
+                    border: isBlocked
+                      ? "1px solid rgba(255,51,51,0.4)"
+                      : isRelay && !isEp
+                        ? `2px solid ${relayColor}80`
+                        : isEp
+                          ? `2px solid ${epColor}`
+                          : owner !== null
+                            ? `1px solid ${cellColor}50`
+                            : "1px solid rgba(255,255,255,0.08)",
                   }}
                 >
-                  {isEp && (
+                  {isBlocked ? (
+                    <span className="text-cyber-red/60 font-bold" style={{ fontSize: cellPx * 0.4 }}>✕</span>
+                  ) : isEp ? (
                     <div
                       className="rounded-full"
                       style={{
@@ -426,7 +484,19 @@ export function NetworkRelink({
                         boxShadow: epColor ? `0 0 6px ${epColor}` : undefined,
                       }}
                     />
-                  )}
+                  ) : isRelay ? (
+                    // Relay node: diamond shape in pair color
+                    <div
+                      style={{
+                        width: cellPx * 0.4,
+                        height: cellPx * 0.4,
+                        backgroundColor: `${relayColor}30`,
+                        border: `2px solid ${relayColor}`,
+                        transform: "rotate(45deg)",
+                        boxShadow: `0 0 6px ${relayColor}80`,
+                      }}
+                    />
+                  ) : null}
                 </div>
               );
             })

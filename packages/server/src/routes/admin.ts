@@ -9,7 +9,7 @@ import {
   recordAdminAction,
   setArenaBotsEnabled,
 } from "../services/admin.js";
-import { endSeason } from "../services/seasons.js";
+import { endSeason, createSeason, getCurrentSeason } from "../services/seasons.js";
 
 function extractMeta(request: { ip: string; headers: Record<string, unknown> }) {
   const rawUa = request.headers["user-agent"];
@@ -104,7 +104,7 @@ export async function adminRoutes(app: FastifyInstance) {
       }
 
       try {
-        await endSeason();
+        await endSeason(true);
         await recordAdminAction(
           user.sub,
           "season_end_forced",
@@ -116,6 +116,42 @@ export async function adminRoutes(app: FastifyInstance) {
         return reply.code(500).send({
           error: "Season Error",
           message: err.message ?? "Failed to end season",
+          statusCode: 500,
+        });
+      }
+    }
+  );
+
+  app.post(
+    "/api/admin/season/start",
+    { preHandler: [authGuard, adminGuard] },
+    async (request, reply) => {
+      const user = request.user as AuthPayload;
+      const body = (request.body ?? {}) as { name?: string };
+
+      // Don't allow starting a season if one is already active
+      const current = await getCurrentSeason();
+      if (current) {
+        return reply.code(409).send({
+          error: "Conflict",
+          message: "A season is already active",
+          statusCode: 409,
+        });
+      }
+
+      try {
+        const season = await createSeason(body.name?.slice(0, 64) || undefined);
+        await recordAdminAction(
+          user.sub,
+          "season_start",
+          { seasonId: season.id, seasonName: season.name },
+          extractMeta(request)
+        );
+        return { success: true, season };
+      } catch (err: any) {
+        return reply.code(500).send({
+          error: "Season Error",
+          message: err.message ?? "Failed to start season",
           statusCode: 500,
         });
       }

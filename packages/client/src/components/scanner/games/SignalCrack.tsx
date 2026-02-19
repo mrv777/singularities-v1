@@ -21,7 +21,15 @@ interface SignalCrackProps {
 interface GuessRow {
   guess: number[];
   feedback: SignalCrackFeedback[];
-  possibilitiesRemaining: number;
+  possibilitiesRemaining: number | null;
+}
+
+function ModifierBadge({ modifier }: { modifier: string }) {
+  return (
+    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border border-cyber-amber/50 text-cyber-amber bg-cyber-amber/10">
+      ⚠ {modifier}
+    </span>
+  );
 }
 
 const FEEDBACK_COLORS: Record<SignalCrackFeedback, string> = {
@@ -145,14 +153,17 @@ export function SignalCrack({
             Break the {config.codeLength}-digit code (digits 0-{config.digitPool - 1})
           </p>
         </div>
-        <GameTimer expiresAt={expiresAt} onExpired={onGameOver} />
+        <div className="flex items-center gap-2">
+          {config.modifier && <ModifierBadge modifier={config.modifier} />}
+          <GameTimer expiresAt={expiresAt} onExpired={onGameOver} />
+        </div>
       </div>
 
       <div className="flex justify-center gap-6 text-[11px]">
         <span className="text-text-secondary">
           {guessesRemaining} guesses remaining
         </span>
-        {possibilitiesRemaining !== null && (
+        {possibilitiesRemaining !== null && config.modifier !== "blackout" && (
           <span className="text-text-secondary">
             Possible codes: <span className="text-cyber-cyan font-bold font-mono">{possibilitiesRemaining}</span>
           </span>
@@ -180,7 +191,7 @@ export function SignalCrack({
                   damping: 20,
                   delay: j * 0.05,
                 }}
-                className="w-9 h-9 rounded border flex items-center justify-center text-sm font-bold font-mono"
+                className="w-9 h-9 rounded border flex items-center justify-center text-sm font-bold font-mono relative"
                 style={{
                   borderColor: FEEDBACK_COLORS[row.feedback[j]],
                   backgroundColor: `${FEEDBACK_COLORS[row.feedback[j]]}15`,

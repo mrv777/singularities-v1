@@ -6,28 +6,28 @@ export const XP_THRESHOLDS = [
   0,     // Level 1 (starting)
   198,   // Level 2
   528,   // Level 3
-  1023,  // Level 4
-  1650,  // Level 5
-  2475,  // Level 6
-  3465,  // Level 7
-  4703,  // Level 8
-  6270,  // Level 9
-  8250,  // Level 10
-  10725, // Level 11
-  13530, // Level 12
-  16995, // Level 13
-  21120, // Level 14
-  25905, // Level 15
-  31350, // Level 16
-  37455, // Level 17
-  44220, // Level 18
-  51645, // Level 19
-  59730, // Level 20
-  68475, // Level 21
-  77880, // Level 22
-  87945, // Level 23
-  98670, // Level 24
-  110055, // Level 25
+  1040,  // Level 4
+  1850,  // Level 5
+  2850,  // Level 6
+  4100,  // Level 7
+  5700,  // Level 8
+  7700,  // Level 9
+  10300, // Level 10
+  13500, // Level 11
+  17300, // Level 12
+  22000, // Level 13
+  27600, // Level 14
+  34100, // Level 15
+  41600, // Level 16
+  50100, // Level 17
+  59700, // Level 18
+  70400, // Level 19
+  82300, // Level 20
+  95500, // Level 21
+  110000, // Level 22
+  126000, // Level 23
+  143500, // Level 24
+  162500, // Level 25
 ];
 
 export const MAX_LEVEL = XP_THRESHOLDS.length;

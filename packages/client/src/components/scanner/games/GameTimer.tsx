@@ -20,7 +20,7 @@ export function GameTimer({ expiresAt, onExpired }: GameTimerProps) {
         clearInterval(timer);
         onExpired();
       }
-    }, 250);
+    }, 1_000);
     return () => clearInterval(timer);
   }, [expiresAt, onExpired]);
 

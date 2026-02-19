@@ -16,11 +16,14 @@ import {
   XP_THRESHOLDS,
   CATCH_UP_BASE,
   SEASON_DURATION_DAYS,
-  DECISION_TRIGGER_CHANCES,
   getBaseReward,
-  getEarlyHackSuccessFloor,
+  MINIGAME_BALANCE,
+  TIER_UNLOCK_REQUIREMENT,
   getEnergyAfterLevelUp,
   getLevelForXP,
+  getScoreMultiplier,
+  type ModuleDefinition,
+  type ModuleTier,
 } from "@singularities/shared";
 import { Rng, average, parseCliOptions, percentile, printGuardrails } from "./lib.js";
 
@@ -37,7 +40,6 @@ interface SimState {
   successes: number;
   firstTwentyHacks: number;
   firstTwentySuccesses: number;
-  targetsBuffered: number;
   dataVaultActiveUntil: number;
   dataVaultCooldownUntil: number;
   dataVaultUsesToday: number;
@@ -59,6 +61,12 @@ const MODULE_LEVEL_CAP_FOR_SIM = 3;
 const DATA_VAULT_RECOMMENDED_PROTOCOL =
   DATA_VAULT_PROTOCOLS.find((p) => p.recommended) ?? DATA_VAULT_PROTOCOLS[0];
 const DATA_VAULT_HACK_BONUS = DATA_VAULT_RECOMMENDED_PROTOCOL.buffs.hackPower ?? 0;
+
+const SOLVE_BASE_CHANCE = 86;
+const SOLVE_MIN_CHANCE = 72;
+const SOLVED_SCORE_MEAN = 79;
+const SOLVED_SCORE_SPREAD = 12;
+const FAIL_SCORE_MEAN = 26;
 
 function parseDataVaultMode(argv: string[]): "off" | "on" {
   for (const arg of argv) {
@@ -84,6 +92,89 @@ function getEffectiveHackPower(modules: Record<string, number>): number {
   return contributions.slice(0, 3).reduce((sum, v) => sum + v, 0);
 }
 
+function getTierIndex(securityLevel: number): number {
+  if (securityLevel >= 75) return 3;
+  if (securityLevel >= 55) return 2;
+  if (securityLevel >= 30) return 1;
+  return 0;
+}
+
+function getPrevTier(tier: ModuleTier): ModuleTier | null {
+  if (tier === "elite") return "advanced";
+  if (tier === "advanced") return "basic";
+  return null;
+}
+
+function canUnlockModule(mod: ModuleDefinition, modules: Record<string, number>): boolean {
+  if ((modules[mod.id] ?? 0) > 0) return true;
+  const prevTier = getPrevTier(mod.tier);
+  if (!prevTier) return true;
+  const ownedPrevTier = ALL_MODULES.filter(
+    (m) => m.category === mod.category && m.tier === prevTier && (modules[m.id] ?? 0) > 0
+  ).length;
+  return ownedPrevTier >= TIER_UNLOCK_REQUIREMENT;
+}
+
+function costForNextLevel(mod: ModuleDefinition, currentLevel: number): { credits: number; data: number } {
+  if (currentLevel <= 0) return mod.baseCost;
+  return {
+    credits: mod.baseCost.credits + mod.costPerLevel.credits * currentLevel,
+    data: mod.baseCost.data + mod.costPerLevel.data * currentLevel,
+  };
+}
+
+function sampleBestOfFiveRewards(
+  rng: Rng,
+  level: number,
+): { security: number; credits: number; data: number; xp: number } {
+  let bestSecurity = 0;
+  for (let i = 0; i < 5; i++) {
+    const security = Math.min(
+      SCANNER_BALANCE.targetSecurity.max,
+      SCANNER_BALANCE.targetSecurity.baseMin
+      + rng.int(0, SCANNER_BALANCE.targetSecurity.randomRange)
+      + level * SCANNER_BALANCE.targetSecurity.levelStep
+    );
+    if (security > bestSecurity) bestSecurity = security;
+  }
+  const base = getBaseReward(bestSecurity);
+  const economicMult = MINIGAME_BALANCE.economicMultiplierByTier[getTierIndex(bestSecurity)];
+  return {
+    security: bestSecurity,
+    credits: Math.floor(base.credits * economicMult * MINIGAME_BALANCE.globalRewardMultiplier),
+    data: Math.floor(base.data * economicMult * MINIGAME_BALANCE.globalRewardMultiplier),
+    xp: Math.floor(base.xp * MINIGAME_BALANCE.rewardMultiplier * MINIGAME_BALANCE.globalRewardMultiplier),
+  };
+}
+
+function sampleScoreAndSolved(
+  rng: Rng,
+  level: number,
+  security: number,
+  effectiveHackPower: number,
+): { solved: boolean; score: number } {
+  const levelPenalty = Math.max(0, level - 5) * 0.85;
+  const solveChance = Math.min(
+    98,
+    Math.max(
+      SOLVE_MIN_CHANCE,
+      SOLVE_BASE_CHANCE
+      + level * 0.45
+      + effectiveHackPower * 0.65
+      - Math.max(0, security - 28) * 0.60
+      - levelPenalty
+    )
+  );
+  const solved = rng.int(1, 100) <= solveChance;
+  const solvedScoreMean = SOLVED_SCORE_MEAN - Math.max(0, level - 6) * 0.55;
+  const solvedScore = solvedScoreMean + rng.int(-SOLVED_SCORE_SPREAD, SOLVED_SCORE_SPREAD);
+  const failScore = FAIL_SCORE_MEAN + rng.int(-8, 8);
+  const score = solved
+    ? Math.max(50, Math.min(100, solvedScore))
+    : Math.max(1, Math.min(49, failScore));
+  return { solved, score };
+}
+
 function runSingle(seed: number, dataVaultEnabled: boolean): SimResult {
   const rng = new Rng(seed);
   const state: SimState = {
@@ -99,7 +190,6 @@ function runSingle(seed: number, dataVaultEnabled: boolean): SimResult {
     successes: 0,
     firstTwentyHacks: 0,
     firstTwentySuccesses: 0,
-    targetsBuffered: 0,
     dataVaultActiveUntil: -1,
     dataVaultCooldownUntil: -1,
     dataVaultUsesToday: 0,
@@ -162,12 +252,8 @@ function runSingle(seed: number, dataVaultEnabled: boolean): SimResult {
       .map((m) => {
         const current = state.modules[m.id] ?? 0;
         if (current >= MODULE_LEVEL_CAP_FOR_SIM) return null;
-        const cost = current === 0
-          ? m.baseCost
-          : {
-            credits: m.baseCost.credits + m.costPerLevel.credits * current,
-            data: m.baseCost.data + m.costPerLevel.data * current,
-          };
+        if (current === 0 && !canUnlockModule(m, state.modules)) return null;
+        const cost = costForNextLevel(m, current);
         const currentEffective = getEffectiveHackPower(state.modules);
         const nextModules = { ...state.modules, [m.id]: current + 1 };
         const nextEffective = getEffectiveHackPower(nextModules);
@@ -200,25 +286,11 @@ function runSingle(seed: number, dataVaultEnabled: boolean): SimResult {
     }
     maybeActivateDataVault();
 
-    if (state.targetsBuffered <= 0) {
-      waitForEnergy(SCAN_ENERGY_COST);
-      if (state.minutes >= 720) break;
-      state.energy -= SCAN_ENERGY_COST;
-      state.minutes += 0.1;
-      state.energy = Math.min(state.energyMax, state.energy + regenPerMinute(state.level) * 0.1);
-      state.targetsBuffered = 1;
-    }
-
-    const security = Math.min(
-      SCANNER_BALANCE.targetSecurity.max,
-      SCANNER_BALANCE.targetSecurity.baseMin
-      + rng.int(0, SCANNER_BALANCE.targetSecurity.randomRange)
-      + state.level * SCANNER_BALANCE.targetSecurity.levelStep
-    );
-    // Simulate hack execution time.
-    state.minutes += 0.2;
-    state.energy = Math.min(state.energyMax, state.energy + regenPerMinute(state.level) * 0.2);
-    state.targetsBuffered -= 1;
+    waitForEnergy(SCAN_ENERGY_COST);
+    if (state.minutes >= 720) break;
+    state.energy -= SCAN_ENERGY_COST;
+    state.minutes += 0.1;
+    state.energy = Math.min(state.energyMax, state.energy + regenPerMinute(state.level) * 0.1);
 
     state.hacks += 1;
     if (state.firstTwentyHacks < 20) {
@@ -228,24 +300,26 @@ function runSingle(seed: number, dataVaultEnabled: boolean): SimResult {
       ? DATA_VAULT_HACK_BONUS
       : 0;
     const effectiveHackPower = getEffectiveHackPower(state.modules) + dataVaultHackBonus;
-    const baseChance = SCANNER_BALANCE.hackSuccess.baseChance + (effectiveHackPower - security);
-    const chance = Math.max(
-      getEarlyHackSuccessFloor(state.level),
-      Math.min(SCANNER_BALANCE.hackSuccess.maxChance, baseChance)
-    );
-    const success = rng.int(1, 100) <= chance;
+    const target = sampleBestOfFiveRewards(rng, state.level);
+    const { solved, score } = sampleScoreAndSolved(rng, state.level, target.security, effectiveHackPower);
+    const scoreMult = getScoreMultiplier(score);
 
-    if (success) {
+    if (solved) {
       state.successes += 1;
       if (state.hacks <= 20) {
         state.firstTwentySuccesses += 1;
       }
-      const reward = getBaseReward(security);
-      state.credits += reward.credits;
-      state.data += reward.data;
-      state.xp += reward.xp;
-      applyLeveling();
     }
+    state.credits += Math.floor(target.credits * scoreMult);
+    state.data += Math.floor(target.data * scoreMult);
+    state.xp += Math.floor(target.xp * scoreMult);
+    applyLeveling();
+
+    const playMinutes = solved
+      ? 1.2 + rng.next() * 1.2
+      : 1.5 + rng.next() * 1.5;
+    state.minutes += playMinutes;
+    state.energy = Math.min(state.energyMax, state.energy + regenPerMinute(state.level) * playMinutes);
   }
 
   return {
@@ -353,9 +427,8 @@ function runFullLifecycle(
     });
     for (const m of hackMods) {
       const cur = modules[m.id] ?? 0;
-      const cost = cur === 0
-        ? m.baseCost
-        : { credits: m.baseCost.credits + m.costPerLevel.credits * cur, data: m.baseCost.data + m.costPerLevel.data * cur };
+      if (cur === 0 && !canUnlockModule(m, modules)) continue;
+      const cost = costForNextLevel(m, cur);
       if (credits >= cost.credits && data >= cost.data && level >= (PROGRESSION_BALANCE.unlockLevels.tech_tree ?? 3)) {
         credits -= cost.credits;
         data -= cost.data;
@@ -371,66 +444,52 @@ function runFullLifecycle(
     }
 
     // Active play loop: hacking + PvP
-    let targetsBuffered = 0;
     while (sessionMinutes < sessionMax && level < MAX_LEVEL) {
-      // Scan if needed
-      if (targetsBuffered <= 0) {
-        if (energy < SCAN_ENERGY_COST) {
-          const waitMin = (SCAN_ENERGY_COST - energy) / regenPerMin();
-          sessionMinutes += waitMin;
-          totalMinutes += waitMin;
-          bandMinutes[getBandIndex(level)] += waitMin;
-          energy = SCAN_ENERGY_COST;
-          if (sessionMinutes >= sessionMax) break;
-        }
-        energy -= SCAN_ENERGY_COST;
-        sessionMinutes += 0.1;
-        totalMinutes += 0.1;
-        bandMinutes[getBandIndex(level)] += 0.1;
-        energy += regenPerMin() * 0.1;
-        targetsBuffered = 1;
+      if (energy < SCAN_ENERGY_COST) {
+        const waitMin = (SCAN_ENERGY_COST - energy) / regenPerMin();
+        sessionMinutes += waitMin;
+        totalMinutes += waitMin;
+        bandMinutes[getBandIndex(level)] += waitMin;
+        energy = SCAN_ENERGY_COST;
+        if (sessionMinutes >= sessionMax) break;
       }
+      energy -= SCAN_ENERGY_COST;
+      sessionMinutes += 0.1;
+      totalMinutes += 0.1;
+      bandMinutes[getBandIndex(level)] += 0.1;
+      energy += regenPerMin() * 0.1;
 
-      // Hack
-      const security = Math.min(
-        SCANNER_BALANCE.targetSecurity.max,
-        SCANNER_BALANCE.targetSecurity.baseMin
-        + rng.int(0, SCANNER_BALANCE.targetSecurity.randomRange)
-        + level * SCANNER_BALANCE.targetSecurity.levelStep
-      );
-      sessionMinutes += 0.2;
-      totalMinutes += 0.2;
-      bandMinutes[getBandIndex(level)] += 0.2;
-      energy = Math.min(energyMax(), energy + regenPerMin() * 0.2);
-      targetsBuffered--;
-
+      const target = sampleBestOfFiveRewards(rng, level);
       const effectiveHP = getEffectiveHackPower(modules);
-      const baseChance = SCANNER_BALANCE.hackSuccess.baseChance + (effectiveHP - security);
-      const chance = Math.max(
-        getEarlyHackSuccessFloor(level),
-        Math.min(SCANNER_BALANCE.hackSuccess.maxChance, baseChance)
-      );
+      const { solved, score } = sampleScoreAndSolved(rng, level, target.security, effectiveHP);
+      const scoreMult = getScoreMultiplier(score);
 
-      if (rng.int(1, 100) <= chance) {
-        const reward = getBaseReward(security);
-        const hxp = Math.floor(reward.xp * xpMultiplier);
-        xp += hxp;
-        xpFromHacking += hxp;
-        bandXp[getBandIndex(level)] += hxp;
-        credits += reward.credits;
-        data += reward.data;
-        if (tryLevelUp()) {
-          energy = getEnergyAfterLevelUp(energy, energyMax());
-        }
-
-        // Decision trigger after hack
-        if (rng.chance(DECISION_TRIGGER_CHANCES.afterHack)) {
-          // Decisions grant resources, not XP directly — counted as 0 XP
-          credits += rng.int(10, 80);
-        }
+      const hxp = Math.floor(target.xp * scoreMult * xpMultiplier);
+      const hCredits = Math.floor(target.credits * scoreMult);
+      const hData = Math.floor(target.data * scoreMult);
+      xp += hxp;
+      xpFromHacking += hxp;
+      bandXp[getBandIndex(level)] += hxp;
+      credits += hCredits;
+      data += hData;
+      if (tryLevelUp()) {
+        energy = getEnergyAfterLevelUp(energy, energyMax());
       }
 
-      // PvP opportunity (once every ~10 hacks if level >= 9)
+      const playMinutes = solved
+        ? 1.2 + rng.next() * 1.2
+        : 1.5 + rng.next() * 1.5;
+      sessionMinutes += playMinutes;
+      totalMinutes += playMinutes;
+      bandMinutes[getBandIndex(level)] += playMinutes;
+      energy = Math.min(energyMax(), energy + regenPerMin() * playMinutes);
+
+      // Decision trigger after completed infiltration.
+      if (rng.chance(0.1)) {
+        credits += rng.int(10, 80);
+      }
+
+      // PvP opportunity (once every ~10 infiltrations if level >= 9)
       if (level >= 9 && rng.chance(0.10) && energy >= PVP_ENERGY_COST) {
         energy -= PVP_ENERGY_COST;
         sessionMinutes += 0.5;

@@ -44,11 +44,13 @@ export function generateTargets(playerLevel: number): ScanTarget[] {
     );
     const detectionChance = Math.max(5, Math.min(95, securityLevel * 0.6 + randomInt(-10, 10)));
     const baseRewards = getBaseReward(securityLevel);
+    const tierIndex = securityLevel >= 75 ? 3 : securityLevel >= 55 ? 2 : securityLevel >= 30 ? 1 : 0;
+    const economicMult = MINIGAME_BALANCE.economicMultiplierByTier[tierIndex];
     const rewards = {
-      credits: Math.floor(baseRewards.credits * MINIGAME_BALANCE.rewardMultiplier),
-      data: Math.floor(baseRewards.data * MINIGAME_BALANCE.rewardMultiplier),
+      credits: Math.floor(baseRewards.credits * economicMult * MINIGAME_BALANCE.globalRewardMultiplier),
+      data: Math.floor(baseRewards.data * economicMult * MINIGAME_BALANCE.globalRewardMultiplier),
       reputation: Math.floor(baseRewards.reputation * MINIGAME_BALANCE.rewardMultiplier),
-      xp: Math.floor(baseRewards.xp * MINIGAME_BALANCE.rewardMultiplier),
+      xp: Math.floor(baseRewards.xp * MINIGAME_BALANCE.rewardMultiplier * MINIGAME_BALANCE.globalRewardMultiplier),
     };
     targets.push({
       index: i,

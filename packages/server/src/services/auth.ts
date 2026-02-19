@@ -4,6 +4,7 @@ import bs58 from "bs58";
 import { query } from "../db/pool.js";
 import { SYSTEM_TYPES } from "@singularities/shared";
 import { mapPlayerRow } from "./player.js";
+import { getCurrentSeason } from "./seasons.js";
 
 const NONCE_EXPIRY_MINUTES = 5;
 
@@ -71,13 +72,17 @@ export async function verifySignature(
 export async function findOrCreatePlayer(walletAddress: string) {
   const aiName = `AI-${walletAddress.slice(0, 6).toUpperCase()}`;
 
+  // Get current season so new players join it immediately
+  const season = await getCurrentSeason();
+  const seasonId = season?.id ?? null;
+
   // Atomic upsert: INSERT or no-op if already exists
   const inserted = await query<{ id: string }>(
-    `INSERT INTO players (wallet_address, ai_name)
-     VALUES ($1, $2)
+    `INSERT INTO players (wallet_address, ai_name, season_id)
+     VALUES ($1, $2, $3)
      ON CONFLICT (wallet_address) DO NOTHING
      RETURNING id`,
-    [walletAddress, aiName]
+    [walletAddress, aiName, seasonId]
   );
 
   // Always SELECT the final state (works for both new and existing)

@@ -1,4 +1,3 @@
-import { motion } from "framer-motion";
 import { Lock } from "lucide-react";
 import type { ReactNode } from "react";
 
@@ -60,7 +59,7 @@ export function NetworkNode({ node, playerLevel, unlockedSystems, onClick, topol
     >
       {/* Outer rotating circuit ring */}
       {isUnlocked && (
-        <motion.circle
+        <circle
           cx={node.x}
           cy={node.y}
           r={36}
@@ -69,14 +68,13 @@ export function NetworkNode({ node, playerLevel, unlockedSystems, onClick, topol
           strokeWidth={1}
           strokeDasharray="10 20"
           opacity={0.2}
-          animate={{ rotate: 360 }}
-          transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+          style={{ transformOrigin: `${node.x}px ${node.y}px`, animation: "spin-slow 20s linear infinite" }}
         />
       )}
 
       {/* Pulsing selection glow */}
       {isUnlocked && (
-        <motion.circle
+        <circle
           cx={node.x}
           cy={node.y}
           r={28}
@@ -85,8 +83,7 @@ export function NetworkNode({ node, playerLevel, unlockedSystems, onClick, topol
           strokeWidth={2}
           opacity={0}
           className="group-hover:opacity-40 transition-opacity"
-          animate={{ r: [28, 32, 28] }}
-          transition={{ duration: 2, repeat: Infinity }}
+          style={{ animation: "pulse-node 2s ease-in-out infinite" }}
         />
       )}
 
@@ -184,7 +181,7 @@ export function NetworkNode({ node, playerLevel, unlockedSystems, onClick, topol
           fillOpacity="0.8"
           rx="2"
         />
-        <motion.text
+        <text
           textAnchor="middle"
           y="8"
           fontSize={8}
@@ -193,18 +190,10 @@ export function NetworkNode({ node, playerLevel, unlockedSystems, onClick, topol
           fill={isUnlocked ? "var(--color-text-primary)" : "var(--color-text-muted)"}
           opacity={isUnlocked ? 1 : 0.5}
           className="uppercase tracking-wider"
-          animate={!isUnlocked ? {
-            opacity: [0.5, 0.3, 0.5, 0.4, 0.5],
-            x: [0, -1, 1, 0]
-          } : {}}
-          transition={!isUnlocked ? {
-            duration: 2,
-            repeat: Infinity,
-            times: [0, 0.1, 0.2, 0.3, 1]
-          } : {}}
+          style={!isUnlocked ? { animation: "flicker-locked 2s ease-in-out infinite" } : undefined}
         >
           {isComingSoon ? "SYS_OFFLINE" : node.label.replace(" ", "_")}
-        </motion.text>
+        </text>
       </g>
 
       {/* Decorative ID/Status line */}

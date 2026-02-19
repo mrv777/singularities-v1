@@ -545,6 +545,7 @@ export interface SignalCrackConfig {
   digitPool: number;
   maxGuesses: number;
   timeLimitMs: number;
+  modifier?: "blackout" | "corrupted";
 }
 
 export interface PortSweepConfig {
@@ -553,6 +554,7 @@ export interface PortSweepConfig {
   portCount: number;
   maxProbes: number;
   timeLimitMs: number;
+  modifier?: "decoys" | "mines";
 }
 
 export interface NetworkRelinkConfig {
@@ -562,6 +564,11 @@ export interface NetworkRelinkConfig {
   timeLimitMs: number;
   /** Endpoint positions for each pair: [pairIndex] => [[r,c], [r,c]] */
   endpoints: Array<[[number, number], [number, number]]>;
+  modifier?: "relay" | "interference";
+  /** One relay node per pair (indexed by pairIndex); present when modifier === "relay" */
+  relayNodes?: Array<[number, number]>;
+  /** Permanently blocked cells; present when modifier === "interference" */
+  blockedCells?: Array<[number, number]>;
 }
 
 export type GameConfig = SignalCrackConfig | PortSweepConfig | NetworkRelinkConfig;
@@ -598,7 +605,7 @@ export interface SignalCrackMoveResult {
   solved: boolean;
   guessesUsed: number;
   guessesRemaining: number;
-  possibilitiesRemaining: number;
+  possibilitiesRemaining: number | null;
   gameOver: boolean;
 }
 
@@ -613,6 +620,8 @@ export interface PortSweepMoveResult {
   probesRemaining: number;
   allFound: boolean;
   gameOver: boolean;
+  /** True when this miss triggered a mine surge costing 2 probes (modifier "mines" only) */
+  mineSurge?: boolean;
 }
 
 export interface NetworkRelinkMoveResult {

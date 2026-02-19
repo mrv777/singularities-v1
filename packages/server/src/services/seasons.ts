@@ -2,6 +2,7 @@ import { query, withTransaction } from "../db/pool.js";
 import { redis } from "../db/redis.js";
 import {
   CATCH_UP_BASE,
+  SEASON_DURATION_DAYS,
   SEASON_STIPEND,
 } from "@singularities/shared";
 import type { Season, SeasonLeaderboardEntry } from "@singularities/shared";
@@ -69,7 +70,7 @@ export async function getPlayerRank(playerId: string): Promise<number | null> {
   return parseInt(res.rows[0]?.rank as string, 10) || null;
 }
 
-export async function endSeason(): Promise<void> {
+export async function endSeason(adminEnded = false): Promise<void> {
   const season = await getCurrentSeason();
   if (!season) return;
 
@@ -97,8 +98,8 @@ export async function endSeason(): Promise<void> {
 
     // Deactivate season
     await client.query(
-      "UPDATE seasons SET is_active = false WHERE id = $1",
-      [season.id]
+      "UPDATE seasons SET is_active = false, admin_ended = $2 WHERE id = $1",
+      [season.id, adminEnded]
     );
 
     // Apply season reset + stipend to all season players.
@@ -107,7 +108,8 @@ export async function endSeason(): Promise<void> {
        SET credits = $2,
            reputation = 0,
            processing_power = processing_power + $3,
-           in_pvp_arena = false
+           in_pvp_arena = false,
+           season_id = NULL
        WHERE season_id = $1`,
       [season.id, SEASON_STIPEND.credits, SEASON_STIPEND.processingPower]
     );
@@ -115,6 +117,53 @@ export async function endSeason(): Promise<void> {
 
   // Invalidate cache
   await redis.del(REDIS_SEASON_KEY);
+}
+
+export async function createSeason(name?: string): Promise<Season> {
+  // Determine name from count of existing seasons
+  if (!name) {
+    const countRes = await query("SELECT COUNT(*) as cnt FROM seasons");
+    const count = parseInt(countRes.rows[0].cnt as string, 10) || 0;
+    name = `Season ${count + 1}`;
+  }
+
+  const startedAt = new Date();
+  const endsAt = new Date(startedAt.getTime() + SEASON_DURATION_DAYS * 24 * 60 * 60 * 1000);
+
+  const season = await withTransaction(async (client) => {
+    const res = await client.query(
+      `INSERT INTO seasons (name, started_at, ends_at, is_active)
+       VALUES ($1, $2, $3, true)
+       RETURNING *`,
+      [name, startedAt, endsAt]
+    );
+
+    const s = mapSeasonRow(res.rows[0]);
+
+    // Assign all alive players with no season to this new season
+    await client.query(
+      `UPDATE players SET season_id = $1, reputation = 0
+       WHERE season_id IS NULL AND is_alive = true`,
+      [s.id]
+    );
+
+    return s;
+  });
+
+  // Cache the new season
+  await redis.set(REDIS_SEASON_KEY, JSON.stringify(season), "EX", 3600);
+
+  return season;
+}
+
+export async function getLastEndedSeason(): Promise<{ adminEnded: boolean } | null> {
+  const res = await query(
+    `SELECT admin_ended FROM seasons
+     WHERE is_active = false
+     ORDER BY ends_at DESC LIMIT 1`
+  );
+  if (res.rows.length === 0) return null;
+  return { adminEnded: res.rows[0].admin_ended as boolean };
 }
 
 export async function getSeasonCatchUpMultiplier(playerId: string): Promise<number> {

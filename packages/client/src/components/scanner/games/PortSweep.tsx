@@ -17,6 +17,15 @@ interface CellState {
   probed: boolean;
   hit: boolean;
   adjacency: number | null;
+  mineSurge?: boolean;
+}
+
+function ModifierBadge({ modifier }: { modifier: string }) {
+  return (
+    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border border-cyber-amber/50 text-cyber-amber bg-cyber-amber/10">
+      ⚠ {modifier}
+    </span>
+  );
 }
 
 export function PortSweep({
@@ -67,6 +76,7 @@ export function PortSweep({
         probed: true,
         hit: move.hit,
         adjacency: move.adjacency,
+        mineSurge: move.mineSurge,
       };
     }
 
@@ -92,6 +102,7 @@ export function PortSweep({
         probed: true,
         hit: result.hit,
         adjacency: result.adjacency,
+        mineSurge: result.mineSurge,
       };
       return next;
     });
@@ -132,7 +143,10 @@ export function PortSweep({
             Find {config.portCount} open ports on the {config.gridSize}x{config.gridSize} grid
           </p>
         </div>
-        <GameTimer expiresAt={expiresAt} onExpired={onGameOver} />
+        <div className="flex items-center gap-2">
+          {config.modifier && <ModifierBadge modifier={config.modifier} />}
+          <GameTimer expiresAt={expiresAt} onExpired={onGameOver} />
+        </div>
       </div>
 
       {/* Stats */}
@@ -158,19 +172,23 @@ export function PortSweep({
                 whileTap={{ scale: 0.9 }}
                 onClick={() => handleProbe(r, c)}
                 disabled={cell.probed || gameOver || isSubmitting}
-                className={`${cellSize} rounded border ${fontSize} font-mono font-bold flex items-center justify-center transition-all ${
+                className={`${cellSize} rounded border ${fontSize} font-mono font-bold flex items-center justify-center transition-all relative ${
                   cell.probed
                     ? cell.hit
-                      ? "border-cyber-green bg-cyber-green/20 text-cyber-green"
-                      : cell.adjacency === 0
-                        ? "border-border-default bg-bg-primary text-text-muted"
-                        : "border-cyber-amber/40 bg-bg-primary text-cyber-amber"
+                        ? "border-cyber-green bg-cyber-green/20 text-cyber-green"
+                        : cell.mineSurge
+                          ? "border-cyber-red/60 bg-cyber-red/10 text-cyber-red"
+                          : cell.adjacency === 0
+                            ? "border-border-default bg-bg-primary text-text-muted"
+                            : "border-cyber-amber/40 bg-bg-primary text-cyber-amber"
                     : "border-border-default bg-bg-secondary hover:border-cyber-cyan hover:bg-cyber-cyan/5 text-transparent cursor-pointer"
                 } disabled:cursor-default`}
               >
                 {cell.probed ? (
                   cell.hit ? (
                     <span className="text-base">&#9679;</span>
+                  ) : cell.mineSurge ? (
+                    <span>-2</span>
                   ) : (
                     cell.adjacency ?? ""
                   )
@@ -203,10 +221,16 @@ export function PortSweep({
       )}
 
       {/* Legend */}
-      <div className="flex gap-4 justify-center text-[10px]">
+      <div className="flex gap-3 justify-center flex-wrap text-[10px]">
         <span className="text-cyber-green">&#9679; Port Found</span>
         <span className="text-cyber-amber">N = Adjacent Ports</span>
         <span className="text-text-muted">0 = No Nearby Ports</span>
+        {config.modifier === "decoys" && (
+          <span className="text-cyber-amber">DECOY = False Hit</span>
+        )}
+        {config.modifier === "mines" && (
+          <span className="text-cyber-red">-2 = Mine (costs 2 probes)</span>
+        )}
       </div>
     </div>
   );

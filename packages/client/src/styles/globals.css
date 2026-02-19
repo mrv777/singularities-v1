@@ -220,3 +220,46 @@ body {
 .hud-corner-lg.hud-corner-tr { top: -1px; right: -1px; border-top: 2px solid; border-right: 2px solid; }
 .hud-corner-lg.hud-corner-bl { bottom: -1px; left: -1px; border-bottom: 2px solid; border-left: 2px solid; }
 .hud-corner-lg.hud-corner-br { bottom: -1px; right: -1px; border-bottom: 2px solid; border-right: 2px solid; }
+
+/* ─── Network map: compositor-driven animations ──────────────────────────── */
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes spin-slow-reverse {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(-360deg); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { r: 60px; opacity: 0.3; }
+  50%      { r: 64px; opacity: 0.5; }
+}
+
+@keyframes pulse-node {
+  0%, 100% { r: 28px; }
+  50%      { r: 32px; }
+}
+
+@keyframes flicker-locked {
+  0%, 100% { opacity: 0.5; transform: translateX(0); }
+  10%      { opacity: 0.3; transform: translateX(-1px); }
+  20%      { opacity: 0.5; transform: translateX(1px); }
+  30%      { opacity: 0.4; transform: translateX(0); }
+}
+
+@keyframes dash-flow {
+  from { stroke-dashoffset: 0; }
+  to   { stroke-dashoffset: -32; }
+}
+
+@keyframes pulse-endpoint {
+  0%, 100% { transform: scale(1); opacity: 0.5; }
+  50%      { transform: scale(1.5); opacity: 1; }
+}
+
+@keyframes energy-pulse-low {
+  0%, 100% { background-color: #ffaa00; }
+  50%      { background-color: #332200; }
+}

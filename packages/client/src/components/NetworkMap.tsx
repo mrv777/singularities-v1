@@ -23,8 +23,6 @@ import {
 import { useEffect, useCallback } from "react";
 import { api } from "@/lib/api";
 import { playSound } from "@/lib/sound";
-import { motion } from "framer-motion";
-
 // AI Core position
 const AI_CORE_POS = { x: 400, y: 260 };
 
@@ -69,14 +67,26 @@ export function NetworkMap({ playerLevel, unlockedSystems, isInSandbox }: Networ
     api.getTopology().then((r) => setTopology(r.topology)).catch(() => {});
   }, [setTopology]);
 
-  // Fetch health summary on mount and poll every 30s
+  // Fetch health summary on mount and poll every 30s — pauses when tab is hidden
   useEffect(() => {
     const fetchHealth = () => {
       api.getSystemHealthSummary().then(setSystemHealthSummary).catch(() => {});
     };
     fetchHealth();
-    const interval = setInterval(fetchHealth, 30_000);
-    return () => clearInterval(interval);
+    let interval = setInterval(fetchHealth, 30_000);
+
+    const onVisibility = () => {
+      clearInterval(interval);
+      if (document.visibilityState === "visible") {
+        fetchHealth();
+        interval = setInterval(fetchHealth, 30_000);
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
   }, [setSystemHealthSummary]);
 
   const coreColor = getHealthColor(systemHealthSummary?.worstStatus);
@@ -125,7 +135,7 @@ export function NetworkMap({ playerLevel, unlockedSystems, isInSandbox }: Networ
             tabIndex={0}
             onKeyDown={(e) => { if (e.key === "Enter") openModal("system_maintenance"); }}
           >
-            <motion.circle
+            <circle
               cx={AI_CORE_POS.x}
               cy={AI_CORE_POS.y}
               r={65}
@@ -134,23 +144,18 @@ export function NetworkMap({ playerLevel, unlockedSystems, isInSandbox }: Networ
               strokeWidth={1}
               strokeDasharray="20 40"
               opacity={0.2}
-              animate={{ rotate: -360 }}
-              transition={{ duration: 40, repeat: Infinity, ease: "linear" }}
+              style={{ transformOrigin: `${AI_CORE_POS.x}px ${AI_CORE_POS.y}px`, animation: "spin-slow-reverse 40s linear infinite" }}
             />
-            <motion.circle
+            <circle
               cx={AI_CORE_POS.x}
               cy={AI_CORE_POS.y}
               r={60}
               fill={`${coreColor}0D`}
               stroke={coreColor}
               strokeWidth={1}
-              animate={{
-                r: [60, 64, 60],
-                opacity: [0.3, 0.5, 0.3]
-              }}
-              transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+              style={{ animation: "pulse-glow 4s ease-in-out infinite" }}
             />
-            <motion.circle
+            <circle
               cx={AI_CORE_POS.x}
               cy={AI_CORE_POS.y}
               r={50}
@@ -158,8 +163,7 @@ export function NetworkMap({ playerLevel, unlockedSystems, isInSandbox }: Networ
               stroke={coreColor}
               strokeWidth={0.5}
               strokeDasharray="5 5"
-              animate={{ rotate: 360 }}
-              transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
+              style={{ transformOrigin: `${AI_CORE_POS.x}px ${AI_CORE_POS.y}px`, animation: "spin-slow 30s linear infinite" }}
             />
             <circle
               cx={AI_CORE_POS.x}
