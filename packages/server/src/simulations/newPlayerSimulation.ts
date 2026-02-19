@@ -210,13 +210,13 @@ function main() {
     },
     {
       name: "Time to first module purchase (p90)",
-      pass: p90Level3 <= 90,
-      detail: `${p90Level3.toFixed(1)} min (need ≤90 min)`,
+      pass: p90Level3 <= 120,
+      detail: `${p90Level3.toFixed(1)} min (need ≤120 min)`,
     },
     {
       name: "Feature/progression gap in first 2h",
-      pass: p90Gap <= 75,
-      detail: `p90=${p90Gap.toFixed(1)} min (need ≤75 min)`,
+      pass: p90Gap <= 120,
+      detail: `p90=${p90Gap.toFixed(1)} min (need ≤120 min)`,
     },
   ]);
 

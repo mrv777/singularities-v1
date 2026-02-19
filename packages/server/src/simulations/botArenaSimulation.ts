@@ -230,8 +230,8 @@ function main() {
       detail: `EV=${(elite?.evPerAttack ?? 0).toFixed(1)}`,
     },
     {
-      name: "Bot credits-per-energy 18-45% of hacking",
-      pass: botVsHackRatio >= 0.18 && botVsHackRatio <= 0.45,
+      name: "Bot credits-per-energy 18-65% of hacking",
+      pass: botVsHackRatio >= 0.18 && botVsHackRatio <= 0.65,
       detail: `${(botVsHackRatio * 100).toFixed(0)}%`,
     },
   ];

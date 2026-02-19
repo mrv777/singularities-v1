@@ -19,8 +19,8 @@ export interface RippleThreshold {
 export const RIPPLE_MIN_ACTIVE_PLAYERS = 10;
 
 export const RIPPLE_THRESHOLDS: RippleThreshold[] = [
-  { metric: "totalHacks",    perPlayerRate: 8,   absoluteMin: 200, description: "High hacking activity detected" },
-  { metric: "stealthUsage",  perPlayerRate: 4,   absoluteMin: 80,  description: "Widespread stealth operations" },
+  { metric: "totalHacks",    perPlayerRate: 8,   absoluteMin: 150, description: "High hacking activity detected" },
+  { metric: "stealthUsage",  perPlayerRate: 4,   absoluteMin: 60,  description: "Widespread stealth operations" },
   { metric: "pvpBattles",    perPlayerRate: 3,   absoluteMin: 45,  description: "Intense PvP combat activity" },
   { metric: "deaths",        perPlayerRate: 0.5, absoluteMin: 7,   description: "Mass AI casualties" },
   { metric: "moduleUpgrades",perPlayerRate: 3,   absoluteMin: 45,  description: "Technology arms race detected" },

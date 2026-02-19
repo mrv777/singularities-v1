@@ -189,7 +189,7 @@ function runDeathSpiral(seed: number): DeathSpiralResult {
     if (state.energy >= 8) {
       simulateHack(state, rng);
     }
-    state.energy = Math.min(state.energyMax, state.energy + state.regenPerMinute() * 60);
+    state.energy = Math.min(state.energyMax, state.energy + state.regenPerMinute() * 240); // 4h of regen per tick (adjusted for slow regen rate)
 
     // Try repairs
     if (hour % 4 === 0) {

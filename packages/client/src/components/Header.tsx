@@ -2,7 +2,6 @@ import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { useAuthStore } from "@/stores/auth";
 import {
   Menu,
-  ChevronDown,
   Volume2,
   VolumeX,
   Zap,
@@ -18,7 +17,7 @@ import {
 import { useUIStore } from "@/stores/ui";
 import { XP_THRESHOLDS, getXPForNextLevel } from "@singularities/shared";
 import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { ModifierBadge } from "./ModifierBadge";
 import { TopologyBadge } from "./TopologyBadge";
 import { AlignmentIndicator } from "./alignment/AlignmentIndicator";
@@ -57,7 +56,6 @@ export function Header() {
   const soundEnabled = useUIStore((s) => s.soundEnabled);
   const toggleSound = useUIStore((s) => s.toggleSound);
   const { tier } = useUITier();
-  const [showResources, setShowResources] = useState(false);
   const [phase, setPhase] = useState(getDayPhase());
   const [countdown, setCountdown] = useState(getPhaseCountdown());
   const localNow = new Date();
@@ -81,12 +79,12 @@ export function Header() {
       <button
         onClick={toggleSidebar}
         className="text-text-secondary hover:text-cyber-cyan transition-colors lg:hidden min-w-[40px] min-h-[40px] flex items-center justify-center border border-border-default rounded bg-bg-surface/50"
-        aria-label="Toggle sidebar"
+        aria-label="Open sidebar"
       >
         <Menu size={20} />
       </button>
 
-      <div className="flex flex-col">
+      <div className="hidden lg:flex flex-col">
         <span
           className={`text-cyber-cyan font-bold text-sm tracking-widest leading-none ${tier === 1 ? "" : "glow-cyan"}`}
         >
@@ -328,25 +326,15 @@ export function Header() {
             </div>
           </div>
 
-          {/* Mobile: compact + expandable */}
+          {/* Mobile: AI name (tapping opens Net Stats) */}
           <button
-            onClick={() => setShowResources(!showResources)}
+            onClick={() => useUIStore.getState().openModal("network_stats")}
             className="lg:hidden flex items-center gap-2 px-3 py-1 bg-bg-surface/50 border border-border-default rounded text-xs text-text-secondary transition-colors hover:border-cyber-cyan"
           >
-            <div
-              className="w-2 h-2 rounded-full bg-cyber-green animate-pulse"
-              onClick={(e) => { e.stopPropagation(); useUIStore.getState().openModal("network_stats"); }}
-            />
-            <span
-              className="text-cyber-green font-bold uppercase tracking-wider"
-              onClick={(e) => { e.stopPropagation(); useUIStore.getState().openModal("network_stats"); }}
-            >
+            <div className="w-2 h-2 rounded-full bg-cyber-green animate-pulse" />
+            <span className="text-cyber-green font-bold uppercase tracking-wider">
               {player.aiName}
             </span>
-            <ChevronDown
-              size={14}
-              className={`transition-transform duration-300 ${showResources ? "rotate-180" : ""}`}
-            />
           </button>
         </>
       )}
@@ -389,123 +377,6 @@ export function Header() {
         />
       </div>
 
-      {/* Mobile resource panel */}
-      <AnimatePresence>
-        {isAuthenticated && player && showResources && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            className="absolute top-16 left-0 right-0 bg-bg-secondary/95 backdrop-blur-xl border-b border-border-default p-4 lg:hidden z-40 shadow-2xl overflow-hidden"
-          >
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded bg-bg-surface flex items-center justify-center border border-border-default">
-                    <Star size={16} className="text-cyber-magenta" />
-                  </div>
-                  <div>
-                    <div className="text-[10px] text-text-muted uppercase">
-                      Level {player.level}
-                    </div>
-                    <div className="text-sm font-bold">
-                      {player.xp}{" "}
-                      <span className="text-text-muted text-[10px]">XP</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded bg-bg-surface flex items-center justify-center border border-border-default">
-                    <Coins size={16} className="text-cyber-amber" />
-                  </div>
-                  <div>
-                    <div className="text-[10px] text-text-muted uppercase">
-                      Credits
-                    </div>
-                    <div className="text-sm font-bold text-cyber-amber">
-                      {player.credits.toLocaleString()}
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded bg-bg-surface flex items-center justify-center border border-border-default">
-                    <Zap size={16} className="text-cyber-cyan" />
-                  </div>
-                  <div className="flex-1">
-                    <div className="text-[10px] text-text-muted uppercase">
-                      Energy
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="text-sm font-bold text-cyber-cyan">
-                        {player.energy}/{player.energyMax}
-                      </div>
-                      <div className="flex-1 h-1 bg-bg-primary rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-cyber-cyan"
-                          style={{ width: `${energyPercent}%` }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded bg-bg-surface flex items-center justify-center border border-border-default">
-                    <Database size={16} className="text-cyber-green" />
-                  </div>
-                  <div>
-                    <div className="text-[10px] text-text-muted uppercase">
-                      Data
-                    </div>
-                    <div className="text-sm font-bold text-cyber-green">
-                      {player.data}
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded bg-bg-surface flex items-center justify-center border border-border-default">
-                    <Cpu size={16} className="text-cyber-magenta" />
-                  </div>
-                  <div>
-                    <div className="text-[10px] text-text-muted uppercase">
-                      Power
-                    </div>
-                    <div className="text-sm font-bold text-cyber-magenta">
-                      {player.processingPower}
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded bg-bg-surface flex items-center justify-center border border-border-default">
-                    <Shield size={16} className="text-text-secondary" />
-                  </div>
-                  <div>
-                    <div className="text-[10px] text-text-muted uppercase">
-                      Reputation
-                    </div>
-                    <div className="text-sm font-bold text-text-secondary">
-                      {player.reputation}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="col-span-2 pt-2 border-t border-border-default flex items-center justify-between">
-                <AlignmentIndicator />
-                <ModifierBadge />
-                <TopologyBadge />
-                <div
-                  className={`${phase.color} text-[10px] font-bold flex items-center gap-1`}
-                >
-                  {phase.icon} {phase.phase} {countdown}
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </header>
   );
 }

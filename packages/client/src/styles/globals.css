@@ -124,9 +124,9 @@ body {
 
 .cyber-grid {
   background-size: 40px 40px;
-  background-image: 
-    linear-gradient(to right, color-mix(in srgb, var(--color-border-default) 20%, transparent) 1px, transparent 1px),
-    linear-gradient(to bottom, color-mix(in srgb, var(--color-border-default) 20%, transparent) 1px, transparent 1px);
+  background-image:
+    linear-gradient(to right, color-mix(in srgb, var(--color-border-default) 35%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--color-border-default) 35%, transparent) 1px, transparent 1px);
   mask-image: radial-gradient(circle at center, black 30%, transparent 90%);
 }
 
@@ -262,4 +262,9 @@ body {
 @keyframes energy-pulse-low {
   0%, 100% { background-color: #ffaa00; }
   50%      { background-color: #332200; }
+}
+
+@keyframes slide-in-left {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(0); }
 }

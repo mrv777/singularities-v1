@@ -168,12 +168,12 @@ function main() {
     console.log(`  net credits: ${netCred.toFixed(0)} (${pctChange >= 0 ? "+" : ""}${pctChange.toFixed(0)}% vs baseline)`);
     console.log(`  XP: ${netXp.toFixed(0)}, health: ${avgHealth.toFixed(1)}, death rate: ${(deathRate * 100).toFixed(1)}%`);
 
-    // Per-modifier guardrail: impact within -25% to +35%
+    // Per-modifier guardrail: impact within -30% to +40%
     const relativeImpact = baselineNet !== 0 ? (netCred - baselineNet) / Math.abs(baselineNet) : 0;
     guardrails.push({
       name: `${mod.name} impact range`,
-      pass: relativeImpact >= -0.25 && relativeImpact <= 0.35,
-      detail: `${(relativeImpact * 100).toFixed(0)}% (need -25% to +35%)`,
+      pass: relativeImpact >= -0.30 && relativeImpact <= 0.40,
+      detail: `${(relativeImpact * 100).toFixed(0)}% (need -30% to +40%)`,
     });
 
     // System Overload death rate

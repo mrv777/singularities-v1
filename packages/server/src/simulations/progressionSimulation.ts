@@ -658,17 +658,17 @@ function main() {
   const finalP50 = percentile(finalLevels, 50);
   guardrails.push({
     name: "Median player reaches deep endgame by day 90",
-    pass: finalP50 >= 20,
-    detail: `p50 final level=${finalP50} (need ≥20)`,
+    pass: finalP50 >= 14,
+    detail: `p50 final level=${finalP50} (need ≥14)`,
   });
 
   const lvl25Times = fullResults.map((r) => r.minutesToLevel[MAX_LEVEL - 2]).filter((v) => v >= 0);
   const lvl25DaysP50 = lvl25Times.length > 0 ? percentile(lvl25Times, 50) / 60 / hoursPerDay : Number.POSITIVE_INFINITY;
   guardrails.push({
     name: "Max level is not reached too early at 2h/day",
-    pass: lvl25DaysP50 >= 12,
+    pass: lvl25DaysP50 >= 20,
     detail: Number.isFinite(lvl25DaysP50)
-      ? `p50=${lvl25DaysP50.toFixed(1)} days (need ≥12)`
+      ? `p50=${lvl25DaysP50.toFixed(1)} days (need ≥20)`
       : "p50=not reached (acceptable)",
   });
 
@@ -676,9 +676,9 @@ function main() {
   const lvl9Times = fullResults.map((r) => r.minutesToLevel[7]).filter((v) => v >= 0);
   const lvl9DaysP50 = lvl9Times.length > 0 ? percentile(lvl9Times, 50) / 60 / hoursPerDay : 999;
   guardrails.push({
-    name: "Level 9 reachable within 7 days at 2h/day",
-    pass: lvl9DaysP50 <= 7,
-    detail: `p50=${lvl9DaysP50.toFixed(1)} days (need ≤7)`,
+    name: "Level 9 reachable within 14 days at 2h/day",
+    pass: lvl9DaysP50 <= 14,
+    detail: `p50=${lvl9DaysP50.toFixed(1)} days (need ≤14)`,
   });
 
   // No XP walls

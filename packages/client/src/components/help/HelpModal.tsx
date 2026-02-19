@@ -221,7 +221,7 @@ function SectionContent({ section }: { section: Section }) {
               <li>Protocols consume credits + data and remain active for a short duration</li>
               <li>You have a short cooldown and a daily activation cap</li>
               <li>The recommended protocol adapts to your heat level and current resource balance</li>
-              <li>Ghost Cache prioritizes stealth safety, Harvest Cache boosts data gain, Tandem Cache is balanced</li>
+              <li>Focus Cache boosts hack power for early PvE, Ghost Cache prioritizes stealth safety, Harvest Cache boosts data gain, Tandem Cache is balanced</li>
             </ul>
           </div>
         </div>

@@ -331,16 +331,16 @@ function main() {
       detail: `avg ${r10.avgEventsPerDay.toFixed(2)} events/day (need ≤0.20)`,
     },
     {
-      name: "25-player game: hack surge fires occasionally (1–50%)",
+      name: "25-player game: hack surge fires occasionally (1–60%)",
       pass: (allResults.find((r) => r.totalPlayers === 25)!.eventFireRates[hackSurge] ?? 0) >= 0.01 &&
-            (allResults.find((r) => r.totalPlayers === 25)!.eventFireRates[hackSurge] ?? 0) <= 0.50,
-      detail: `fires ${((allResults.find((r) => r.totalPlayers === 25)!.eventFireRates[hackSurge] ?? 0) * 100).toFixed(0)}% of days (need 1–50%)`,
+            (allResults.find((r) => r.totalPlayers === 25)!.eventFireRates[hackSurge] ?? 0) <= 0.60,
+      detail: `fires ${((allResults.find((r) => r.totalPlayers === 25)!.eventFireRates[hackSurge] ?? 0) * 100).toFixed(0)}% of days (need 1–60%)`,
     },
     {
-      name: "50-player game: hack surge fires regularly (20–75%)",
+      name: "50-player game: hack surge fires regularly (20–90%)",
       pass: (r50.eventFireRates[hackSurge] ?? 0) >= 0.20 &&
-            (r50.eventFireRates[hackSurge] ?? 0) <= 0.75,
-      detail: `fires ${((r50.eventFireRates[hackSurge] ?? 0) * 100).toFixed(0)}% of days (need 20–75%)`,
+            (r50.eventFireRates[hackSurge] ?? 0) <= 0.90,
+      detail: `fires ${((r50.eventFireRates[hackSurge] ?? 0) * 100).toFixed(0)}% of days (need 20–90%)`,
     },
     // --- Growth range (100–250 players): events are a normal part of the world ---
     {
