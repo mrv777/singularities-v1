@@ -12,6 +12,8 @@ interface ModalProps {
   title: string;
   children: ReactNode;
   maxWidth?: string;
+  /** Optional full-panel background image — covers the entire modal including title bar */
+  backgroundSrc?: string;
 }
 
 export function Modal({
@@ -20,6 +22,7 @@ export function Modal({
   title,
   children,
   maxWidth = "max-w-2xl",
+  backgroundSrc,
 }: ModalProps) {
   const isMobile = useIsMobile();
   const { tier } = useUITier();
@@ -61,7 +64,7 @@ export function Modal({
             </Dialog.Overlay>
             <Dialog.Content aria-describedby={undefined} asChild>
               {isMobile ? (
-                /* Mobile: bottom sheet */
+                /* Mobile: bottom sheet — keep as-is for UX */
                 <motion.div
                   className="fixed inset-x-0 bottom-0 z-50 pointer-events-auto"
                   initial={{ y: "100%" }}
@@ -97,7 +100,7 @@ export function Modal({
                   </div>
                 </motion.div>
               ) : (
-                /* Desktop: centered modal */
+                /* Desktop: angled game panel */
                 <motion.div
                   className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-auto"
                   onMouseDown={(e) => {
@@ -109,20 +112,67 @@ export function Modal({
                   transition={{ duration: 0.25, ease: "easeOut" }}
                 >
                   <motion.div
-                    className={`w-full ${maxWidth} border border-border-default bg-bg-surface rounded-lg border-glow-cyan overflow-hidden pointer-events-auto max-h-[calc(100vh-2rem)] flex flex-col`}
+                    className={`w-full ${maxWidth} border border-border-default bg-bg-surface border-glow-cyan pointer-events-auto max-h-[calc(100vh-2rem)] flex flex-col modal-panel relative overflow-hidden`}
                     {...contentAnimation}
                   >
-                    <div className="flex items-center justify-between px-4 py-3 border-b border-border-default bg-bg-secondary shrink-0">
-                      <Dialog.Title className="text-cyber-cyan text-sm font-semibold tracking-wider">
+                    {/* Full-panel background image layer */}
+                    {backgroundSrc && (
+                      <div className="absolute inset-0 pointer-events-none">
+                        <img
+                          src={backgroundSrc}
+                          alt=""
+                          className="w-full h-full object-cover"
+                          style={{ filter: "blur(6px) brightness(0.6)", transform: "scale(1.05)" }}
+                        />
+                        {/* Radial vignette — keeps center readable, edges show image */}
+                        <div
+                          className="absolute inset-0"
+                          style={{
+                            background: "radial-gradient(ellipse at center, rgba(26,26,36,0.6) 30%, rgba(26,26,36,0.1) 100%)",
+                          }}
+                        />
+                      </div>
+                    )}
+
+                    {/* Title bar — angled left accent + separator */}
+                    <div
+                      className="relative z-10 flex items-center justify-between px-5 py-3 border-b border-cyber-cyan/20 shrink-0"
+                      style={{
+                        borderLeft: "4px solid var(--color-cyber-cyan)",
+                        background: backgroundSrc
+                          ? "rgba(17,17,24,0.75)"
+                          : "var(--color-bg-secondary)",
+                        backdropFilter: backgroundSrc ? "blur(4px)" : undefined,
+                      }}
+                    >
+                      {/* HUD corner decorations */}
+                      <div className="hud-corner hud-corner-lg hud-corner-tl border-cyber-cyan" style={{ opacity: 0.9 }} />
+                      <div className="hud-corner hud-corner-lg hud-corner-br border-cyber-cyan" style={{ opacity: 0.9 }} />
+
+                      <Dialog.Title className="text-cyber-cyan text-sm font-bold tracking-[0.2em] uppercase flex items-center gap-2">
+                        <span className="text-cyber-cyan/60 text-xs">▸</span>
                         {title}
                       </Dialog.Title>
                       <Dialog.Close asChild>
-                        <button className="text-text-muted hover:text-cyber-cyan transition-colors p-1">
-                          <X size={16} />
-                        </button>
+                        <motion.button
+                          className="text-text-muted hover:text-cyber-cyan transition-colors p-1.5 rounded border border-transparent hover:border-cyber-cyan/30"
+                          whileTap={{ scale: 0.9 }}
+                        >
+                          <X size={14} />
+                        </motion.button>
                       </Dialog.Close>
                     </div>
-                    <div className="p-4 overflow-y-auto">
+
+                    {/* Cyan accent separator line */}
+                    <div
+                      className="relative z-10 h-px shrink-0"
+                      style={{
+                        background: "linear-gradient(to right, var(--color-cyber-cyan), transparent)",
+                        opacity: 0.3,
+                      }}
+                    />
+
+                    <div className="relative z-10 p-4 overflow-y-auto flex-1">
                       {children}
                     </div>
                   </motion.div>

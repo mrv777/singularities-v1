@@ -46,7 +46,7 @@ export function getXPForNextLevel(currentLevel: number): number | null {
 
 // Energy costs for actions
 export const ENERGY_COSTS = {
-  scan: 3,
+  scan: 12,        // keep in sync with SCAN_ENERGY_COST for scripts
   hackBase: 10,
   moduleUpgrade: 5,
   repair: 12,

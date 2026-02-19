@@ -48,7 +48,6 @@ export function SignalCrack({
   const [history, setHistory] = useState<GuessRow[]>([]);
   const [guessesRemaining, setGuessesRemaining] = useState(config.maxGuesses);
   const [possibilitiesRemaining, setPossibilitiesRemaining] = useState<number | null>(null);
-  const [duplicateWarning, setDuplicateWarning] = useState(false);
   const [solved, setSolved] = useState(false);
   const [gameOver, setGameOver] = useState(false);
   const hydratedRef = useRef(false);
@@ -77,30 +76,18 @@ export function SignalCrack({
   const handleDigitPress = useCallback((digit: number) => {
     if (gameOver || isSubmitting) return;
     if (currentGuess.length >= config.codeLength) return;
+    if (currentGuess.includes(digit)) return;
     playSound("gameMove");
-    const next = [...currentGuess, digit];
-    setCurrentGuess(next);
-    // Check for duplicates
-    setDuplicateWarning(new Set(next).size !== next.length);
+    setCurrentGuess((prev) => [...prev, digit]);
   }, [config.codeLength, gameOver, isSubmitting, currentGuess]);
 
   const handleBackspace = useCallback(() => {
     if (gameOver || isSubmitting) return;
-    setCurrentGuess((prev) => {
-      const next = prev.slice(0, -1);
-      setDuplicateWarning(new Set(next).size !== next.length);
-      return next;
-    });
+    setCurrentGuess((prev) => prev.slice(0, -1));
   }, [gameOver, isSubmitting]);
 
   const handleSubmit = useCallback(async () => {
     if (currentGuess.length !== config.codeLength || isSubmitting || gameOver) return;
-
-    // Block duplicate digits
-    if (new Set(currentGuess).size !== currentGuess.length) {
-      setDuplicateWarning(true);
-      return;
-    }
 
     const result = await onMove(currentGuess);
     if (!result) return;
@@ -113,7 +100,6 @@ export function SignalCrack({
     setGuessesRemaining(result.guessesRemaining);
     setPossibilitiesRemaining(result.possibilitiesRemaining);
     setCurrentGuess([]);
-    setDuplicateWarning(false);
 
     if (result.solved) {
       playSound("gameCorrect");
@@ -174,28 +160,39 @@ export function SignalCrack({
       </div>
 
       {/* Guess history */}
-      <div className="space-y-1.5 max-h-[240px] overflow-y-auto">
+      <div className="space-y-1.5 max-h-[240px] overflow-y-auto scrollbar-hide">
         {history.map((row, i) => (
           <motion.div
             key={i}
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="flex items-center gap-2 justify-center"
+            className="flex items-center gap-2 justify-center overflow-hidden py-0.5"
           >
             <span className="text-text-muted text-[10px] w-4 text-right">{i + 1}.</span>
             {row.guess.map((digit, j) => (
-              <div
+              <motion.div
                 key={j}
+                initial={{ y: -20, opacity: 0, scale: 0.8 }}
+                animate={{ y: 0, opacity: 1, scale: 1 }}
+                transition={{
+                  type: "spring",
+                  stiffness: 500,
+                  damping: 20,
+                  delay: j * 0.05,
+                }}
                 className="w-9 h-9 rounded border flex items-center justify-center text-sm font-bold font-mono"
                 style={{
                   borderColor: FEEDBACK_COLORS[row.feedback[j]],
                   backgroundColor: `${FEEDBACK_COLORS[row.feedback[j]]}15`,
                   color: FEEDBACK_COLORS[row.feedback[j]],
+                  boxShadow: row.feedback[j] === "EXACT"
+                    ? `0 0 8px ${FEEDBACK_COLORS[row.feedback[j]]}60`
+                    : undefined,
                 }}
                 title={FEEDBACK_LABELS[row.feedback[j]]}
               >
                 {digit}
-              </div>
+              </motion.div>
             ))}
           </motion.div>
         ))}
@@ -225,22 +222,18 @@ export function SignalCrack({
         <div className="space-y-2">
           <div className="flex gap-1.5 justify-center flex-wrap">
             {Array.from({ length: config.digitPool }).map((_, digit) => (
-              <button
+              <motion.button
                 key={digit}
                 onClick={() => handleDigitPress(digit)}
                 disabled={currentGuess.length >= config.codeLength || isSubmitting}
+                whileTap={{ scale: 0.88 }}
+                transition={{ type: "spring", stiffness: 600, damping: 20 }}
                 className="w-9 h-9 rounded border border-border-default text-text-primary text-sm font-mono font-bold hover:border-cyber-cyan hover:text-cyber-cyan transition-colors disabled:opacity-30"
               >
                 {digit}
-              </button>
+              </motion.button>
             ))}
           </div>
-
-          {duplicateWarning && (
-            <div className="text-cyber-amber text-[10px] text-center">
-              No duplicate digits allowed
-            </div>
-          )}
 
           <div className="flex gap-2 justify-center">
             <button
@@ -252,7 +245,7 @@ export function SignalCrack({
             </button>
             <button
               onClick={handleSubmit}
-              disabled={currentGuess.length !== config.codeLength || isSubmitting || duplicateWarning}
+              disabled={currentGuess.length !== config.codeLength || isSubmitting}
               className="px-6 py-1.5 text-xs border border-cyber-cyan text-cyber-cyan rounded hover:bg-cyber-cyan/10 transition-colors disabled:opacity-30 font-bold"
             >
               {isSubmitting ? "..." : "SUBMIT"}
@@ -264,16 +257,22 @@ export function SignalCrack({
       {/* Solved / failed banner */}
       {gameOver && (
         <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className={`text-center py-2 rounded border ${
+          initial={{ opacity: 0, scale: 0.85, y: 10 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ type: "spring", stiffness: 400, damping: 18 }}
+          className={`text-center py-3 rounded border ${
             solved
               ? "border-cyber-green/50 bg-cyber-green/10 text-cyber-green"
               : "border-cyber-red/50 bg-cyber-red/10 text-cyber-red"
           }`}
+          style={{
+            boxShadow: solved
+              ? "0 0 20px rgba(0, 255, 136, 0.3), inset 0 0 20px rgba(0, 255, 136, 0.05)"
+              : "0 0 20px rgba(255, 51, 51, 0.3), inset 0 0 20px rgba(255, 51, 51, 0.05)",
+          }}
         >
-          <div className="text-sm font-bold">
-            {solved ? "CODE CRACKED!" : "CODE NOT BROKEN"}
+          <div className="text-sm font-bold tracking-widest">
+            {solved ? "▸ CODE CRACKED!" : "▸ CODE NOT BROKEN"}
           </div>
         </motion.div>
       )}

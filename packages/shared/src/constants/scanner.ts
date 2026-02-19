@@ -40,7 +40,7 @@ export const RISK_COLORS: Record<RiskRating, string> = {
   critical: "#ff3333",
 };
 
-export const SCAN_ENERGY_COST = 5;
+export const SCAN_ENERGY_COST = 12;
 export const SCAN_TARGET_COUNT = 5;
 export const SCAN_TTL_SECONDS = 600; // 10 minutes
 

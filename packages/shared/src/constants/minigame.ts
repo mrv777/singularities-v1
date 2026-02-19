@@ -69,24 +69,24 @@ const BRACKETS: Bracket[] = [
 ];
 
 const SIGNAL_CRACK_TABLE: SignalCrackDifficulty[] = [
-  { codeLength: 3, digitPool: 6, maxGuesses: 9, allowRepeats: false, timeLimitMs: 90_000 },
-  { codeLength: 4, digitPool: 7, maxGuesses: 8, allowRepeats: false, timeLimitMs: 90_000 },
-  { codeLength: 4, digitPool: 8, maxGuesses: 7, allowRepeats: false, timeLimitMs: 90_000 },
-  { codeLength: 5, digitPool: 8, maxGuesses: 7, allowRepeats: false, timeLimitMs: 90_000 },
+  { codeLength: 3, digitPool: 6, maxGuesses: 9, allowRepeats: false, timeLimitMs: 60_000 },
+  { codeLength: 4, digitPool: 7, maxGuesses: 8, allowRepeats: false, timeLimitMs: 60_000 },
+  { codeLength: 4, digitPool: 8, maxGuesses: 7, allowRepeats: false, timeLimitMs: 60_000 },
+  { codeLength: 5, digitPool: 8, maxGuesses: 7, allowRepeats: false, timeLimitMs: 60_000 },
 ];
 
 const PORT_SWEEP_TABLE: PortSweepDifficulty[] = [
-  { gridSize: 5, portCount: 3, maxProbes: 15, timeLimitMs: 120_000 },
-  { gridSize: 6, portCount: 5, maxProbes: 18, timeLimitMs: 120_000 },
-  { gridSize: 7, portCount: 6, maxProbes: 21, timeLimitMs: 120_000 },
-  { gridSize: 8, portCount: 8, maxProbes: 22, timeLimitMs: 120_000 },
+  { gridSize: 5, portCount: 3, maxProbes: 15, timeLimitMs: 90_000 },
+  { gridSize: 6, portCount: 5, maxProbes: 18, timeLimitMs: 90_000 },
+  { gridSize: 7, portCount: 6, maxProbes: 21, timeLimitMs: 90_000 },
+  { gridSize: 8, portCount: 8, maxProbes: 22, timeLimitMs: 90_000 },
 ];
 
 const NETWORK_RELINK_TABLE: NetworkRelinkDifficulty[] = [
-  { gridSize: 5, pairs: 4, timeLimitMs: 120_000 },
-  { gridSize: 6, pairs: 5, timeLimitMs: 120_000 },
-  { gridSize: 7, pairs: 7, timeLimitMs: 120_000 },
-  { gridSize: 8, pairs: 9, timeLimitMs: 120_000 },
+  { gridSize: 5, pairs: 4, timeLimitMs: 90_000 },
+  { gridSize: 6, pairs: 5, timeLimitMs: 90_000 },
+  { gridSize: 7, pairs: 7, timeLimitMs: 90_000 },
+  { gridSize: 8, pairs: 9, timeLimitMs: 90_000 },
 ];
 
 function bracketIndex(securityLevel: number): number {
@@ -206,8 +206,8 @@ export const MINIGAME_BALANCE = {
    * Gameplay still uses `gameTtlSeconds`; this only controls Redis retention.
    */
   gameStateRetentionSeconds: 2_592_000,
-  /** Energy cost is just the scan cost (3); no per-hack cost anymore */
-  energyCost: 3,
+  /** Energy cost covered entirely by SCAN_ENERGY_COST; no separate per-hack cost */
+  energyCost: 0,
 } as const;
 
 // ---------------------------------------------------------------------------

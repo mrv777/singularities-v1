@@ -18,26 +18,31 @@ function cubicPath(x1: number, y1: number, x2: number, y2: number): string {
 export function NetworkConnections({ nodes, playerLevel, unlockedSystems }: NetworkConnectionsProps) {
   return (
     <g>
-      {nodes.map((node) => {
+      {nodes.map((node, index) => {
         const isUnlocked = unlockedSystems
           ? unlockedSystems.includes(node.id) && !node.comingSoon
           : playerLevel >= node.unlockLevel && !node.comingSoon;
 
         // Path from AI Core to Node
         const path = cubicPath(AI_CORE_POS.x, AI_CORE_POS.y, node.x, node.y);
+        const pathId = `conn-path-${node.id}`;
+        // Stagger each packet's travel timing so they don't all start together
+        const packetDelay = index * 0.7;
+        const packetDuration = 2.5 + (index % 3) * 0.5;
 
         return (
           <g key={`core-${node.id}`}>
-            {/* Base line */}
+            {/* Base line — needs an id for mpath reference */}
             <path
+              id={pathId}
               d={path}
               fill="none"
               stroke={isUnlocked ? "var(--color-cyber-cyan)" : "var(--color-border-default)"}
               strokeWidth={isUnlocked ? 1.5 : 0.5}
               opacity={isUnlocked ? 0.3 : 0.1}
             />
-            
-            {/* Animated data flow from core to node */}
+
+            {/* Animated dash flow from core to node */}
             {isUnlocked && (
               <motion.path
                 d={path}
@@ -50,6 +55,38 @@ export function NetworkConnections({ nodes, playerLevel, unlockedSystems }: Netw
                 animate={{ strokeDashoffset: -32 }}
                 transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
               />
+            )}
+
+            {/* Glowing data packet traveling core → node */}
+            {isUnlocked && (
+              <g>
+                {/* Outer glow */}
+                <circle r={4} fill="none" stroke="var(--color-cyber-cyan)" strokeWidth={1} opacity={0.4}>
+                  <animateMotion
+                    dur={`${packetDuration}s`}
+                    begin={`${packetDelay}s`}
+                    repeatCount="indefinite"
+                    calcMode="spline"
+                    keyTimes="0;1"
+                    keySplines="0.4 0 0.6 1"
+                  >
+                    <mpath href={`#${pathId}`} />
+                  </animateMotion>
+                </circle>
+                {/* Inner bright dot */}
+                <circle r={2.5} fill="var(--color-cyber-cyan)" opacity={0.9}>
+                  <animateMotion
+                    dur={`${packetDuration}s`}
+                    begin={`${packetDelay}s`}
+                    repeatCount="indefinite"
+                    calcMode="spline"
+                    keyTimes="0;1"
+                    keySplines="0.4 0 0.6 1"
+                  >
+                    <mpath href={`#${pathId}`} />
+                  </animateMotion>
+                </circle>
+              </g>
             )}
 
             {/* Pulsing connection point at node end */}

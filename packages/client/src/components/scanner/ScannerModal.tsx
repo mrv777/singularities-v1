@@ -208,8 +208,22 @@ export function ScannerModal() {
   const selectedTarget =
     selectedTargetIndex !== null ? scannedTargets[selectedTargetIndex] : null;
 
+  const BG_MAP: Record<string, string> = {
+    military: "/assets/backgrounds/military.webp",
+    government: "/assets/backgrounds/military.webp",
+    research: "/assets/backgrounds/academic.webp",
+    infrastructure: "/assets/backgrounds/industrial.webp",
+    corporate: "/assets/backgrounds/corporate.webp",
+    financial: "/assets/backgrounds/corporate.webp",
+    database: "/assets/backgrounds/underground.webp",
+  };
+  // Always show a background in playing phase; fall back to corporate if target type unknown
+  const gameBgSrc = scannerPhase === "playing"
+    ? (selectedTarget ? BG_MAP[selectedTarget.type] : undefined) ?? "/assets/backgrounds/corporate.webp"
+    : undefined;
+
   return (
-    <Modal open={open} onClose={closeModal} title="NETWORK SCANNER" maxWidth="max-w-3xl">
+    <Modal open={open} onClose={closeModal} title="NETWORK SCANNER" maxWidth="max-w-3xl" backgroundSrc={gameBgSrc}>
       {/* Phase: Result */}
       {scannerPhase === "result" && gameResult ? (
         <GameResultDisplay result={gameResult} onDone={handleResultDone} />

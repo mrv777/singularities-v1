@@ -18,6 +18,18 @@ export interface TopologyStyle {
   tooltip?: string;
 }
 
+// Map node IDs to their asset file names
+const NODE_ASSET_MAP: Record<string, string> = {
+  scanner: "/assets/nodes/scanner.webp",
+  data_vault: "/assets/nodes/data-vault.webp",
+  ice_breaker: "/assets/nodes/ice-breaker.webp",
+  daemon_forge: "/assets/nodes/daemon-forge.webp",
+  pvp_arena: "/assets/nodes/arena.webp",
+  script_manager: "/assets/nodes/scripts.webp",
+  security_center: "/assets/nodes/security-center.webp",
+  tech_tree: "/assets/nodes/tech-tree.webp",
+};
+
 interface NetworkNodeProps {
   node: NodeDef;
   playerLevel: number;
@@ -38,6 +50,8 @@ export function NetworkNode({ node, playerLevel, unlockedSystems, onClick, topol
     : isUnlocked
       ? (hasTopo ? topologyStyle.tint! : "var(--color-cyber-cyan)")
       : "var(--color-text-muted)";
+
+  const assetSrc = NODE_ASSET_MAP[node.id];
 
   return (
     <g
@@ -88,7 +102,7 @@ export function NetworkNode({ node, playerLevel, unlockedSystems, onClick, topol
         style={hasTopo && topologyStyle?.glow ? { filter: topologyStyle.glow } : undefined}
       />
 
-      {/* Hexagonal decorative frame (simulated with path) */}
+      {/* Hexagonal decorative frame */}
       {isUnlocked && (
         <path
           d={`M ${node.x} ${node.y - 32} L ${node.x + 28} ${node.y - 16} L ${node.x + 28} ${node.y + 16} L ${node.x} ${node.y + 32} L ${node.x - 28} ${node.y + 16} L ${node.x - 28} ${node.y - 16} Z`}
@@ -99,25 +113,65 @@ export function NetworkNode({ node, playerLevel, unlockedSystems, onClick, topol
         />
       )}
 
-      {/* Icon rendering */}
-      <foreignObject
-        x={node.x - 10}
-        y={node.y - 10}
-        width={20}
-        height={20}
-        className="pointer-events-none"
-      >
-        <div 
-          className="flex items-center justify-center w-full h-full"
-          style={{ 
-            color: nodeColor,
-            opacity: isUnlocked ? 1 : 0.4,
-            filter: isUnlocked ? "drop-shadow(0 0 2px currentColor)" : "none"
-          }}
+      {/* Node icon: use illustrated asset if available, fall back to Lucide icon */}
+      {isComingSoon ? (
+        <foreignObject
+          x={node.x - 10}
+          y={node.y - 10}
+          width={20}
+          height={20}
+          className="pointer-events-none"
         >
-          {isComingSoon ? <Lock size={16} /> : node.icon}
-        </div>
-      </foreignObject>
+          <div className="flex items-center justify-center w-full h-full" style={{ color: nodeColor, opacity: 0.4 }}>
+            <Lock size={16} />
+          </div>
+        </foreignObject>
+      ) : assetSrc && !isComingSoon ? (
+        /* Illustrated asset clipped to the node circle */
+        <clipPath id={`clip-${node.id}`}>
+          <circle cx={node.x} cy={node.y} r={26} />
+        </clipPath>
+      ) : null}
+
+      {assetSrc && !isComingSoon && (
+        <image
+          href={assetSrc}
+          x={node.x - 26}
+          y={node.y - 26}
+          width={52}
+          height={52}
+          clipPath={`url(#clip-${node.id})`}
+          opacity={isUnlocked ? 0.9 : 0.2}
+          style={{
+            filter: isUnlocked
+              ? `drop-shadow(0 0 3px ${nodeColor}80) ${hasTopo && topologyStyle?.glow ? topologyStyle.glow : ""}`
+              : "none",
+          }}
+          preserveAspectRatio="xMidYMid slice"
+        />
+      )}
+
+      {/* Fallback: Lucide icon when no asset or locked */}
+      {!assetSrc && (
+        <foreignObject
+          x={node.x - 10}
+          y={node.y - 10}
+          width={20}
+          height={20}
+          className="pointer-events-none"
+        >
+          <div
+            className="flex items-center justify-center w-full h-full"
+            style={{
+              color: nodeColor,
+              opacity: isUnlocked ? 1 : 0.4,
+              filter: isUnlocked ? "drop-shadow(0 0 2px currentColor)" : "none",
+            }}
+          >
+            {node.icon}
+          </div>
+        </foreignObject>
+      )}
 
       {/* Label */}
       <g transform={`translate(${node.x}, ${node.y + 46})`}>

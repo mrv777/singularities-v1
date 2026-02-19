@@ -116,6 +116,16 @@ export function Header() {
               <div className="hud-corner hud-corner-tr" />
               <div className="hud-corner hud-corner-bl" />
               <div className="hud-corner hud-corner-br" />
+              {/* AI Portrait — tier-appropriate avatar */}
+              <div className="w-8 h-8 rounded-sm overflow-hidden border border-cyber-cyan/30 shrink-0">
+                <img
+                  src={`/assets/portrait/tier${tier}.webp`}
+                  alt="AI portrait"
+                  className="w-full h-full object-cover"
+                  loading="lazy"
+                  onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                />
+              </div>
               <div className="flex flex-col items-end">
                 <span className="text-cyber-green text-[10px] font-bold leading-none tracking-tight uppercase">
                   {player.aiName}
@@ -133,13 +143,14 @@ export function Header() {
                     ((player.xp - prevXP) / (nextXP - prevXP)) * 100;
                   return (
                     <>
-                      <div className="w-full h-1 bg-bg-primary/50 rounded-full overflow-hidden border border-white/5">
+                      <div className="w-full h-2.5 bg-bg-primary/50 rounded-full overflow-hidden border border-white/5">
                         <motion.div
                           initial={{ width: 0 }}
                           animate={{
                             width: `${Math.max(0, Math.min(progress, 100))}%`,
                           }}
-                          className="h-full bg-cyber-magenta shadow-[0_0_5px_var(--color-cyber-magenta)]"
+                          transition={{ duration: 0.6, ease: "easeOut" }}
+                          className="h-full bg-cyber-magenta shadow-[0_0_6px_var(--color-cyber-magenta)]"
                         />
                       </div>
                       <div className="flex justify-between text-[7px] text-text-muted leading-none font-mono">
@@ -183,14 +194,25 @@ export function Header() {
                   />
                   <div className="flex flex-col">
                     <div className="flex items-center gap-1.5">
-                      <span className="text-cyber-cyan text-[10px] font-bold leading-none font-mono">
+                      <span className={`text-[10px] font-bold leading-none font-mono ${energyPercent < 20 ? "text-cyber-amber" : "text-cyber-cyan"}`}>
                         {player.energy}/{player.energyMax}
                       </span>
-                      <div className="w-10 h-1 bg-bg-primary/50 rounded-full overflow-hidden border border-white/5">
+                      <div className="w-10 h-2.5 bg-bg-primary/50 rounded-full overflow-hidden border border-white/5">
                         <motion.div
                           initial={{ width: 0 }}
-                          animate={{ width: `${energyPercent}%` }}
-                          className="h-full bg-cyber-cyan shadow-[0_0_5px_var(--color-cyber-cyan)]"
+                          animate={{
+                            width: `${energyPercent}%`,
+                            backgroundColor: energyPercent < 20
+                              ? ["#ffaa00", "#332200", "#ffaa00"]
+                              : "var(--color-cyber-cyan)",
+                          }}
+                          transition={{
+                            width: { duration: 0.6, ease: "easeOut" },
+                            backgroundColor: energyPercent < 20
+                              ? { duration: 1.5, repeat: Infinity, ease: "easeInOut" }
+                              : { duration: 0.3 },
+                          }}
+                          className="h-full shadow-[0_0_6px_var(--color-cyber-cyan)]"
                         />
                       </div>
                     </div>
@@ -300,7 +322,7 @@ export function Header() {
                     <span className="text-[10px] uppercase tracking-wider">
                       {phase.phase}_OPS
                     </span>
-                    <span className="text-[8px] text-text-muted flex items-center gap-1 font-mono">
+                    <span className="text-[9px] text-text-secondary flex items-center gap-1 font-mono font-bold tabular-nums">
                       <Timer size={8} /> {countdown}
                     </span>
                   </div>
