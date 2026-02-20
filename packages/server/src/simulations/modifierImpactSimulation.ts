@@ -74,7 +74,7 @@ function simulateDay(
         SCANNER_BALANCE.targetSecurity.max,
         SCANNER_BALANCE.targetSecurity.baseMin
         + rng.int(0, SCANNER_BALANCE.targetSecurity.randomRange)
-        + state.level * SCANNER_BALANCE.targetSecurity.levelStep
+        + (state.level - 1) * SCANNER_BALANCE.targetSecurity.levelStep
       );
       const hackCost = Math.ceil(SCAN_ENERGY_COST * energyCostMult);
       if (state.energy < hackCost) continue;
@@ -186,7 +186,6 @@ function main() {
     }
 
     // Check for strictly positive/negative modifiers
-    const hasPositive = Object.values(mod.effects).some((v) => (v ?? 1) > 1 || (v ?? 1) < 1);
     const keys = Object.keys(mod.effects) as (keyof ModifierEffect)[];
     const positiveEffects = keys.filter((k) => {
       const v = mod.effects[k];

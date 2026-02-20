@@ -4,17 +4,17 @@ export const PROGRESSION_BALANCE = {
     scanner: 1,
     system_maintenance: 1,
     tech_tree: 2,
-    script_manager: 4,
+    ice_breaker: 4,
     data_vault: 5,
-    ice_breaker: 6,
+    script_manager: 6,
     daemon_forge: 7,
     pvp_arena: 8,
     security_center: 8,
     daily_modifiers: 8,
     network_stats: 1,
   },
-  modulePurchaseXp: 6,
-  levelUpEnergyRefillFloorPct: 0.35,
+  modulePurchaseXp: 50,
+  levelUpEnergyRefillFloorPct: 0.50,
 } as const;
 
 export const SCANNER_BALANCE = {
@@ -61,6 +61,7 @@ export const SCANNER_BALANCE = {
 export const REPAIR_BALANCE = {
   creditsBase: 6,
   creditsPerMissingHealth: 0.52,
+  levelScale: 0.10,
 } as const;
 
 export const PVP_BALANCE = {
@@ -70,6 +71,11 @@ export const PVP_BALANCE = {
     levelBonusPerLevel: 2,
     stealPctMin: 0.04,
     stealPctMax: 0.10,
+  },
+  rewardData: {
+    baseMin: 8,
+    baseMax: 15,
+    levelBonusPerLevel: 1,
   },
   rewardProcessingPower: {
     min: 1,
@@ -109,9 +115,11 @@ export function getEarlyHackSuccessFloor(playerLevel: number): number {
   return Math.max(SCANNER_BALANCE.hackSuccess.minChance, floor);
 }
 
-export function getRepairCreditCostForHealth(currentHealth: number): number {
+export function getRepairCreditCostForHealth(currentHealth: number, level: number = 1): number {
   const missing = Math.max(0, 100 - currentHealth);
-  return Math.round(REPAIR_BALANCE.creditsBase + missing * REPAIR_BALANCE.creditsPerMissingHealth);
+  const baseCost = REPAIR_BALANCE.creditsBase + missing * REPAIR_BALANCE.creditsPerMissingHealth;
+  const levelMultiplier = 1 + (level - 1) * REPAIR_BALANCE.levelScale;
+  return Math.round(baseCost * levelMultiplier);
 }
 
 export function getDecisionResourceCap(

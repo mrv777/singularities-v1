@@ -9,6 +9,7 @@ interface SystemCardProps {
   onRepair: (systemType: string) => void;
   repairing: boolean;
   repairCreditCost: number;
+  baseRepairCreditCost?: number;
 }
 
 const STATUS_COLORS: Record<string, { bar: string; badge: string; text: string }> = {
@@ -18,7 +19,7 @@ const STATUS_COLORS: Record<string, { bar: string; badge: string; text: string }
   CORRUPTED: { bar: "bg-cyber-magenta", badge: "bg-cyber-magenta/10 text-cyber-magenta border-cyber-magenta/30", text: "text-cyber-magenta" },
 };
 
-export function SystemCard({ system, onRepair, repairing, repairCreditCost }: SystemCardProps) {
+export function SystemCard({ system, onRepair, repairing, repairCreditCost, baseRepairCreditCost }: SystemCardProps) {
   const label = SYSTEM_LABELS[system.systemType as SystemType] ?? system.systemType;
   const description = SYSTEM_DESCRIPTIONS[system.systemType as SystemType] ?? "";
   const adjacent = SYSTEM_ADJACENCY[system.systemType as SystemType] ?? [];
@@ -72,7 +73,7 @@ export function SystemCard({ system, onRepair, repairing, repairCreditCost }: Sy
         className="w-full flex items-center justify-center gap-1 py-1.5 min-h-[44px] text-[10px] border border-cyber-cyan/30 text-cyber-cyan rounded hover:bg-cyber-cyan/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
       >
         <Wrench size={10} />
-        {repairing ? "Repairing..." : system.health >= 100 ? "Full Health" : <>Repair <ResourceCost costs={{ credits: repairCreditCost }} size={10} /></>}
+        {repairing ? "Repairing..." : system.health >= 100 ? "Full Health" : <>Repair <ResourceCost costs={{ credits: repairCreditCost }} baseCosts={baseRepairCreditCost !== undefined ? { credits: baseRepairCreditCost } : undefined} size={10} /></>}
       </button>
     </div>
   );

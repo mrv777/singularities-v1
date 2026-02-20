@@ -11,6 +11,9 @@ import {
   PVP_REWARD_CREDITS_LEVEL_BONUS,
   PVP_REWARD_CREDITS_MAX,
   PVP_REWARD_CREDITS_MIN,
+  PVP_REWARD_DATA_MIN,
+  PVP_REWARD_DATA_MAX,
+  PVP_REWARD_DATA_LEVEL_BONUS,
   PVP_REWARD_PROCESSING_POWER_MAX,
   PVP_REWARD_PROCESSING_POWER_MIN,
   PVP_REWARD_XP,
@@ -278,14 +281,17 @@ export async function resolveAttackAgainstBot(
     const processingPower = Math.random() < Math.min(0.85, 0.25 + bot.rewardMultiplier)
       ? randomInt(PVP_REWARD_PROCESSING_POWER_MIN, PVP_REWARD_PROCESSING_POWER_MAX)
       : 0;
+    const dataReward = randomInt(PVP_REWARD_DATA_MIN, PVP_REWARD_DATA_MAX)
+      + bot.level * PVP_REWARD_DATA_LEVEL_BONUS;
     narrative.push("> Simulated target neutralized. Competitive rewards are reduced.");
-    narrative.push(`> Rewards: +${credits} CR, +0 REP, +${xp} XP, +${processingPower} PP`);
+    narrative.push(`> Rewards: +${credits} CR, +${dataReward} DATA, +0 REP, +${xp} XP, +${processingPower} PP`);
 
     return {
       result: "attacker_win",
       narrative,
       rewards: {
         credits,
+        data: dataReward,
         reputation: 0,
         xp,
         processingPower,

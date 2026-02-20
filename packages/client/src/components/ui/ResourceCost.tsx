@@ -18,6 +18,7 @@ interface ResourceCostProps {
   prefix?: string;
   className?: string;
   available?: Partial<Record<ResourceType, number>>;
+  baseCosts?: Partial<Record<ResourceType, number>>;
 }
 
 export function ResourceCost({
@@ -26,6 +27,7 @@ export function ResourceCost({
   prefix,
   className = "",
   available,
+  baseCosts,
 }: ResourceCostProps) {
   return (
     <span className={`inline-flex items-center gap-1.5 flex-wrap ${className}`}>
@@ -34,15 +36,30 @@ export function ResourceCost({
         const cfg = RESOURCE_CONFIG[key];
         if (!cfg) return null;
         const insufficient = available && (available[key] ?? 0) < amount;
+        const baseAmount = baseCosts?.[key];
+        const hasModifier = baseAmount !== undefined && baseAmount !== amount;
         return (
           <span
             key={key}
-            className={`inline-flex items-center gap-0.5 ${insufficient ? "text-cyber-red opacity-80" : cfg.color}`}
+            className={`inline-flex items-center gap-0.5 ${insufficient ? "text-cyber-red opacity-80" : hasModifier ? "" : cfg.color}`}
           >
             {cfg.icon(size)}
-            <span className="text-[10px] font-mono font-bold leading-none">
-              {prefix}{amount}
-            </span>
+            {hasModifier ? (
+              <>
+                <span className="text-[10px] font-mono font-bold leading-none line-through opacity-50 text-text-muted">
+                  {prefix}{baseAmount}
+                </span>
+                <span className={`text-[10px] font-mono font-bold leading-none ${
+                  insufficient ? "text-cyber-red" : amount < baseAmount! ? "text-cyber-green" : "text-cyber-red"
+                }`}>
+                  {prefix}{amount}
+                </span>
+              </>
+            ) : (
+              <span className="text-[10px] font-mono font-bold leading-none">
+                {prefix}{amount}
+              </span>
+            )}
           </span>
         );
       })}

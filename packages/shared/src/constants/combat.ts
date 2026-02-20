@@ -27,6 +27,9 @@ export const PVP_REWARD_XP = 30;
 export const PVP_REWARD_CREDITS_STEAL_PCT_MIN = PVP_BALANCE.rewardCredits.stealPctMin;
 export const PVP_REWARD_CREDITS_STEAL_PCT_MAX = PVP_BALANCE.rewardCredits.stealPctMax;
 export const PVP_REWARD_CREDITS_LEVEL_BONUS = PVP_BALANCE.rewardCredits.levelBonusPerLevel;
+export const PVP_REWARD_DATA_MIN = PVP_BALANCE.rewardData.baseMin;
+export const PVP_REWARD_DATA_MAX = PVP_BALANCE.rewardData.baseMax;
+export const PVP_REWARD_DATA_LEVEL_BONUS = PVP_BALANCE.rewardData.levelBonusPerLevel;
 export const PVP_REWARD_PROCESSING_POWER_MIN = PVP_BALANCE.rewardProcessingPower.min;
 export const PVP_REWARD_PROCESSING_POWER_MAX = PVP_BALANCE.rewardProcessingPower.max;
 

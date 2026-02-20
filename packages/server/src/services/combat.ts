@@ -17,6 +17,9 @@ import {
   PVP_REWARD_REPUTATION_MIN,
   PVP_REWARD_REPUTATION_MAX,
   PVP_REWARD_XP,
+  PVP_REWARD_DATA_MIN,
+  PVP_REWARD_DATA_MAX,
+  PVP_REWARD_DATA_LEVEL_BONUS,
   PVP_REWARD_PROCESSING_POWER_MIN,
   PVP_REWARD_PROCESSING_POWER_MAX,
   PVP_LOSER_DAMAGE_MIN_PCT,
@@ -155,7 +158,7 @@ export function generateCombatNarrative(
 export interface CombatOutcome {
   result: "attacker_win" | "defender_win";
   narrative: string[];
-  rewards?: { credits: number; reputation: number; xp: number; processingPower: number };
+  rewards?: { credits: number; data: number; reputation: number; xp: number; processingPower: number };
   damage?: { systems: Array<{ systemType: string; damage: number }> };
   combatLogEntries: Array<{
     round: number;
@@ -239,6 +242,8 @@ export async function resolveAttack(
     ) / 100;
     const transferCredits = Math.floor(defenderCredits * transferPct);
     const credits = Math.max(20, Math.min(defenderCredits, baseCredits + transferCredits));
+    const dataReward = randomInt(PVP_REWARD_DATA_MIN, PVP_REWARD_DATA_MAX)
+      + defenderLevel * PVP_REWARD_DATA_LEVEL_BONUS;
     const reputation = randomInt(PVP_REWARD_REPUTATION_MIN, PVP_REWARD_REPUTATION_MAX);
     const xp = PVP_REWARD_XP;
     const processingPower = randomInt(PVP_REWARD_PROCESSING_POWER_MIN, PVP_REWARD_PROCESSING_POWER_MAX);
@@ -254,12 +259,12 @@ export async function resolveAttack(
       damageSystems.push({ systemType: sysType, damage: damagePct });
     }
 
-    narrative.push(`> Rewards: +${credits} CR, +${reputation} REP, +${xp} XP, +${processingPower} PP`);
+    narrative.push(`> Rewards: +${credits} CR, +${dataReward} DATA, +${reputation} REP, +${xp} XP, +${processingPower} PP`);
 
     return {
       result,
       narrative,
-      rewards: { credits, reputation, xp, processingPower },
+      rewards: { credits, data: dataReward, reputation, xp, processingPower },
       damage: { systems: damageSystems },
       combatLogEntries,
     };

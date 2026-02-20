@@ -9,6 +9,7 @@ import { ENERGY_COSTS, getRepairCreditCostForHealth } from "@singularities/share
 import type { PlayerSystem } from "@singularities/shared";
 import { AlertTriangle } from "lucide-react";
 import { ResourceCost } from "../ui/ResourceCost";
+import { useModifier } from "@/hooks/useModifier";
 import { playSound } from "@/lib/sound";
 
 export function SystemStatusModal() {
@@ -16,6 +17,7 @@ export function SystemStatusModal() {
   const closeModal = useUIStore((s) => s.closeModal);
   const { player, setPlayer } = useAuthStore();
   const queryClient = useQueryClient();
+  const { applyCost } = useModifier();
   const open = activeModal === "system_maintenance";
 
   const [systems, setSystems] = useState<PlayerSystem[]>([]);
@@ -178,10 +180,13 @@ export function SystemStatusModal() {
     (s) => s.status === "CRITICAL" || s.status === "CORRUPTED"
   ).length;
   const damagedCount = systems.filter((s) => s.health < 100).length;
-  const estimatedCreditsToRepairAll = systems
+  const playerLevel = player?.level ?? 1;
+  const baseCreditsToRepairAll = systems
     .filter((s) => s.health < 100)
-    .reduce((sum, s) => sum + getRepairCreditCostForHealth(s.health), 0);
-  const estimatedEnergyToRepairAll = damagedCount * ENERGY_COSTS.repair;
+    .reduce((sum, s) => sum + getRepairCreditCostForHealth(s.health, playerLevel), 0);
+  const estimatedCreditsToRepairAll = applyCost(baseCreditsToRepairAll, "repairCostMultiplier");
+  const baseEnergyToRepairAll = damagedCount * ENERGY_COSTS.repair;
+  const estimatedEnergyToRepairAll = applyCost(baseEnergyToRepairAll, "energyCostMultiplier");
 
   // Play critical warning if any systems are critical/corrupted
   useEffect(() => {
@@ -210,6 +215,10 @@ export function SystemStatusModal() {
                   credits: estimatedCreditsToRepairAll,
                   energy: estimatedEnergyToRepairAll,
                 }}
+                baseCosts={{
+                  credits: baseCreditsToRepairAll,
+                  energy: baseEnergyToRepairAll,
+                }}
                 available={{
                   credits: player?.credits ?? 0,
                   energy: player?.energy ?? 0,
@@ -222,7 +231,7 @@ export function SystemStatusModal() {
             </span>
           </div>
           <div>
-            Repair cost scales with damage (energy fixed at <ResourceCost costs={{ energy: ENERGY_COSTS.repair }} /> per repaired system).
+            Repair cost scales with damage (energy fixed at <ResourceCost costs={{ energy: applyCost(ENERGY_COSTS.repair, "energyCostMultiplier") }} baseCosts={{ energy: ENERGY_COSTS.repair }} /> per repaired system).
           </div>
         </div>
 
@@ -277,7 +286,8 @@ export function SystemStatusModal() {
                 system={system}
                 onRepair={handleRepair}
                 repairing={repairingAll || repairing === system.systemType}
-                repairCreditCost={getRepairCreditCostForHealth(system.health)}
+                repairCreditCost={applyCost(getRepairCreditCostForHealth(system.health, playerLevel), "repairCostMultiplier")}
+                baseRepairCreditCost={getRepairCreditCostForHealth(system.health, playerLevel)}
               />
             ))}
           </div>

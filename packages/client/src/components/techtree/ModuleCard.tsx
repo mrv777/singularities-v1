@@ -8,7 +8,7 @@ interface ModuleCardProps {
   canPurchase: boolean;
   isLocked: boolean;
   lockReason?: string;
-  onPurchase: () => void;
+  onPurchase: (el: HTMLButtonElement) => void;
   onMutate?: () => void;
   isProcessing: boolean;
   isMutating?: boolean;
@@ -102,7 +102,7 @@ export function ModuleCard({
         <div className="text-[10px] text-cyber-cyan">MAX LEVEL</div>
       ) : (
         <button
-          onClick={onPurchase}
+          onClick={(e) => onPurchase(e.currentTarget)}
           disabled={!canPurchase || isProcessing}
           className="w-full text-[10px] py-1.5 min-h-[44px] border border-cyber-cyan/50 text-cyber-cyan rounded hover:bg-cyber-cyan/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
         >

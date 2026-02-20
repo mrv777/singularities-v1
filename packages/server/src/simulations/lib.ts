@@ -210,7 +210,7 @@ export function simulateHack(
     SCANNER_BALANCE.targetSecurity.max,
     SCANNER_BALANCE.targetSecurity.baseMin
     + rng.int(0, SCANNER_BALANCE.targetSecurity.randomRange)
-    + state.level * SCANNER_BALANCE.targetSecurity.levelStep
+    + (state.level - 1) * SCANNER_BALANCE.targetSecurity.levelStep
   );
 
   state.energy -= SCAN_ENERGY_COST;

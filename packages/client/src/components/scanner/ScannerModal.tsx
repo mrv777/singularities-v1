@@ -17,6 +17,7 @@ import { SignalCrack } from "./games/SignalCrack";
 import { PortSweep } from "./games/PortSweep";
 import { NetworkRelink } from "./games/NetworkRelink";
 import { ResourceCost } from "../ui/ResourceCost";
+import { useModifier } from "@/hooks/useModifier";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useState } from "react";
 import { playSound } from "@/lib/sound";
@@ -54,6 +55,9 @@ export function ScannerModal() {
     setOwnedModules,
     setPendingDecision,
   } = useGameStore();
+
+  const { applyCost } = useModifier();
+  const effectiveScanCost = applyCost(SCAN_ENERGY_COST, "energyCostMultiplier");
 
   const [error, setError] = useState("");
   const open = activeModal === "scanner";
@@ -286,12 +290,12 @@ export function ScannerModal() {
               </p>
               <button
                 onClick={handleScan}
-                disabled={isScanning || !player || player.energy < SCAN_ENERGY_COST}
+                disabled={isScanning || !player || player.energy < effectiveScanCost}
                 className="px-6 py-2 min-h-[44px] border border-cyber-cyan text-cyber-cyan rounded hover:bg-cyber-cyan/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed text-sm"
               >
-                {isScanning ? "Scanning..." : <span className="flex items-center gap-1.5">Scan Network <ResourceCost costs={{ energy: SCAN_ENERGY_COST }} /></span>}
+                {isScanning ? "Scanning..." : <span className="flex items-center gap-1.5">Scan Network <ResourceCost costs={{ energy: effectiveScanCost }} baseCosts={{ energy: SCAN_ENERGY_COST }} /></span>}
               </button>
-              {player && player.energy < SCAN_ENERGY_COST && (
+              {player && player.energy < effectiveScanCost && (
                 <p className="text-cyber-red text-xs mt-2">Insufficient energy</p>
               )}
             </div>
@@ -307,10 +311,10 @@ export function ScannerModal() {
                   </span>
                   <button
                     onClick={handleScan}
-                    disabled={isScanning || !player || player.energy < SCAN_ENERGY_COST}
+                    disabled={isScanning || !player || player.energy < effectiveScanCost}
                     className="text-xs text-cyber-cyan hover:underline disabled:opacity-30"
                   >
-                    <span className="inline-flex items-center gap-1">Re-scan <ResourceCost costs={{ energy: SCAN_ENERGY_COST }} /></span>
+                    <span className="inline-flex items-center gap-1">Re-scan <ResourceCost costs={{ energy: effectiveScanCost }} baseCosts={{ energy: SCAN_ENERGY_COST }} /></span>
                   </button>
                 </div>
                 <div className="text-[10px] text-text-muted">

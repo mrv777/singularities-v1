@@ -177,7 +177,7 @@ function sampleMinigameTarget(
     const security = Math.min(
       SCANNER_BALANCE.targetSecurity.max,
       profile.securityBaseMin + rng.int(0, SCANNER_BALANCE.targetSecurity.randomRange)
-      + level * profile.securityStep
+      + (level - 1) * profile.securityStep
     );
     if (security > bestSecurity) bestSecurity = security;
   }

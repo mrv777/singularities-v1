@@ -12,6 +12,7 @@ import {
   PVP_REWARD_CREDITS_STEAL_PCT_MIN,
   PVP_REWARD_PROCESSING_POWER_MAX,
   PVP_REWARD_PROCESSING_POWER_MIN,
+  PVP_REWARD_XP,
   SCANNER_BALANCE,
   PROGRESSION_BALANCE,
   MINIGAME_BALANCE,
@@ -145,7 +146,7 @@ function sampleSecurityFromScan(rng: Rng, level: number, profile: EconomyProfile
       SCANNER_BALANCE.targetSecurity.max,
       profile.securityBaseMin
       + rng.int(0, SCANNER_BALANCE.targetSecurity.randomRange)
-      + level * profile.securityStep
+      + (level - 1) * profile.securityStep
     );
     options.push(security);
   }
@@ -379,7 +380,7 @@ function runSingle(
           * seasonCatchUpResourceMultiplier
         );
         state.reputation += rng.int(20, 30);
-        state.xp += 50;
+        state.xp += PVP_REWARD_XP;
       } else {
         repairEvents += 1;
       }
@@ -389,9 +390,12 @@ function runSingle(
     const totalRepairs = repairEvents + (rng.chance(0.35) ? 1 : 0);
     for (let i = 0; i < totalRepairs; i++) {
       const health = rng.int(35, 85);
-      const cost = getRepairCreditCostForHealth(health);
-      state.credits -= cost;
-      totalRepairCost += cost;
+      const cost = getRepairCreditCostForHealth(health, state.level);
+      // Only repair if affordable — players can't repair for free in-game.
+      if (state.credits >= cost) {
+        state.credits -= cost;
+        totalRepairCost += cost;
+      }
     }
 
     state.level = getLevelForXP(state.xp);

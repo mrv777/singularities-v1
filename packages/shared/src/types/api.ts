@@ -14,6 +14,7 @@ import type {
   ScanTarget,
   ModuleDefinition,
   ModifierDefinition,
+  ModifierEffect,
   GeneticTrait,
   BinaryDecision,
   DataVaultProtocolDefinition,
@@ -221,6 +222,7 @@ export interface DataVaultActivateResponse {
 export interface ModifierResponse {
   modifier: ModifierDefinition | null;
   date: string;
+  combinedEffects: ModifierEffect;
 }
 
 // Scripts
@@ -266,6 +268,7 @@ export interface ArenaAttackResponse {
   narrative: string[];
   rewards?: {
     credits: number;
+    data?: number;
     reputation: number;
     xp: number;
     processingPower?: number;
@@ -467,6 +470,7 @@ export interface IceBreakerStatusResponse {
   dailyAttemptsRemaining: number;
   cooldownTTL: number;
   activeRun: IceBreakerRunState | null;
+  playerStats: { hackPower: number; stealth: number; defense: number };
 }
 
 export interface IceBreakerInitiateResponse {

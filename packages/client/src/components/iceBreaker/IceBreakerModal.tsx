@@ -18,6 +18,7 @@ import { playSound } from "@/lib/sound";
 export function IceBreakerModal() {
   const activeModal = useUIStore((s) => s.activeModal);
   const closeModal = useUIStore((s) => s.closeModal);
+  const openModal = useUIStore((s) => s.openModal);
   const player = useAuthStore((s) => s.player);
   const setPlayer = useAuthStore((s) => s.setPlayer);
   const queryClient = useQueryClient();
@@ -130,6 +131,40 @@ export function IceBreakerModal() {
             </div>
           )}
         </div>
+
+        {/* Infiltration stats preview */}
+        {status && (
+          <div className="border border-border-default rounded-lg p-3 bg-bg-secondary">
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-[11px] uppercase tracking-wider text-text-muted font-semibold">
+                Infiltration Stats
+              </div>
+              <button
+                onClick={() => openModal("loadout_editor")}
+                className="text-[10px] text-cyber-cyan hover:underline"
+              >
+                Configure Loadout →
+              </button>
+            </div>
+            <div className="flex gap-3 text-xs">
+              <span className={status.playerStats.hackPower === 0 ? "text-cyber-amber" : "text-text-secondary"}>
+                HACK <span className="font-semibold text-text-primary">{status.playerStats.hackPower}</span>
+              </span>
+              <span className={status.playerStats.stealth === 0 ? "text-cyber-amber" : "text-text-secondary"}>
+                STEALTH <span className="font-semibold text-text-primary">{status.playerStats.stealth}</span>
+              </span>
+              <span className={status.playerStats.defense === 0 ? "text-cyber-amber" : "text-text-secondary"}>
+                DEFENSE <span className="font-semibold text-text-primary">{status.playerStats.defense}</span>
+              </span>
+            </div>
+            {(status.playerStats.hackPower === 0 || status.playerStats.stealth === 0 || status.playerStats.defense === 0) && (
+              <div className="mt-2 text-[10px] text-cyber-amber flex items-center gap-1">
+                <AlertTriangle size={10} />
+                One or more infiltration stats are 0. Equip modules to your infiltration loadout before breaching.
+              </div>
+            )}
+          </div>
+        )}
 
         {error && (
           <div className="text-cyber-red text-xs p-2 border border-cyber-red/20 rounded bg-cyber-red/5">

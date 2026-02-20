@@ -10,6 +10,7 @@ import {
   CATCH_UP_BASE,
   SEASON_DURATION_DAYS,
   SCANNER_BALANCE,
+  PVP_REWARD_XP,
   getLevelForXP,
   getBaseReward,
   getEarlyHackSuccessFloor,
@@ -30,7 +31,7 @@ function xpPerHour(level: number, rng: Rng, xpMultiplier: number): number {
       SCANNER_BALANCE.targetSecurity.max,
       SCANNER_BALANCE.targetSecurity.baseMin
       + rng.int(0, SCANNER_BALANCE.targetSecurity.randomRange)
-      + level * SCANNER_BALANCE.targetSecurity.levelStep
+      + (level - 1) * SCANNER_BALANCE.targetSecurity.levelStep
     );
     const hackPower = 6 + level * 2;
     const chance = Math.max(
@@ -42,9 +43,9 @@ function xpPerHour(level: number, rng: Rng, xpMultiplier: number): number {
       xp += Math.floor(reward.xp * xpMultiplier);
     }
   }
-  // PvP XP (1-2 matches per hour while active)
-  if (level >= 9 && rng.chance(0.3)) {
-    xp += Math.floor(50 * xpMultiplier);
+  // PvP XP (1-2 matches per hour while active, unlocks at level 8)
+  if (level >= 8 && rng.chance(0.3)) {
+    xp += Math.floor(PVP_REWARD_XP * xpMultiplier);
   }
   return xp;
 }
@@ -162,20 +163,32 @@ function main() {
 
   // -- Perverse incentive check --
   console.log("\n[Perverse Incentive Check]");
-  // Compare day 60 joiner's XP rate vs day 1 player's XP rate
   const day1XpAt90 = day1Results.map((r) => r[r.length - 1]?.xp ?? 0);
   const day60XpAt90 = day60JoinResults.map((r) => r[r.length - 1]?.xp ?? 0);
   const day1AvgXp = average(day1XpAt90);
   const day60AvgXp = average(day60XpAt90);
+  // Day-1 players always accumulate more total XP (90 days vs 30 days).
   const lateJoinerBetter = day60AvgXp > day1AvgXp;
-  console.log(`Day 1 avg XP at season end: ${day1AvgXp.toFixed(0)}`);
-  console.log(`Day 60 avg XP at season end: ${day60AvgXp.toFixed(0)}`);
-  console.log(`Late joining better? ${lateJoinerBetter}`);
+  // Rate check: day-60 joiners should have a higher XP/day to verify boost is active.
+  const day1DaysPlayed = SEASON_DURATION_DAYS; // 90 days
+  const day60DaysPlayed = SEASON_DURATION_DAYS - 60; // 30 days
+  const day1XpRate = day1AvgXp / day1DaysPlayed;
+  const day60XpRate = day60AvgXp / day60DaysPlayed;
+  const boostIsActive = day60XpRate > day1XpRate;
+  console.log(`Day 1 avg XP at season end: ${day1AvgXp.toFixed(0)} (${day1XpRate.toFixed(1)} XP/day)`);
+  console.log(`Day 60 avg XP at season end: ${day60AvgXp.toFixed(0)} (${day60XpRate.toFixed(1)} XP/day)`);
+  console.log(`Late joining has higher XP rate? ${boostIsActive}`);
 
   guardrails.push({
-    name: "Late joining never better than Day 1",
+    name: "Late joining never better in total XP than Day 1",
     pass: !lateJoinerBetter,
     detail: `day1=${day1AvgXp.toFixed(0)} vs day60=${day60AvgXp.toFixed(0)}`,
+  });
+
+  guardrails.push({
+    name: "Day-60 joiner XP rate exceeds Day-1 (catch-up boost active)",
+    pass: boostIsActive,
+    detail: `day60=${day60XpRate.toFixed(1)} XP/day vs day1=${day1XpRate.toFixed(1)} XP/day`,
   });
 
   const allPass = printGuardrails("sim:catchup", guardrails);

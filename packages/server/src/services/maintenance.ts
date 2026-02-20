@@ -115,8 +115,9 @@ export async function repairSystem(playerId: string, systemType: string) {
     if (currentHealth >= 100) {
       throw new RepairError("System already at full health", 400);
     }
+    const playerLevel = playerRow.level as number;
     const creditCost = Math.round(
-      getRepairCreditCostForHealth(currentHealth) * (effects.repairCostMultiplier ?? 1)
+      getRepairCreditCostForHealth(currentHealth, playerLevel) * (effects.repairCostMultiplier ?? 1)
     );
     if (credits < creditCost) {
       throw new RepairError(`Not enough credits. Need ${creditCost}, have ${credits}.`, 400);
@@ -224,6 +225,7 @@ export async function repairAllSystems(playerId: string) {
     let remainingCredits = playerRow.credits as number;
     let budgetExhausted = false;
     const repairCandidates: RepairCandidate[] = [];
+    const playerLevel = playerRow.level as number;
 
     for (const system of computedSystems) {
       const systemType = system.system_type as string;
@@ -256,7 +258,7 @@ export async function repairAllSystems(playerId: string) {
       }
 
       const creditCost = Math.round(
-        getRepairCreditCostForHealth(currentHealth)
+        getRepairCreditCostForHealth(currentHealth, playerLevel)
         * (effects.repairCostMultiplier ?? 1)
       );
       if (remainingCredits < creditCost) {
@@ -290,7 +292,7 @@ export async function repairAllSystems(playerId: string) {
         if (cooldownActive) continue;
 
         const creditCost = Math.round(
-          getRepairCreditCostForHealth(candidate.currentHealth)
+          getRepairCreditCostForHealth(candidate.currentHealth, playerLevel)
           * (effects.repairCostMultiplier ?? 1)
         );
         if (remainingEnergy < energyCostPerRepair) break;

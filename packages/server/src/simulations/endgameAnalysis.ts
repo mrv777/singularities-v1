@@ -64,7 +64,7 @@ function simulateEndgameDay(seed: number): EndgameDayResult {
       SCANNER_BALANCE.targetSecurity.max,
       SCANNER_BALANCE.targetSecurity.baseMin
       + rng.int(0, SCANNER_BALANCE.targetSecurity.randomRange)
-      + level * SCANNER_BALANCE.targetSecurity.levelStep
+      + (level - 1) * SCANNER_BALANCE.targetSecurity.levelStep
     );
     const hackPower = 6 + level * 2;
     const chance = Math.max(

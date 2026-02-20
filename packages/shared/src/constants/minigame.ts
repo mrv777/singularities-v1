@@ -196,9 +196,9 @@ export const MINIGAME_BALANCE = {
   /** Base rewards are ~3x current scanner values since only 1 target per scan */
   rewardMultiplier: 3,
   /** Global scalar applied to credits, data, and XP minigame rewards */
-  globalRewardMultiplier: 1.2,
+  globalRewardMultiplier: 1.1,
   /** Credits & data multipliers by tier [T0, T1, T2, T3] — XP/rep stay at rewardMultiplier */
-  economicMultiplierByTier: [1.45, 1.75, 1.95, 2.15] as const,
+  economicMultiplierByTier: [1.40, 1.60, 1.75, 1.85] as const,
   /** Minimum score to earn processing power */
   processingPowerScoreThreshold: 75,
   /** Minimum security for processing power drop */

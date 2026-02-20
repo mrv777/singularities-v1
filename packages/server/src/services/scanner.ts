@@ -15,6 +15,7 @@ import {
 } from "@singularities/shared";
 import { computeEnergy } from "./player.js";
 import { sendActivity } from "./ws.js";
+import { getActiveModifierEffects } from "./modifiers.js";
 
 function randomInt(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -40,7 +41,7 @@ export function generateTargets(playerLevel: number): ScanTarget[] {
       SCANNER_BALANCE.targetSecurity.max,
       SCANNER_BALANCE.targetSecurity.baseMin
       + randomInt(0, SCANNER_BALANCE.targetSecurity.randomRange)
-      + playerLevel * SCANNER_BALANCE.targetSecurity.levelStep
+      + (playerLevel - 1) * SCANNER_BALANCE.targetSecurity.levelStep
     );
     const detectionChance = Math.max(5, Math.min(95, securityLevel * 0.6 + randomInt(-10, 10)));
     const baseRewards = getBaseReward(securityLevel);
@@ -72,6 +73,9 @@ export async function scanTargets(playerId: string) {
     throw { statusCode: 409, message: "You have an active infiltration. Resolve it before scanning again." };
   }
 
+  const effects = await getActiveModifierEffects();
+  const scanCost = Math.round(SCAN_ENERGY_COST * (effects.energyCostMultiplier ?? 1));
+
   const { targets, expiresAt } = await withTransaction(async (client) => {
     // Lock player row and compute energy
     const res = await client.query("SELECT * FROM players WHERE id = $1 FOR UPDATE", [playerId]);
@@ -79,12 +83,12 @@ export async function scanTargets(playerId: string) {
     const player = computeEnergy(row);
     const energy = player.energy as number;
 
-    if (energy < SCAN_ENERGY_COST) {
+    if (energy < scanCost) {
       throw { statusCode: 400, message: "Not enough energy to scan" };
     }
 
     // Deduct energy
-    const newEnergy = energy - SCAN_ENERGY_COST;
+    const newEnergy = energy - scanCost;
     await client.query(
       `UPDATE players SET energy = $2, energy_updated_at = NOW() WHERE id = $1`,
       [playerId, newEnergy]

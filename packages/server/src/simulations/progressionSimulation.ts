@@ -133,7 +133,7 @@ function sampleBestOfFiveRewards(
       SCANNER_BALANCE.targetSecurity.max,
       SCANNER_BALANCE.targetSecurity.baseMin
       + rng.int(0, SCANNER_BALANCE.targetSecurity.randomRange)
-      + level * SCANNER_BALANCE.targetSecurity.levelStep
+      + (level - 1) * SCANNER_BALANCE.targetSecurity.levelStep
     );
     if (security > bestSecurity) bestSecurity = security;
   }
@@ -489,8 +489,8 @@ function runFullLifecycle(
         credits += rng.int(10, 80);
       }
 
-      // PvP opportunity (once every ~10 infiltrations if level >= 9)
-      if (level >= 9 && rng.chance(0.10) && energy >= PVP_ENERGY_COST) {
+      // PvP opportunity (once every ~10 infiltrations if level >= 8)
+      if (level >= 8 && rng.chance(0.10) && energy >= PVP_ENERGY_COST) {
         energy -= PVP_ENERGY_COST;
         sessionMinutes += 0.5;
         totalMinutes += 0.5;
@@ -634,11 +634,10 @@ function main() {
     const curTimes = fullResults.map((r) => r.minutesToLevel[lvl - 2]).filter((v) => v >= 0);
     if (prevTimes.length === 0 || curTimes.length === 0) continue;
 
-    const prevDelta = lvl === 3
-      ? percentile(prevTimes, 50)
-      : percentile(prevTimes, 50) - (fullResults.map((r) => r.minutesToLevel[lvl - 4]).filter((v) => v >= 0).length > 0
-        ? percentile(fullResults.map((r) => r.minutesToLevel[lvl - 4]).filter((v) => v >= 0), 50)
-        : 0);
+    const prevPrev = fullResults.map((r) => r.minutesToLevel[lvl - 4]).filter((v) => v >= 0);
+    const prevDelta = prevTimes.length > 0 && prevPrev.length > 0
+      ? percentile(prevTimes, 50) - percentile(prevPrev, 50)
+      : percentile(prevTimes, 50);
     const curDelta = percentile(curTimes, 50) - percentile(prevTimes, 50);
 
     if (prevDelta > 0 && curDelta / prevDelta > 6.5) {

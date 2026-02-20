@@ -16,6 +16,8 @@ import { ModuleCard } from "./ModuleCard";
 import { useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { playSound } from "@/lib/sound";
+import { useGameFeedback } from "@/hooks/useGameFeedback";
+import { MODULE_PURCHASE_XP } from "@singularities/shared";
 
 const CATEGORIES: ModuleCategory[] = ["primary", "secondary", "relay", "backup"];
 
@@ -24,6 +26,7 @@ export function TechTreeModal() {
   const closeModal = useUIStore((s) => s.closeModal);
   const { player, setPlayer } = useAuthStore();
   const queryClient = useQueryClient();
+  const { emitFloatNumber, emitParticleBurst } = useGameFeedback();
 
   const [activeTab, setActiveTab] = useState<ModuleCategory>("primary");
   const [ownedModules, setOwnedModules] = useState<PlayerModule[]>([]);
@@ -69,12 +72,14 @@ export function TechTreeModal() {
     return player.credits >= cost.credits && player.data >= cost.data;
   };
 
-  const handlePurchase = async (moduleId: string) => {
+  const handlePurchase = async (moduleId: string, el: HTMLButtonElement) => {
     setProcessing(moduleId);
     try {
       const result = await api.purchaseModule({ moduleId });
       playSound("moduleUnlock");
       setPlayer(result.player);
+      emitFloatNumber(`+${MODULE_PURCHASE_XP} XP`, "green", el);
+      emitParticleBurst(el);
       // Refresh owned modules
       const modules = await api.getModules();
       setOwnedModules(modules.owned);
@@ -160,7 +165,7 @@ export function TechTreeModal() {
                         ? `Need ${TIER_UNLOCK_REQUIREMENT} ${MODULE_TIERS[MODULE_TIERS.indexOf(tier) - 1]} modules`
                         : undefined
                     }
-                    onPurchase={() => handlePurchase(def.id)}
+                    onPurchase={(el) => handlePurchase(def.id, el)}
                     onMutate={() => handleMutate(def.id)}
                     isProcessing={processing === def.id}
                     isMutating={mutating === def.id}

@@ -227,13 +227,15 @@ export async function executeAttack(attackerId: string, targetId: string) {
 
     // Apply outcomes
     if (outcome.result === "attacker_win") {
-      const { credits, reputation, xp, processingPower } = outcome.rewards!;
+      const { credits, data: dataReward, reputation, xp, processingPower } = outcome.rewards!;
       const scaledCredits = Math.max(1, Math.floor(credits * resourceMultiplier));
+      const scaledData = Math.max(1, Math.floor(dataReward * resourceMultiplier));
       const scaledProcessingPower = Math.max(1, Math.floor(processingPower * resourceMultiplier));
       const defenderCredits = defenderRow.credits as number;
       const transferredCredits = Math.min(defenderCredits, scaledCredits);
       appliedRewards = {
         credits: transferredCredits,
+        data: scaledData,
         reputation,
         xp,
         processingPower: scaledProcessingPower,
@@ -244,9 +246,10 @@ export async function executeAttack(attackerId: string, targetId: string) {
         `UPDATE players
          SET credits = credits + $2,
              reputation = reputation + $3,
-             processing_power = processing_power + $4
+             processing_power = processing_power + $4,
+             data = data + $5
          WHERE id = $1`,
-        [attackerId, transferredCredits, reputation, scaledProcessingPower]
+        [attackerId, transferredCredits, reputation, scaledProcessingPower, scaledData]
       );
       await client.query(
         "UPDATE players SET credits = GREATEST(0, credits - $2) WHERE id = $1",
@@ -414,20 +417,22 @@ async function executeBotAttack(
 
     if (outcome.result === "attacker_win") {
       const credits = Math.max(1, Math.floor((outcome.rewards?.credits ?? 0) * resourceMultiplier));
+      const dataReward = Math.max(1, Math.floor((outcome.rewards?.data ?? 0) * resourceMultiplier));
       const processingPower = Math.max(
         0,
         Math.floor((outcome.rewards?.processingPower ?? 0) * resourceMultiplier)
       );
       const reputation = 0;
       const xp = outcome.rewards?.xp ?? 0;
-      appliedRewards = { credits, reputation, xp, processingPower };
+      appliedRewards = { credits, data: dataReward, reputation, xp, processingPower };
 
       await client.query(
         `UPDATE players
          SET credits = credits + $2,
-             processing_power = processing_power + $3
+             processing_power = processing_power + $3,
+             data = data + $4
          WHERE id = $1`,
-        [attackerId, credits, processingPower]
+        [attackerId, credits, processingPower, dataReward]
       );
       await awardXP(attackerId, xp, client);
     } else if (outcome.damage) {

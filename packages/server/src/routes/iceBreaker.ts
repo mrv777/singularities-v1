@@ -7,6 +7,7 @@ import {
   extractRewards,
   IceBreakerError,
 } from "../services/iceBreaker.js";
+import { resolveLoadoutStats } from "../services/stats.js";
 
 export async function iceBreakerRoutes(app: FastifyInstance) {
   app.get(
@@ -14,7 +15,18 @@ export async function iceBreakerRoutes(app: FastifyInstance) {
     { preHandler: [authGuard] },
     async (request) => {
       const { sub: playerId } = request.user as AuthPayload;
-      return getIceBreakerStatus(playerId);
+      const [status, stats] = await Promise.all([
+        getIceBreakerStatus(playerId),
+        resolveLoadoutStats(playerId, "infiltration"),
+      ]);
+      return {
+        ...status,
+        playerStats: {
+          hackPower: stats.hackPower,
+          stealth: stats.stealth,
+          defense: stats.defense,
+        },
+      };
     }
   );
 
