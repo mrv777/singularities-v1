@@ -68,7 +68,7 @@ export const PVP_BALANCE = {
   rewardCredits: {
     baseMin: 26,
     baseMax: 58,
-    levelBonusPerLevel: 2,
+    levelBonusPerLevel: 3,
     stealPctMin: 0.04,
     stealPctMax: 0.10,
   },
