@@ -86,6 +86,9 @@ import {
   PVP_REWARD_CREDITS_MAX,
   PVP_REWARD_CREDITS_LEVEL_BONUS,
   PVP_REWARD_XP,
+  PVP_REWARD_DATA_MIN,
+  PVP_REWARD_DATA_MAX,
+  PVP_REWARD_DATA_LEVEL_BONUS,
   PASSIVE_CREDITS_PER_HOUR,
   PASSIVE_DATA_PER_HOUR,
   PASSIVE_MAX_HOURS,
@@ -249,7 +252,7 @@ export function simulateRepair(
   const hp = state.systems[systemIndex];
   if (hp >= 100) return -1;
 
-  const creditCost = Math.round(getRepairCreditCostForHealth(hp) * repairCostMultiplier);
+  const creditCost = Math.round(getRepairCreditCostForHealth(hp, state.level) * repairCostMultiplier);
   const energyCost = ENERGY_COSTS.repair;
 
   if (state.credits < creditCost || state.energy < energyCost) return -1;
@@ -267,7 +270,8 @@ export function simulatePvPAttack(
   defenderDefense: number,
   rng: Rng
 ): { won: boolean; creditsGained: number; xpGained: number; damageTaken: number } {
-  const attackPower = 8 + state.level * 2 + rng.int(-2, 3);
+  const healthMult = Math.max(0.1, state.avgHealth() / 100);
+  const attackPower = Math.round((8 + state.level * 2 + rng.int(-2, 3)) * healthMult);
   const rawWin = 50 + (attackPower - defenderDefense) / PVP_WIN_CHANCE_SCALE * 100;
   const winChance = Math.max(PVP_WIN_CHANCE_MIN, Math.min(PVP_WIN_CHANCE_MAX, rawWin));
 
@@ -276,7 +280,9 @@ export function simulatePvPAttack(
   if (rng.next() <= winChance / 100) {
     const c = rng.int(PVP_REWARD_CREDITS_MIN, PVP_REWARD_CREDITS_MAX)
       + defenderLevel * PVP_REWARD_CREDITS_LEVEL_BONUS;
+    const d = rng.int(PVP_REWARD_DATA_MIN, PVP_REWARD_DATA_MAX) + defenderLevel * PVP_REWARD_DATA_LEVEL_BONUS;
     state.credits += c;
+    state.data += d;
     state.xp += PVP_REWARD_XP;
     state.applyLeveling();
     return { won: true, creditsGained: c, xpGained: PVP_REWARD_XP, damageTaken: 0 };

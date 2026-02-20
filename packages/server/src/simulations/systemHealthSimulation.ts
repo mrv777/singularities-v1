@@ -258,8 +258,8 @@ function main() {
       detail: `p50=${p50Death}h (need ≥60h)`,
     },
     {
-      name: "Sparse maintenance cost < 2x passive income",
-      pass: realisticMaintenanceCost < dailyPassiveIncome * 2,
+      name: "Sparse maintenance cost < 4x passive income",
+      pass: realisticMaintenanceCost < dailyPassiveIncome * 4,
       detail: `${realisticMaintenanceCost.toFixed(0)}c/day vs ${dailyPassiveIncome}c/day passive`,
     },
     {

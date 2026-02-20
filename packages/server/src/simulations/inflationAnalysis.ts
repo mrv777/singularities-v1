@@ -478,7 +478,7 @@ function runSingle(
     // --- Energy-gated active session ---
     // Simulate active play minute-by-minute. Each minute: regen energy, then
     // attempt one activity based on archetype priorities and available energy.
-    const HACK_ENERGY = SCAN_ENERGY_COST + ENERGY_COSTS.hackBase;
+    const HACK_ENERGY = SCAN_ENERGY_COST;
     const ICE_ENERGY = ICE_BREAKER_BALANCE.energyCost;
     const REPAIR_ENERGY = ENERGY_COSTS.repair;
 

@@ -7,6 +7,7 @@ import {
   ENERGY_MAX_PER_LEVEL,
   ENERGY_REGEN_PER_LEVEL,
   MAX_LEVEL,
+  DECISION_TRIGGER_CHANCES,
   MODULE_PURCHASE_XP,
   PROGRESSION_BALANCE,
   PVP_ENERGY_COST,
@@ -485,7 +486,7 @@ function runFullLifecycle(
       energy = Math.min(energyMax(), energy + regenPerMin() * playMinutes);
 
       // Decision trigger after completed infiltration.
-      if (rng.chance(0.1)) {
+      if (rng.chance(DECISION_TRIGGER_CHANCES.afterHack)) {
         credits += rng.int(10, 80);
       }
 

@@ -4,6 +4,7 @@ import {
   DATA_VAULT_BALANCE,
   DATA_VAULT_PROTOCOLS,
   DECISION_BALANCE,
+  DECISION_TRIGGER_CHANCES,
   MUTATION_COST,
   PVP_REWARD_CREDITS_LEVEL_BONUS,
   PVP_REWARD_CREDITS_MAX,
@@ -356,7 +357,7 @@ function runSingle(
       if (detected || !solved) repairEvents += 1;
 
       // Decision trigger chance mirrors afterHack default.
-      if (rng.chance(0.1)) applyDecision(state, rng, archetype);
+      if (rng.chance(DECISION_TRIGGER_CHANCES.afterHack)) applyDecision(state, rng, archetype);
     }
 
     const pvpMatchesThisHour = rng.chance(archetype.pvpMatchesPerDay / 24) ? 1 : 0;

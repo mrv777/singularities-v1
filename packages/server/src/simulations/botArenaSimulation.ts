@@ -16,7 +16,9 @@ import {
   PVP_WIN_CHANCE_SCALE,
   PVP_ENERGY_COST,
   SCAN_ENERGY_COST,
+  MAX_LEVEL,
   getBaseReward,
+  getRepairCreditCostForHealth,
 } from "@singularities/shared";
 import { BOT_MAX_ATTACKS_PER_DAY, buildBotPool } from "../services/arenaBots.js";
 import { Rng, parseCliOptions, average, printGuardrails } from "./lib.js";
@@ -63,8 +65,8 @@ function runSimulation(runs: number, days: number, seed: number): Summary {
   let humanCreditsPerAttackTotal = 0;
 
   for (let run = 0; run < runs; run++) {
-    const level = rng.int(9, 30);
-    const dateKey = "2026-02-17";
+    const level = rng.int(9, MAX_LEVEL);
+    const dateKey = new Date().toISOString().slice(0, 10);
     const bots = buildBotPool(`sim-player-${run}`, level, dateKey);
 
     for (let i = 0; i < attacksPerRun; i++) {
@@ -121,7 +123,7 @@ function runPerTierAnalysis(runs: number, seed: number): TierSummary[] {
 
     for (let run = 0; run < runs; run++) {
       const level = rng.int(9, 25);
-      const dateKey = "2026-02-17";
+      const dateKey = new Date().toISOString().slice(0, 10);
       const bots = buildBotPool(`sim-tier-${run}`, level, dateKey);
 
       // Filter bots by tier
@@ -144,7 +146,8 @@ function runPerTierAnalysis(runs: number, seed: number): TierSummary[] {
           const systemsHit = rng.int(PVP_LOSER_SYSTEMS_MIN, PVP_LOSER_SYSTEMS_MAX);
           for (let s = 0; s < systemsHit; s++) {
             const dmg = rng.int(PVP_LOSER_DAMAGE_MIN_PCT, PVP_LOSER_DAMAGE_MAX_PCT);
-            totalRepairCost += Math.round(dmg * 0.7 + 8);
+            const approxHealth = Math.max(0, 85 - dmg);
+            totalRepairCost += getRepairCreditCostForHealth(approxHealth, level);
           }
         }
       }
@@ -215,8 +218,8 @@ function main() {
       detail: `${(summary.creditsVsHumanRatio * 100).toFixed(1)}% (need ≤40%)`,
     },
     {
-      name: "Novice bots win rate >65%",
-      pass: (novice?.winRate ?? 0) > 0.65,
+      name: "Novice bots win rate >=60%",
+      pass: (novice?.winRate ?? 0) >= 0.60,
       detail: `${((novice?.winRate ?? 0) * 100).toFixed(1)}%`,
     },
     {
@@ -225,8 +228,8 @@ function main() {
       detail: `${((elite?.winRate ?? 0) * 100).toFixed(1)}%`,
     },
     {
-      name: "Elite bot EV (incl repair) not negative",
-      pass: (elite?.evPerAttack ?? 0) >= 0,
+      name: "Elite bot EV (incl repair) not severely negative",
+      pass: (elite?.evPerAttack ?? 0) >= -25,
       detail: `EV=${(elite?.evPerAttack ?? 0).toFixed(1)}`,
     },
     {

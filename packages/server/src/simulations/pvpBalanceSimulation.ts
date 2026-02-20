@@ -62,14 +62,14 @@ function simulateMatch(
     return { attackerWon: true, creditsGained: c, repairCost: 0 };
   }
 
-  // Calculate expected repair cost from damage taken
-  let totalDmg = 0;
+  // Calculate expected repair cost from damage taken using real formula
+  let repairCost = 0;
   const systemsHit = rng.int(PVP_LOSER_SYSTEMS_MIN, PVP_LOSER_SYSTEMS_MAX);
   for (let s = 0; s < systemsHit; s++) {
-    totalDmg += rng.int(PVP_LOSER_DAMAGE_MIN_PCT, PVP_LOSER_DAMAGE_MAX_PCT);
+    const dmg = rng.int(PVP_LOSER_DAMAGE_MIN_PCT, PVP_LOSER_DAMAGE_MAX_PCT);
+    const approxHealth = Math.max(0, 85 - dmg);
+    repairCost += getRepairCreditCostForHealth(approxHealth, attackLevel);
   }
-  // Approximate repair cost: each point of damage costs ~0.7 credits
-  const repairCost = Math.round(totalDmg * 0.7 + systemsHit * 8);
   return { attackerWon: false, creditsGained: 0, repairCost };
 }
 
@@ -180,8 +180,8 @@ function main() {
 
     guardrails.push({
       name: `PvP EV at Level ${level}`,
-      pass: ev >= 0,
-      detail: `EV=${ev.toFixed(1)} (need ≥0)`,
+      pass: ev >= 5,
+      detail: `EV=${ev.toFixed(1)} (need ≥5)`,
     });
   }
 
