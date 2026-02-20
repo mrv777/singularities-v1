@@ -43,8 +43,10 @@ export function CyberTooltip({
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
                 transition={{ duration: 0.12 }}
-                className="z-[100] rounded border border-border-bright bg-bg-elevated px-2.5 py-1.5 text-[10px] font-mono text-text-primary shadow-lg shadow-black/50 max-w-[220px]"
+                className="z-[100] rounded border border-border-bright bg-bg-elevated px-2.5 py-1.5 text-[10px] font-mono text-text-primary shadow-lg shadow-black/50 max-w-[220px] relative"
               >
+                <div className="hud-corner hud-corner-tl !border-cyber-cyan opacity-40" />
+                <div className="hud-corner hud-corner-br !border-cyber-cyan opacity-40" />
                 {content}
                 <Tooltip.Arrow className="fill-bg-elevated" />
               </motion.div>

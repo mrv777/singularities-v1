@@ -13,6 +13,7 @@ import {
   Activity,
   Timer,
   HelpCircle,
+  Terminal,
 } from "lucide-react";
 import { useUIStore } from "@/stores/ui";
 import { XP_THRESHOLDS, getXPForNextLevel } from "@singularities/shared";
@@ -22,6 +23,7 @@ import { ModifierBadge } from "./ModifierBadge";
 import { TopologyBadge } from "./TopologyBadge";
 import { AlignmentIndicator } from "./alignment/AlignmentIndicator";
 import { CyberTooltip } from "./ui/CyberTooltip";
+import { GlitchText } from "./ui/GlitchText";
 import { useUITier } from "@/hooks/useUITier";
 import {
   getCurrentWorldPhase,
@@ -85,13 +87,15 @@ export function Header() {
       </button>
 
       <div className="hidden lg:flex flex-col">
-        <span
-          className={`text-cyber-cyan font-bold text-sm tracking-widest leading-none ${tier === 1 ? "" : "glow-cyan"}`}
-        >
-          SINGULARITIES
-        </span>
+        <div className="flex items-center gap-2">
+          <Terminal size={14} className="text-cyber-cyan" />
+          <GlitchText
+            text="SINGULARITIES"
+            className={`text-cyber-cyan font-bold text-sm tracking-widest leading-none ${tier === 1 ? "" : "glow-cyan"}`}
+          />
+        </div>
         <span className="text-[8px] text-text-muted tracking-[0.2em] font-mono mt-0.5">
-          NEURAL_NETWORK_OS v2.0
+          NEURAL_NETWORK_OS v2.0_STABLE
         </span>
       </div>
 

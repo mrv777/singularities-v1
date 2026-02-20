@@ -38,8 +38,18 @@ export function Modal({
   const contentAnimation = tier === 1
     ? { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 }, transition: { duration: 0.15 } as const }
     : tier === 3
-      ? { initial: { y: 20, scale: 0.95 }, animate: { y: 0, scale: 1 }, exit: { y: 20, scale: 0.95 }, transition: { type: "spring" as const, stiffness: 400, damping: 25 } }
-      : { initial: { y: 20, scale: 0.97 }, animate: { y: 0, scale: 1 }, exit: { y: 20, scale: 0.97 }, transition: { duration: 0.25, ease: "easeOut" as const } };
+      ? { 
+          initial: { y: 20, scale: 0.95, opacity: 0 }, 
+          animate: { y: 0, scale: 1, opacity: 1 }, 
+          exit: { y: 20, scale: 0.95, opacity: 0 }, 
+          transition: { type: "spring" as const, stiffness: 400, damping: 25 } 
+        }
+      : { 
+          initial: { y: 20, scale: 0.97, opacity: 0 }, 
+          animate: { y: 0, scale: 1, opacity: 1 }, 
+          exit: { y: 20, scale: 0.97, opacity: 0 }, 
+          transition: { duration: 0.25, ease: "easeOut" as const } 
+        };
 
   const handleDragEnd = (_: unknown, info: PanInfo) => {
     if (info.offset.y > 100 || info.velocity.y > 500) {
