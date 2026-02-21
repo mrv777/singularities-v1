@@ -165,6 +165,11 @@ export function IceBreakerModal() {
               <span className={status.playerStats.defense === 0 ? "text-cyber-amber" : "text-text-secondary"}>
                 DEFENSE <span className="font-semibold text-text-primary">{status.playerStats.defense}</span>
               </span>
+              {status.playerStats.diversityBonus > 0 && (
+                <span className="text-cyber-green">
+                  DIVERSITY <span className="font-semibold">+{status.playerStats.diversityBonus}</span>
+                </span>
+              )}
             </div>
             {(status.playerStats.hackPower === 0 || status.playerStats.stealth === 0 || status.playerStats.defense === 0) && (
               <div className="mt-2 text-[10px] text-cyber-amber flex items-center gap-1">

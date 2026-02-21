@@ -770,9 +770,6 @@ export async function startGame(playerId: string, targetIndex: number) {
     // Build client config (strip secrets)
     const clientConfig: GameConfig = gameState.config;
 
-    // Log activity
-    sendActivity(playerId, `Infiltration sequence initiated: ${target.name} (${target.gameType.replaceAll("_", " ")})`);
-
     return {
       gameId: seedHex.slice(0, 16),
       gameType,
@@ -1414,9 +1411,10 @@ export async function resolveGame(playerId: string) {
 
     // Send activity notification
     try {
+      const gameLabel = target.gameType.replaceAll("_", " ");
       const msg = score >= 50
-        ? `Game completed on ${target.name} (score: ${score}%) — +${result.rewards.credits} CR`
-        : `Game failed on ${target.name} (score: ${score}%)${result.detected ? " (DETECTED)" : ""}`;
+        ? `Hacked ${target.name} via ${gameLabel} (${score}%) — +${result.rewards.credits} CR`
+        : `Failed ${target.name} via ${gameLabel} (${score}%)${result.detected ? " (DETECTED)" : ""}`;
       sendActivity(playerId, msg);
     } catch { /* non-critical */ }
 

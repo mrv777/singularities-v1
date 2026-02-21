@@ -14,7 +14,6 @@ import {
   MINIGAME_BALANCE,
 } from "@singularities/shared";
 import { computeEnergy } from "./player.js";
-import { sendActivity } from "./ws.js";
 import { getActiveModifierEffects } from "./modifiers.js";
 
 function randomInt(min: number, max: number): number {
@@ -104,9 +103,6 @@ export async function scanTargets(playerId: string) {
     const expiresAt = new Date(Date.now() + SCAN_TTL_SECONDS * 1000).toISOString();
     return { targets, expiresAt };
   });
-
-  // Log activity after transaction commits
-  sendActivity(playerId, `Network scan completed: ${targets.length} potential targets identified.`);
 
   return { targets, expiresAt };
 }

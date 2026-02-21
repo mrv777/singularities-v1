@@ -472,7 +472,7 @@ export interface IceBreakerStatusResponse {
   dailyAttemptsRemaining: number;
   cooldownTTL: number;
   activeRun: IceBreakerRunState | null;
-  playerStats: { hackPower: number; stealth: number; defense: number };
+  playerStats: { hackPower: number; stealth: number; defense: number; diversityBonus: number };
 }
 
 export interface IceBreakerInitiateResponse {

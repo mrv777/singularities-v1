@@ -8,6 +8,7 @@ import {
   IceBreakerError,
 } from "../services/iceBreaker.js";
 import { resolveLoadoutStats } from "../services/stats.js";
+import { DIVERSITY_BONUS } from "@singularities/shared";
 
 export async function iceBreakerRoutes(app: FastifyInstance) {
   app.get(
@@ -25,6 +26,7 @@ export async function iceBreakerRoutes(app: FastifyInstance) {
           hackPower: stats.hackPower,
           stealth: stats.stealth,
           defense: stats.defense,
+          diversityBonus: DIVERSITY_BONUS[stats.categoryCount] ?? 0,
         },
       };
     }
