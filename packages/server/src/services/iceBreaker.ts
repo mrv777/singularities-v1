@@ -13,6 +13,7 @@ import {
   SYSTEM_STATUS_THRESHOLDS,
   SYSTEM_TYPES,
   PROGRESSION_BALANCE,
+  DIVERSITY_BONUS,
   computeLayerPassRate,
   type IceLayerType,
 } from "@singularities/shared";
@@ -182,8 +183,9 @@ export async function resolveLayer(playerId: string) {
 
     // Resolve player stats for the relevant stat
     const stats = await resolveLoadoutStats(playerId, "infiltration");
+    const divBonus = DIVERSITY_BONUS[stats.categoryCount] ?? 0;
     const statKey = ICE_LAYER_STAT[layer.type];
-    const playerStat = Math.round(stats[statKey] * stats.healthMultiplier);
+    const playerStat = Math.round((stats[statKey] + divBonus) * stats.healthMultiplier);
 
     // Success: sigmoid probability curve clamped to [10%, 92%]
     const passRate = computeLayerPassRate(playerStat, layer.threshold);

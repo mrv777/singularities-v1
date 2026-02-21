@@ -8,6 +8,7 @@
 import {
   ICE_BREAKER_BALANCE,
   ICE_LAYER_TYPES,
+  DIVERSITY_BONUS,
   computeLayerPassRate,
   type IceLayerType,
 } from "@singularities/shared";
@@ -24,6 +25,7 @@ interface Loadout {
   hackPower: number;
   stealth: number;
   defense: number;
+  categoryCount?: number; // 1 = focused (default), 2-3 = diverse
 }
 
 const LOADOUTS: Loadout[] = [
@@ -32,6 +34,7 @@ const LOADOUTS: Loadout[] = [
   { name: "L4 basic stealth-focused",  level: 4,  hackPower: 6,  stealth: 18,  defense: 6 },
   { name: "L4 basic defense-focused",  level: 4,  hackPower: 6,  stealth: 6,   defense: 18 },
   { name: "L4 basic balanced",         level: 4,  hackPower: 8,  stealth: 8,   defense: 8 },
+  { name: "L4 balanced+diversity",    level: 4,  hackPower: 8,  stealth: 8,   defense: 8, categoryCount: 3 },
 
   // L8 advanced tier — focused builds (3 advanced modules, ~lvl 5-6)
   { name: "L8 adv hack-focused",       level: 8,  hackPower: 60, stealth: 12,  defense: 12 },
@@ -73,8 +76,10 @@ function runSimulation() {
     console.log(`\n── ${loadout.name} (level ${loadout.level}, ${layerCount} layers) ──`);
     console.log(`   Stats: hack=${loadout.hackPower} stealth=${loadout.stealth} def=${loadout.defense}`);
 
+    const divBonus = DIVERSITY_BONUS[loadout.categoryCount ?? 1] ?? 0;
+
     for (const type of ICE_LAYER_TYPES) {
-      const stat = loadout[STAT_FOR_TYPE[type]];
+      const stat = loadout[STAT_FOR_TYPE[type]] + divBonus;
       const rates: number[] = [];
       for (let d = 0; d < layerCount; d++) {
         const threshold = ICE_BREAKER_BALANCE.layerThreshold(type, d, loadout.level);
@@ -96,12 +101,13 @@ function runSimulation() {
     const layerCount = ICE_BREAKER_BALANCE.layerCount(loadout.level);
     let clears = 0;
     const runs = 10_000;
+    const mcDivBonus = DIVERSITY_BONUS[loadout.categoryCount ?? 1] ?? 0;
     for (let r = 0; r < runs; r++) {
       let cleared = true;
       for (let d = 0; d < layerCount; d++) {
         // Random layer type per depth
         const type = ICE_LAYER_TYPES[Math.floor(Math.random() * ICE_LAYER_TYPES.length)];
-        const stat = loadout[STAT_FOR_TYPE[type]];
+        const stat = loadout[STAT_FOR_TYPE[type]] + mcDivBonus;
         const threshold = ICE_BREAKER_BALANCE.layerThreshold(type, d, loadout.level);
         const passRate = computeLayerPassRate(stat, threshold);
         if (Math.random() >= passRate) {
@@ -156,6 +162,14 @@ function runSimulation() {
     name: "L4 basic focused d0 ≥ 20%",
     pass: l4FocusedRate >= 0.20,
     detail: `stat=18 vs FIREWALL d0 L4: ${(l4FocusedRate * 100).toFixed(1)}%`,
+  });
+
+  // L4 balanced + diversity bonus (categoryCount=3, +30), depth 0: pass rate ≥ 50%
+  const l4DiverseRate = getRate(8 + (DIVERSITY_BONUS[3] ?? 0), "FIREWALL", 0, 4);
+  checks.push({
+    name: "L4 balanced+diversity d0 ≥ 50%",
+    pass: l4DiverseRate >= 0.50,
+    detail: `stat=8+${DIVERSITY_BONUS[3]} vs FIREWALL d0 L4: ${(l4DiverseRate * 100).toFixed(1)}%`,
   });
 
   // L8 advanced focused, depth 0: pass rate ≥ 50%

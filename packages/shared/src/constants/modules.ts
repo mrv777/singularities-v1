@@ -93,7 +93,7 @@ export const ALL_MODULES: ModuleDefinition[] = [
     baseCost: { credits: 160, data: 50 },
     costPerLevel: { credits: 100, data: 42 },
     dependencies: [],
-    effects: { hackPower: 1, stealth: -1 },
+    effects: { hackPower: 3, stealth: -1 },
   },
   {
     id: "pri_b_portscanner",
