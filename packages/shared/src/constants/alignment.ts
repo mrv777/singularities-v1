@@ -1,6 +1,6 @@
 export const ALIGNMENT_SHIFTS = {
-  attackWeaker: -0.05,
-  attackStronger: 0.02,
+  attackWeaker: -0.10,
+  attackStronger: 0.04,
   pvpDefenseWin: 0,
   hackCivilian: -0.01,
 } as const;

@@ -13,6 +13,11 @@ export const PVP_MAX_ATTACKS_RECEIVED = 3;
 // Matchmaking: opponent must be within ±5 levels
 export const PVP_LEVEL_RANGE = 5;
 
+// New player arena protection: defenders at or below this level get a tighter attack range
+export const PVP_NEW_PLAYER_LEVEL_CAP = 10;
+// Max levels above defender allowed when defender is a new arena player
+export const PVP_NEW_PLAYER_MAX_ATTACKER_ADVANTAGE = 2;
+
 // Win chance calculation: 50% + (attackPower - defensePower) / scaleFactor
 export const PVP_WIN_CHANCE_MIN = 15;
 export const PVP_WIN_CHANCE_MAX = 85;
