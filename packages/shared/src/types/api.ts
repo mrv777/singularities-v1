@@ -493,6 +493,7 @@ export interface IceBreakerResolveResponse {
 
 export interface IceBreakerExtractResponse {
   rewards: { credits: number; data: number; xp: number; processingPower: number };
+  completionBonus?: boolean;
   player: Player;
   levelUp?: boolean;
   newLevel?: number;

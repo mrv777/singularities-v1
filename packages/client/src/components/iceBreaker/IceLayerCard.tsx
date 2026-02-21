@@ -11,7 +11,7 @@ interface IceLayerCardProps {
   type: IceLayerType;
   depth: number;
   threshold: number;
-  state: "pending" | "current" | "passed" | "failed";
+  state: "pending" | "current" | "resolving" | "passed" | "failed";
 }
 
 export function IceLayerCard({ type, depth, threshold, state }: IceLayerCardProps) {
@@ -21,16 +21,18 @@ export function IceLayerCard({ type, depth, threshold, state }: IceLayerCardProp
   return (
     <div
       className={`flex items-center gap-3 p-2.5 rounded border transition-colors ${
-        state === "current"
-          ? "border-cyber-cyan bg-cyber-cyan/5"
-          : state === "passed"
-            ? "border-cyber-green/40 bg-cyber-green/5"
-            : state === "failed"
-              ? "border-cyber-red/40 bg-cyber-red/5"
-              : "border-border-default bg-bg-surface opacity-60"
+        state === "resolving"
+          ? "border-cyber-cyan bg-cyber-cyan/5 animate-pulse"
+          : state === "current"
+            ? "border-cyber-cyan bg-cyber-cyan/5"
+            : state === "passed"
+              ? "border-cyber-green/40 bg-cyber-green/5"
+              : state === "failed"
+                ? "border-cyber-red/40 bg-cyber-red/5"
+                : "border-border-default bg-bg-surface opacity-60"
       }`}
     >
-      <div className={`${config.color} ${state === "pending" ? "opacity-40" : ""}`}>
+      <div className={`${config.color} ${state === "pending" ? "opacity-40" : ""} ${state === "resolving" ? "animate-spin" : ""}`}>
         <Icon size={18} />
       </div>
       <div className="flex-1 min-w-0">
@@ -42,7 +44,7 @@ export function IceLayerCard({ type, depth, threshold, state }: IceLayerCardProp
           {state === "failed" && <X size={12} className="text-cyber-red" />}
         </div>
         <div className="text-[10px] text-text-muted">
-          {config.stat} check — Threshold: {threshold}
+          {config.stat} check — Threshold: {state === "passed" || state === "failed" ? threshold : "???"}
         </div>
       </div>
     </div>

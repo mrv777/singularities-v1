@@ -281,6 +281,16 @@ export async function extractRewards(playerId: string) {
 
     const rewards = run.accumulatedRewards;
 
+    // Apply completion bonus if all layers cleared
+    const completionBonus = run.completed;
+    if (completionBonus) {
+      const m = ICE_BREAKER_BALANCE.completionBonusMultiplier;
+      rewards.credits = Math.floor(rewards.credits * m);
+      rewards.data = Math.floor(rewards.data * m);
+      rewards.xp = Math.floor(rewards.xp * m);
+      rewards.processingPower = Math.floor(rewards.processingPower * m);
+    }
+
     const result = await withTransaction(async (client) => {
       const pRes = await client.query("SELECT * FROM players WHERE id = $1 FOR UPDATE", [playerId]);
       if (pRes.rows.length === 0) throw new IceBreakerError("Player not found", 404);
@@ -316,6 +326,7 @@ export async function extractRewards(playerId: string) {
       const finalRes = await client.query("SELECT * FROM players WHERE id = $1", [playerId]);
       return {
         rewards,
+        completionBonus,
         player: mapPlayerRow(computeEnergy(finalRes.rows[0])),
         levelUp: xpResult.levelUp,
         newLevel: xpResult.newLevel,

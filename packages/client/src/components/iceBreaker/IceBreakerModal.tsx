@@ -29,6 +29,7 @@ export function IceBreakerModal() {
   const [lastResult, setLastResult] = useState<IceBreakerResolveResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [acting, setActing] = useState(false);
+  const [resolving, setResolving] = useState(false);
   const [error, setError] = useState("");
 
   const loadStatus = async () => {
@@ -71,16 +72,24 @@ export function IceBreakerModal() {
 
   const handleResolve = async () => {
     setActing(true);
+    setResolving(true);
     setError("");
     setLastResult(null);
     try {
-      const result = await api.resolveIceLayer();
+      const [result] = await Promise.all([
+        api.resolveIceLayer(),
+        new Promise((r) => setTimeout(r, 1000)),
+      ]);
+      setResolving(false);
       setRun(result.run);
       setLastResult(result);
       if (result.passed) {
-        playSound("click");
+        playSound("hackSuccess");
+      } else {
+        playSound("hackFail");
       }
     } catch (err: any) {
+      setResolving(false);
       setError(err.message ?? "Failed to resolve layer");
     } finally {
       setActing(false);
@@ -217,6 +226,7 @@ export function IceBreakerModal() {
                   state={
                     run.failed && i === run.currentDepth ? "failed"
                     : i < run.currentDepth ? "passed"
+                    : i === run.currentDepth && resolving ? "resolving"
                     : i === run.currentDepth && !run.completed && !run.failed ? "current"
                     : run.completed && i < run.layers.length ? "passed"
                     : "pending"
@@ -252,6 +262,12 @@ export function IceBreakerModal() {
 
             {/* Accumulated rewards */}
             <div className="border border-border-default rounded p-2 bg-bg-surface">
+              {run.completed && (
+                <div className="text-[10px] uppercase tracking-wider text-cyber-cyan font-semibold mb-1.5 flex items-center gap-1">
+                  <Flame size={10} />
+                  Full Breach Bonus: 1.5x
+                </div>
+              )}
               <div className="text-[10px] uppercase tracking-wider text-text-muted mb-1">Accumulated Rewards</div>
               <div className="flex gap-4 text-xs">
                 <span className="text-cyber-amber">{run.accumulatedRewards.credits} CR</span>

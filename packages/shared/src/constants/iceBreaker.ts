@@ -37,6 +37,9 @@ export const ICE_BREAKER_BALANCE = {
     { credits: 200, data: 110, xp: 50, processingPower: 2 },
   ],
 
+  /** On completion: multiply all rewards by this for clearing every layer */
+  completionBonusMultiplier: 1.5,
+
   /** On failure: retain 50% of accumulated rewards */
   failRetentionPct: 0.5,
 
