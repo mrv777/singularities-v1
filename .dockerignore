@@ -1,0 +1,17 @@
+.git
+.env
+*.local
+
+# Build outputs (rebuilt inside Docker)
+node_modules
+*/node_modules
+**/node_modules
+packages/*/dist
+
+# Solana program (not needed for server/client builds)
+packages/chain
+
+# Docs and tooling
+docs
+prompts
+deploy.sh
