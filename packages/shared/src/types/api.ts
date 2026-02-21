@@ -259,6 +259,8 @@ export interface ArenaEnterResponse {
   player: Player;
 }
 
+export type ArenaLeaveResponse = ArenaEnterResponse;
+
 export interface ArenaAttackRequest {
   targetId: string;
 }

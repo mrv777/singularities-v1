@@ -36,6 +36,7 @@ import type {
   PlayerScript,
   ArenaAvailableResponse,
   ArenaEnterResponse,
+  ArenaLeaveResponse,
   ArenaAttackRequest,
   ArenaAttackResponse,
   ArenaCombatLogsResponse,
@@ -293,6 +294,10 @@ class ApiClient {
 
   enterArena() {
     return this.fetch<ArenaEnterResponse>("/arena/enter", { method: "POST" });
+  }
+
+  leaveArena() {
+    return this.fetch<ArenaLeaveResponse>("/arena/leave", { method: "POST" });
   }
 
   attackPlayer(data: ArenaAttackRequest) {

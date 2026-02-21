@@ -6,6 +6,8 @@ import {
   PVP_LEVEL_RANGE,
   PVP_MAX_ATTACKS_RECEIVED,
   PVP_DAILY_DAMAGE_CAP,
+  PVP_NEW_PLAYER_LEVEL_CAP,
+  PVP_NEW_PLAYER_MAX_ATTACKER_ADVANTAGE,
   MODULE_MAP,
 } from "@singularities/shared";
 import { resolveAttack, applyCombatDamage, type CombatOutcome } from "./combat.js";
@@ -67,6 +69,12 @@ export async function getAvailableOpponents(playerId: string, playerLevel: numbe
     const opponentId = row.id as string;
     const attacksReceived = await redis.get(`pvp_attacks_received:${opponentId}:${dateKey}`);
     if (attacksReceived && parseInt(attacksReceived, 10) >= PVP_MAX_ATTACKS_RECEIVED) continue;
+
+    // Skip new-player-protected targets that the attacker can't reach
+    const opponentLevel = row.level as number;
+    if (opponentLevel <= PVP_NEW_PLAYER_LEVEL_CAP && playerLevel - opponentLevel > PVP_NEW_PLAYER_MAX_ATTACKER_ADVANTAGE) {
+      continue;
+    }
 
     // Classify playstyle based on loadout
     const playstyle = await classifyPlaystyle(opponentId);
@@ -142,6 +150,19 @@ export async function enterArena(playerId: string) {
 }
 
 /**
+ * Leave the PvP arena.
+ */
+export async function leaveArena(playerId: string) {
+  const res = await query(
+    "UPDATE players SET in_pvp_arena = false WHERE id = $1 RETURNING *",
+    [playerId]
+  );
+  if (res.rows.length === 0) throw { statusCode: 404, message: "Player not found" };
+  sendActivity(playerId, "Disconnected from PvP arena network.");
+  return mapPlayerRow(computeEnergy(res.rows[0]));
+}
+
+/**
  * Execute a PvP attack.
  */
 export async function executeAttack(attackerId: string, targetId: string) {
@@ -205,6 +226,11 @@ export async function executeAttack(attackerId: string, targetId: string) {
     const defenderLevel = defenderRow.level as number;
     if (Math.abs(attackerLevel - defenderLevel) > PVP_LEVEL_RANGE) {
       throw { statusCode: 400, message: "Target is outside your level range" };
+    }
+
+    // New player protection: higher-level players cannot attack new arena players outside the 2-level window
+    if (defenderLevel <= PVP_NEW_PLAYER_LEVEL_CAP && attackerLevel - defenderLevel > PVP_NEW_PLAYER_MAX_ATTACKER_ADVANTAGE) {
+      throw { statusCode: 400, message: "Target is under new player protection" };
     }
 
     // Check daily attack caps for defender

@@ -34,6 +34,8 @@ export function ArenaModal() {
     setIsAttacking,
     isEnteringArena,
     setIsEnteringArena,
+    isLeavingArena,
+    setIsLeavingArena,
     setPendingDecision,
   } = useGameStore();
 
@@ -74,6 +76,20 @@ export function ArenaModal() {
       setError(err.message ?? "Failed to enter arena");
     } finally {
       setIsEnteringArena(false);
+    }
+  };
+
+  const handleLeaveArena = async () => {
+    setIsLeavingArena(true);
+    setError("");
+    try {
+      const result = await api.leaveArena();
+      setPlayer(result.player);
+      setArenaOpponents([]);
+    } catch (err: any) {
+      setError(err.message ?? "Failed to leave arena");
+    } finally {
+      setIsLeavingArena(false);
     }
   };
 
@@ -170,14 +186,32 @@ export function ArenaModal() {
                 </button>
               </div>
             ) : arenaOpponents.length === 0 ? (
-              <div className="text-center text-text-muted text-xs py-4">
-                No opponents available in your level range. Check back later.
+              <div className="text-center space-y-3 py-4">
+                <p className="text-text-muted text-xs">
+                  No opponents available in your level range. Check back later.
+                </p>
+                <button
+                  onClick={handleLeaveArena}
+                  disabled={isLeavingArena}
+                  className="px-6 py-2 border border-border-default text-text-muted rounded hover:border-cyber-red/50 hover:text-cyber-red transition-colors disabled:opacity-30 disabled:cursor-not-allowed text-sm"
+                >
+                  {isLeavingArena ? "Leaving..." : "LEAVE ARENA"}
+                </button>
               </div>
             ) : (
               <div className="space-y-2">
-                <p className="text-text-muted text-[10px]">
-                  {arenaOpponents.length} opponent(s) available
-                </p>
+                <div className="flex items-center justify-between">
+                  <p className="text-text-muted text-[10px]">
+                    {arenaOpponents.length} opponent(s) available
+                  </p>
+                  <button
+                    onClick={handleLeaveArena}
+                    disabled={isLeavingArena}
+                    className="px-3 py-1 border border-border-default text-text-muted rounded hover:border-cyber-red/50 hover:text-cyber-red transition-colors disabled:opacity-30 disabled:cursor-not-allowed text-[10px]"
+                  >
+                    {isLeavingArena ? "Leaving..." : "LEAVE ARENA"}
+                  </button>
+                </div>
                 {arenaOpponents.map((opp) => (
                   <OpponentCard
                     key={opp.id}

@@ -50,6 +50,7 @@ interface GameState {
   combatLogs: CombatLog[];
   isAttacking: boolean;
   isEnteringArena: boolean;
+  isLeavingArena: boolean;
 
   // Phase 4: World systems
   pendingDecision: PendingDecisionResponse["decision"] | null;
@@ -91,6 +92,7 @@ interface GameState {
   setCombatLogs: (logs: CombatLog[]) => void;
   setIsAttacking: (v: boolean) => void;
   setIsEnteringArena: (v: boolean) => void;
+  setIsLeavingArena: (v: boolean) => void;
   setPendingDecision: (d: PendingDecisionResponse["decision"] | null) => void;
   setDecisionResult: (r: DecisionChooseResponse | null) => void;
   setTopology: (t: WeeklyTopology | null) => void;
@@ -125,6 +127,7 @@ export const useGameStore = create<GameState>((set) => ({
   combatLogs: [],
   isAttacking: false,
   isEnteringArena: false,
+  isLeavingArena: false,
   pendingDecision: null,
   decisionResult: null,
   topology: null,
@@ -192,6 +195,7 @@ export const useGameStore = create<GameState>((set) => ({
   setCombatLogs: (logs) => set({ combatLogs: logs }),
   setIsAttacking: (v) => set({ isAttacking: v }),
   setIsEnteringArena: (v) => set({ isEnteringArena: v }),
+  setIsLeavingArena: (v) => set({ isLeavingArena: v }),
   setPendingDecision: (d) => set({ pendingDecision: d }),
   setDecisionResult: (r) => set({ decisionResult: r }),
   setTopology: (t) => set({ topology: t }),

@@ -5,6 +5,7 @@ import { computeEnergy, mapPlayerRow } from "../services/player.js";
 import {
   getAvailableOpponents,
   enterArena,
+  leaveArena,
   executeAttack,
   getRecentCombatLogs,
   isPvpHours,
@@ -55,6 +56,27 @@ export async function arenaRoutes(app: FastifyInstance) {
         return reply.code(statusCode).send({
           error: "Arena Error",
           message: err.message ?? "Failed to enter arena",
+          statusCode,
+        });
+      }
+    }
+  );
+
+  // Leave arena
+  app.post(
+    "/api/arena/leave",
+    { preHandler: [authGuard] },
+    async (request, reply) => {
+      const { sub: playerId } = request.user as AuthPayload;
+
+      try {
+        const player = await leaveArena(playerId);
+        return { success: true, player };
+      } catch (err: any) {
+        const statusCode = err.statusCode ?? 500;
+        return reply.code(statusCode).send({
+          error: "Arena Error",
+          message: err.message ?? "Failed to leave arena",
           statusCode,
         });
       }
