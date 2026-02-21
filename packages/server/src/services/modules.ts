@@ -3,6 +3,7 @@ import {
   ALL_MODULES,
   MODULE_MAP,
   TIER_UNLOCK_REQUIREMENT,
+  TIER_UNLOCK_LEVEL,
   MAX_MODULE_LEVEL,
   MODULE_PURCHASE_XP,
   type ModuleDefinition,
@@ -68,12 +69,12 @@ export async function purchaseOrUpgradeModule(playerId: string, moduleId: string
           (m) => m.category === definition.category && m.tier === prevTier
         );
         const ownedPrevTier = prevTierModules.filter((m) =>
-          ownedModules.some((om) => om.module_id === m.id)
+          ownedModules.some((om) => om.module_id === m.id && om.level >= TIER_UNLOCK_LEVEL)
         );
         if (ownedPrevTier.length < TIER_UNLOCK_REQUIREMENT) {
           throw {
             statusCode: 400,
-            message: `Requires ${TIER_UNLOCK_REQUIREMENT} ${prevTier} modules in ${definition.category} category`,
+            message: `Requires ${TIER_UNLOCK_REQUIREMENT} ${prevTier} modules at level ${TIER_UNLOCK_LEVEL} in ${definition.category} category`,
           };
         }
       }

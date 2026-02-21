@@ -43,4 +43,4 @@ export const MUTATION_COST = {
 } as const;
 
 export const MUTATION_SUCCESS_RATE = 0.65;
-export const MUTATION_MIN_LEVEL = 3;
+export const MUTATION_ELIGIBLE_TIERS: Array<"advanced" | "elite"> = ["advanced", "elite"];

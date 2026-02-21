@@ -20,6 +20,7 @@ import {
   getBaseReward,
   MINIGAME_BALANCE,
   TIER_UNLOCK_REQUIREMENT,
+  TIER_UNLOCK_LEVEL,
   getEnergyAfterLevelUp,
   getLevelForXP,
   getScoreMultiplier,
@@ -111,7 +112,7 @@ function canUnlockModule(mod: ModuleDefinition, modules: Record<string, number>)
   const prevTier = getPrevTier(mod.tier);
   if (!prevTier) return true;
   const ownedPrevTier = ALL_MODULES.filter(
-    (m) => m.category === mod.category && m.tier === prevTier && (modules[m.id] ?? 0) > 0
+    (m) => m.category === mod.category && m.tier === prevTier && (modules[m.id] ?? 0) >= TIER_UNLOCK_LEVEL
   ).length;
   return ownedPrevTier >= TIER_UNLOCK_REQUIREMENT;
 }

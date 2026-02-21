@@ -4,7 +4,7 @@
  * Tracks a full 90-day season day-by-day for 5 archetypes, focusing on:
  * - Daily income vs spending
  * - Module purchase progression (basic → advanced → elite)
- * - Mutation attempts (once modules reach level 3+)
+ * - Mutation attempts (once modules reach max level)
  * - Cumulative surplus (running total of unspent credits)
  * - Sink exhaustion timeline (what day each tier completes)
  * - Post-completion net (average daily surplus after all one-time sinks exhausted)
@@ -27,7 +27,7 @@ import {
   DATA_VAULT_PROTOCOLS,
   MUTATION_COST,
   MUTATION_SUCCESS_RATE,
-  MUTATION_MIN_LEVEL,
+  MAX_MODULE_LEVEL,
   ICE_BREAKER_BALANCE,
   DECISION_BALANCE,
   ALL_DECISIONS,
@@ -45,6 +45,8 @@ import {
   getRepairCreditCostForHealth,
   getLevelForXP,
   getDecisionResourceCap,
+  TIER_UNLOCK_LEVEL,
+  MUTATION_ELIGIBLE_TIERS,
 } from "@singularities/shared";
 import { Rng, average, parseCliOptions, percentile, printGuardrails } from "./lib.js";
 
@@ -164,11 +166,11 @@ function computeUpgradeCost(mod: ModuleState): { credits: number; data: number }
 
 function depsUnlocked(mod: ModuleState, modules: ModuleState[]): boolean {
   if (mod.dependencies.length === 0) return true;
-  // Need 2 of 3 dependencies at level >= 1
+  // Need 2 of 3 dependencies at TIER_UNLOCK_LEVEL (max level)
   let unlocked = 0;
   for (const depId of mod.dependencies) {
     const dep = modules.find((m) => m.id === depId);
-    if (dep && dep.level >= 1) unlocked++;
+    if (dep && dep.level >= TIER_UNLOCK_LEVEL) unlocked++;
   }
   return unlocked >= 2;
 }
@@ -176,9 +178,12 @@ function depsUnlocked(mod: ModuleState, modules: ModuleState[]): boolean {
 // Total module sink pool
 const TOTAL_MODULE_SINK = ALL_MODULES.reduce((sum, m) => sum + computeModuleCostToMax(m).credits, 0);
 
-// Total mutation sink pool (36 modules × cost per attempt, expected ~1.54 attempts per module at 65%)
+// Total mutation sink pool (advanced+ modules only × cost per attempt, expected ~1.54 attempts per module at 65%)
 const EXPECTED_MUTATION_ATTEMPTS_PER_MODULE = 1 / MUTATION_SUCCESS_RATE;
-const TOTAL_MUTATION_SINK = ALL_MODULES.length * MUTATION_COST.credits * EXPECTED_MUTATION_ATTEMPTS_PER_MODULE;
+const MUTATION_ELIGIBLE_MODULES = ALL_MODULES.filter(
+  (m) => MUTATION_ELIGIBLE_TIERS.includes(m.tier as "advanced" | "elite")
+);
+const TOTAL_MUTATION_SINK = MUTATION_ELIGIBLE_MODULES.length * MUTATION_COST.credits * EXPECTED_MUTATION_ATTEMPTS_PER_MODULE;
 
 // ---------------------------------------------------------------------------
 // Hack income simulation (from economySimulation pattern)
@@ -604,10 +609,11 @@ function runSingle(
       }
     }
 
-    // --- Mutation attempts (one-time sink) ---
+    // --- Mutation attempts (one-time sink, advanced+ only) ---
     for (const mod of modules) {
       if (mod.mutated) continue;
-      if (mod.level < MUTATION_MIN_LEVEL) continue;
+      if (mod.level < MAX_MODULE_LEVEL) continue;
+      if (!MUTATION_ELIGIBLE_TIERS.includes(mod.tier as "advanced" | "elite")) continue;
       if (
         credits >= MUTATION_COST.credits
         && data >= MUTATION_COST.data
@@ -663,7 +669,9 @@ function runSingle(
           else remainingModuleSink += mod.baseCost.credits + mod.costPerLevel.credits * lvl;
         }
       }
-      const unmutatedModules = modules.filter((m) => !m.mutated && m.level >= MUTATION_MIN_LEVEL).length;
+      const unmutatedModules = modules.filter(
+        (m) => !m.mutated && m.level >= MAX_MODULE_LEVEL && MUTATION_ELIGIBLE_TIERS.includes(m.tier as "advanced" | "elite")
+      ).length;
       const remainingMutationSink = unmutatedModules * MUTATION_COST.credits * EXPECTED_MUTATION_ATTEMPTS_PER_MODULE;
       const totalRemainingSinks = remainingModuleSink + remainingMutationSink + remainingRecurringSinks;
 
@@ -730,7 +738,7 @@ function main() {
   console.log(`\n[Sink Pool]`);
   console.log(`Total modules: ${ALL_MODULES.length} (${totalModuleCredits}c + ${totalModuleData}d to max all)`);
   console.log(`Mutation cost per attempt: ${MUTATION_COST.credits}c + ${MUTATION_COST.data}d + ${MUTATION_COST.processingPower}pp (${Math.round(MUTATION_SUCCESS_RATE * 100)}% success)`);
-  console.log(`Expected mutation sink: ~${Math.round(TOTAL_MUTATION_SINK)}c (${ALL_MODULES.length} modules × ~${EXPECTED_MUTATION_ATTEMPTS_PER_MODULE.toFixed(1)} attempts)`);
+  console.log(`Expected mutation sink: ~${Math.round(TOTAL_MUTATION_SINK)}c (${MUTATION_ELIGIBLE_MODULES.length} advanced+ modules × ~${EXPECTED_MUTATION_ATTEMPTS_PER_MODULE.toFixed(1)} attempts)`);
   console.log(`Total one-time sink pool: ~${Math.round(totalModuleCredits + TOTAL_MUTATION_SINK)}c`);
 
   const guardrails: Array<{ name: string; pass: boolean; detail: string }> = [];

@@ -7,6 +7,8 @@ import {
   MODULE_CATEGORIES,
   MODULE_TIERS,
   TIER_UNLOCK_REQUIREMENT,
+  TIER_UNLOCK_LEVEL,
+  MAX_MODULE_LEVEL,
   type ModuleCategory,
   type ModuleTier,
   type ModuleDefinition,
@@ -53,10 +55,20 @@ export function TechTreeModal() {
   const isTierUnlocked = (category: ModuleCategory, tier: ModuleTier) => {
     const tierIdx = MODULE_TIERS.indexOf(tier);
     if (tierIdx === 0) return true;
+    const progress = getTierProgress(category, tier);
+    return progress ? progress.readyCount >= TIER_UNLOCK_REQUIREMENT : true;
+  };
+
+  const getTierProgress = (category: ModuleCategory, tier: ModuleTier) => {
+    const tierIdx = MODULE_TIERS.indexOf(tier);
+    if (tierIdx === 0) return null;
     const prevTier = MODULE_TIERS[tierIdx - 1];
     const prevModules = getModulesForTier(category, prevTier);
-    const ownedCount = prevModules.filter((m) => isOwned(m.id)).length;
-    return ownedCount >= TIER_UNLOCK_REQUIREMENT;
+    const readyCount = prevModules.filter((m) => {
+      const owned = isOwned(m.id);
+      return owned && owned.level >= TIER_UNLOCK_LEVEL;
+    }).length;
+    return { readyCount, total: prevModules.length, prevTier };
   };
 
   const canAfford = (def: ModuleDefinition) => {
@@ -146,11 +158,14 @@ export function TechTreeModal() {
                 <span className="text-[10px] text-text-muted uppercase tracking-wider">
                   {TIER_LABELS[tier]}
                 </span>
-                {!unlocked && (
-                  <span className="text-[9px] text-cyber-amber">
-                    Requires {TIER_UNLOCK_REQUIREMENT}/3 {MODULE_TIERS[MODULE_TIERS.indexOf(tier) - 1]} modules
-                  </span>
-                )}
+                {!unlocked && (() => {
+                  const progress = getTierProgress(activeTab, tier);
+                  return progress && (
+                    <span className="text-[9px] text-cyber-amber">
+                      Requires {TIER_UNLOCK_REQUIREMENT}/{progress.total} {progress.prevTier} modules at L{TIER_UNLOCK_LEVEL} ({progress.readyCount}/{TIER_UNLOCK_REQUIREMENT} ready)
+                    </span>
+                  );
+                })()}
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 {modules.map((def) => (
@@ -162,7 +177,7 @@ export function TechTreeModal() {
                     isLocked={!unlocked}
                     lockReason={
                       !unlocked
-                        ? `Need ${TIER_UNLOCK_REQUIREMENT} ${MODULE_TIERS[MODULE_TIERS.indexOf(tier) - 1]} modules`
+                        ? `Need ${TIER_UNLOCK_REQUIREMENT} ${MODULE_TIERS[MODULE_TIERS.indexOf(tier) - 1]} modules at max level`
                         : undefined
                     }
                     onPurchase={(el) => handlePurchase(def.id, el)}

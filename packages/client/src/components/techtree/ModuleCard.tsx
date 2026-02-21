@@ -1,5 +1,5 @@
 import type { ModuleDefinition, PlayerModule } from "@singularities/shared";
-import { MAX_MODULE_LEVEL, MUTATION_MIN_LEVEL, MUTATION_COST, MUTATION_VARIANT_MAP } from "@singularities/shared";
+import { MAX_MODULE_LEVEL, MUTATION_COST, MUTATION_VARIANT_MAP, MUTATION_ELIGIBLE_TIERS } from "@singularities/shared";
 import { ResourceCost } from "../ui/ResourceCost";
 
 interface ModuleCardProps {
@@ -115,8 +115,8 @@ export function ModuleCard({
         </button>
       )}
 
-      {/* Mutate button */}
-      {isOwned && !owned?.mutation && currentLevel >= MUTATION_MIN_LEVEL && onMutate && (
+      {/* Mutate button — only at max level, advanced+ tiers */}
+      {isOwned && !owned?.mutation && isMaxLevel && onMutate && MUTATION_ELIGIBLE_TIERS.includes(definition.tier as "advanced" | "elite") && (
         <button
           onClick={onMutate}
           disabled={isMutating}

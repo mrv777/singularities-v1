@@ -56,6 +56,7 @@ export const MODULE_TIERS: ModuleTier[] = ["basic", "advanced", "elite"];
 
 export const TIER_UNLOCK_REQUIREMENT = 2; // Must unlock 2 of 3 modules in tier to advance
 export const MAX_MODULE_LEVEL = 6;
+export const TIER_UNLOCK_LEVEL = MAX_MODULE_LEVEL; // Prev-tier modules must reach this level to count
 
 // ─── 36 Module Definitions: 4 categories × 3 tiers × 3 modules ───
 //

@@ -6,7 +6,10 @@
  */
 import {
   ALL_MODULES,
+  TIER_UNLOCK_REQUIREMENT,
+  TIER_UNLOCK_LEVEL,
   type ModuleDefinition,
+  type ModuleTier,
 } from "@singularities/shared";
 import { parseCliOptions, printGuardrails } from "./lib.js";
 
@@ -226,6 +229,47 @@ function main() {
     pass: catValRatio <= 1.6,
     detail: `max/min ratio=${catValRatio.toFixed(2)} (need ≤1.6)`,
   });
+
+  // -- Tier gate timing: cost to unlock each tier (cheapest path) --
+  console.log("\n[Tier Gate Timing — Level-Gated Unlock]");
+  console.log(`  Requires ${TIER_UNLOCK_REQUIREMENT} prev-tier modules at L${TIER_UNLOCK_LEVEL} to advance`);
+
+  const TIER_ORDER: ModuleTier[] = ["basic", "advanced", "elite"];
+  for (const cat of categories) {
+    const rows: string[] = [];
+    let cumulativeCost = 0;
+    for (let t = 0; t < TIER_ORDER.length; t++) {
+      const tier = TIER_ORDER[t];
+      if (t === 0) {
+        // Basic: need to buy 2 cheapest and level them to TIER_UNLOCK_LEVEL to unlock advanced
+        const basicMods = ALL_MODULES.filter((m) => m.category === cat && m.tier === "basic");
+        const basicCosts = basicMods
+          .map((m) => computeModuleCostToMax(m))
+          .sort((a, b) => a.credits - b.credits);
+        const gateCredits = basicCosts.slice(0, TIER_UNLOCK_REQUIREMENT).reduce((s, c) => s + c.credits, 0);
+        cumulativeCost += gateCredits;
+        rows.push(`    Basic gate (${TIER_UNLOCK_REQUIREMENT} modules to L${TIER_UNLOCK_LEVEL}): ${gateCredits}c — ~${(gateCredits / creditsPerHour).toFixed(1)}h`);
+      } else if (t === 1) {
+        // Advanced: need 2 cheapest advanced modules to L6 to unlock elite
+        // But first must buy them (requires basic gate already met)
+        const advMods = ALL_MODULES.filter((m) => m.category === cat && m.tier === "advanced");
+        const advCosts = advMods
+          .map((m) => computeModuleCostToMax(m))
+          .sort((a, b) => a.credits - b.credits);
+        const gateCredits = advCosts.slice(0, TIER_UNLOCK_REQUIREMENT).reduce((s, c) => s + c.credits, 0);
+        cumulativeCost += gateCredits;
+        rows.push(`    Advanced gate (${TIER_UNLOCK_REQUIREMENT} modules to L${TIER_UNLOCK_LEVEL}): ${gateCredits}c — cumulative ${cumulativeCost}c (~${(cumulativeCost / creditsPerHour).toFixed(1)}h)`);
+      } else {
+        // Elite: first purchasable module
+        const eliteMods = ALL_MODULES.filter((m) => m.category === cat && m.tier === "elite");
+        const cheapest = Math.min(...eliteMods.map((m) => m.baseCost.credits));
+        cumulativeCost += cheapest;
+        rows.push(`    Elite L1 (first purchase): +${cheapest}c — cumulative ${cumulativeCost}c (~${(cumulativeCost / creditsPerHour).toFixed(1)}h)`);
+      }
+    }
+    console.log(`  ${cat}:`);
+    for (const row of rows) console.log(row);
+  }
 
   const allPass = printGuardrails("sim:modules", guardrails);
   if (!allPass) process.exit(1);

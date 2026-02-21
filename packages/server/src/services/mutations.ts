@@ -2,9 +2,11 @@ import { query, withTransaction } from "../db/pool.js";
 import {
   MUTATION_COST,
   MUTATION_SUCCESS_RATE,
-  MUTATION_MIN_LEVEL,
+  MAX_MODULE_LEVEL,
+  MUTATION_ELIGIBLE_TIERS,
   MUTATION_VARIANTS,
   MUTATION_VARIANT_MAP,
+  MODULE_MAP,
   type MutationVariant,
 } from "@singularities/shared";
 import { computeEnergy, mapPlayerRow } from "./player.js";
@@ -37,8 +39,12 @@ export async function attemptMutation(playerId: string, moduleId: string) {
     }
 
     const modRow = modRes.rows[0];
-    if ((modRow.level as number) < MUTATION_MIN_LEVEL) {
-      throw { statusCode: 400, message: `Module must be level ${MUTATION_MIN_LEVEL}+` };
+    if ((modRow.level as number) < MAX_MODULE_LEVEL) {
+      throw { statusCode: 400, message: `Module must be max level (L${MAX_MODULE_LEVEL})` };
+    }
+    const moduleDef = MODULE_MAP[moduleId];
+    if (moduleDef && !MUTATION_ELIGIBLE_TIERS.includes(moduleDef.tier as "advanced" | "elite")) {
+      throw { statusCode: 400, message: "Only advanced and elite modules can be mutated" };
     }
     if (modRow.mutation) {
       throw { statusCode: 400, message: "Module is already mutated" };
