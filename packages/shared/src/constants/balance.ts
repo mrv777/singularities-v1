@@ -9,7 +9,7 @@ export const PROGRESSION_BALANCE = {
     script_manager: 6,
     daemon_forge: 7,
     pvp_arena: 8,
-    security_center: 8,
+    security_center: 3,
     daily_modifiers: 8,
     network_stats: 1,
   },

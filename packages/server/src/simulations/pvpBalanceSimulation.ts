@@ -127,12 +127,14 @@ function main() {
   }
 
   // -- Scenario 3: Loadout category matchups --
+  // Updated for multi-stat formulas: atk = hackPower + stealth*0.25 + defense*0.10 + divBonus
+  //                                   def = defense + efficiency*0.30 + hackPower*0.10 + divBonus
   console.log("\n[Loadout Matchups at Level 15]");
   const loadouts = [
-    { name: "offense", atkBonus: 20, defBonus: 0 },
-    { name: "defense", atkBonus: 0, defBonus: 20 },
-    { name: "stealth", atkBonus: 10, defBonus: 5 },
-    { name: "balanced", atkBonus: 10, defBonus: 10 },
+    { name: "offense-mono", atkBonus: 20, defBonus: 0 },
+    { name: "defense-mono", atkBonus: 0, defBonus: 20 },
+    { name: "stealth-mixed", atkBonus: 18, defBonus: 8 },  // stealth contrib + diversity
+    { name: "balanced-mixed", atkBonus: 15, defBonus: 15 }, // diversity bonus both sides
   ];
 
   const matchupWinRates: Record<string, Record<string, number>> = {};

@@ -149,7 +149,7 @@ export function IceBreakerModal() {
                 Infiltration Stats
               </div>
               <button
-                onClick={() => openModal("loadout_editor")}
+                onClick={() => openModal("security_center")}
                 className="text-[10px] text-cyber-cyan hover:underline"
               >
                 Configure Loadout →
@@ -243,12 +243,12 @@ export function IceBreakerModal() {
                   : "border-cyber-red/30 bg-cyber-red/5 text-cyber-red"
               }`}>
                 {lastResult.passed ? (
-                  <span>Layer cracked! Your {lastResult.layerType} stat ({lastResult.playerStat}) beat threshold ({lastResult.threshold})</span>
+                  <span>Layer cracked! ({lastResult.passRate}% chance)</span>
                 ) : (
                   <span className="space-y-1">
                     <div className="flex items-center gap-1">
                       <AlertTriangle size={12} />
-                      ICE breach failed. Stat ({lastResult.playerStat}) vs threshold ({lastResult.threshold}).
+                      ICE breach failed ({lastResult.passRate}% chance)
                     </div>
                     {lastResult.damage && (
                       <div className="text-[10px] text-text-muted">

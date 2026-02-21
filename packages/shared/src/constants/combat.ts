@@ -1,5 +1,8 @@
 import { PVP_BALANCE } from "./balance.js";
 
+// Diversity bonus: reward for equipping modules from different tech tree categories
+export const DIVERSITY_BONUS: Record<number, number> = { 1: 0, 2: 15, 3: 30 };
+
 // PvP Combat Constants
 
 export const PVP_ENERGY_COST = 17;

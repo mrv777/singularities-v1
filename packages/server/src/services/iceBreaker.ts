@@ -13,6 +13,7 @@ import {
   SYSTEM_STATUS_THRESHOLDS,
   SYSTEM_TYPES,
   PROGRESSION_BALANCE,
+  computeLayerPassRate,
   type IceLayerType,
 } from "@singularities/shared";
 
@@ -184,9 +185,9 @@ export async function resolveLayer(playerId: string) {
     const statKey = ICE_LAYER_STAT[layer.type];
     const playerStat = Math.round(stats[statKey] * stats.healthMultiplier);
 
-    // Success: player stat + random variance vs threshold
-    const roll = playerStat + randomInt(-5, 10);
-    const passed = roll >= layer.threshold;
+    // Success: sigmoid probability curve clamped to [10%, 92%]
+    const passRate = computeLayerPassRate(playerStat, layer.threshold);
+    const passed = Math.random() < passRate;
 
     let rewards = undefined;
     let damage = undefined;
@@ -258,6 +259,7 @@ export async function resolveLayer(playerId: string) {
       depth: layer.depth,
       playerStat,
       threshold: layer.threshold,
+      passRate: Math.round(passRate * 100),
       rewards,
       damage,
       run,

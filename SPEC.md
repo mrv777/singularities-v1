@@ -107,11 +107,11 @@ When an AI dies and the player re-mints, the new AI receives **2-3 randomly assi
 - Traits create unique builds and force strategic adaptation
 - Traits influence the AI avatar appearance
 - Examples:
-  - **Overclocker:** +20% processing speed, -15% energy efficiency
-  - **Ghost Protocol:** +15% stealth rating, -10% data mining output
-  - **Hardened Core:** +20% system durability, -15% upgrade speed
-  - **Data Siphon:** +15% credit earnings, -10% defense rating
-  - **Neural Plasticity:** +10% XP gain, -10% max energy capacity
+  - **Overclocker:** +15% hack power, -10% defense
+  - **Ghost Protocol:** +20% stealth, -10% hack power
+  - **Hardened Core:** +20% defense, -15% efficiency
+  - **Data Siphon:** +15% credit bonus, -10% stealth
+  - **Neural Plasticity:** +15% XP gain, -10% defense
 
 ---
 

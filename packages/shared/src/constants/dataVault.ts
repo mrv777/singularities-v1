@@ -1,7 +1,6 @@
 export const DATA_VAULT_BUFF_KEYS = [
   "hackPower",
   "stealth",
-  "detectionReduction",
   "dataBonus",
 ] as const;
 
@@ -41,7 +40,7 @@ export const DATA_VAULT_BALANCE = {
       description: "Obfuscate your trace to reduce detection pressure.",
       costs: { credits: 15, data: 35 },
       durationSeconds: 20 * 60,
-      buffs: { stealth: 10, detectionReduction: 10 },
+      buffs: { stealth: 20 },
     },
     {
       id: "harvest_cache",

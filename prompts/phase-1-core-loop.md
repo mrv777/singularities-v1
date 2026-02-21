@@ -119,7 +119,7 @@ Define all 36 modules as data:
   - `cost` (credits + data per level)
   - `maxLevel` (5)
   - `dependencies` (which modules must be unlocked first — 2 of 3 in previous tier)
-  - `stats` (what it affects — e.g. +hack_power, +stealth, +defense, +energy_efficiency)
+  - `stats` (what it affects — e.g. +hackPower, +stealth, +defense, +efficiency)
   - `loadoutType` (attack, defense, infiltration, or utility)
 
 **For Phase 1, only Basic tier needs to be fully implemented.** Advanced and Elite tiers should be defined in data but show as locked in UI.

@@ -32,7 +32,7 @@ This keeps first-session depth high without forcing players to learn two new str
 - `Ghost Cache`
   - Cost: 15 credits, 35 data
   - Duration: 20m
-  - Effects: +10 stealth, +10 detection reduction
+  - Effects: +20 stealth
 
 ### Why this shape
 - Clear sink for excess day-1/day-2 data.

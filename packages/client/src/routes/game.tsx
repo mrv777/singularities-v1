@@ -4,7 +4,6 @@ import { motion } from "framer-motion";
 import { NetworkMap } from "@/components/NetworkMap";
 import { ScannerModal } from "@/components/scanner/ScannerModal";
 import { TechTreeModal } from "@/components/techtree/TechTreeModal";
-import { LoadoutEditor } from "@/components/loadout/LoadoutEditor";
 import { ModifierDetailModal } from "@/components/ModifierDetailModal";
 import { TopologyDetailModal } from "@/components/TopologyDetailModal";
 import { SystemStatusModal } from "@/components/maintenance/SystemStatusModal";
@@ -197,7 +196,6 @@ function GamePage() {
         {/* Modals */}
         <ScannerModal />
         <TechTreeModal />
-        <LoadoutEditor />
         <ModifierDetailModal />
         <TopologyDetailModal />
         <SystemStatusModal />

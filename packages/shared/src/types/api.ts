@@ -486,6 +486,7 @@ export interface IceBreakerResolveResponse {
   depth: number;
   playerStat: number;
   threshold: number;
+  passRate: number; // 0-100 percentage
   rewards?: { credits: number; data: number; xp: number; processingPower: number };
   damage?: { systems: Array<{ systemType: string; damage: number }> };
   run: IceBreakerRunState;

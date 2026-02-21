@@ -201,8 +201,8 @@ export async function getDecisionHistory(playerId: string) {
 }
 
 const BUFF_STAT_KEYS = [
-  "hackPower", "defense", "stealth", "energyEfficiency",
-  "scanRange", "creditBonus", "dataBonus", "detectionReduction",
+  "hackPower", "defense", "stealth", "efficiency",
+  "creditBonus", "dataBonus",
 ] as const;
 
 export async function getActiveDecisionBuffs(

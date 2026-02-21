@@ -290,7 +290,7 @@ Heals 30 HP. Cooldown: 300s per system.
 | Protocol | Credit cost | Data cost | Effect |
 |----------|-------------|-----------|--------|
 | Focus Cache | 20c | 40d | +8 hackPower |
-| Ghost Cache | 15c | 35d | +10 stealth, +10 detectionReduction |
+| Ghost Cache | 15c | 35d | +20 stealth |
 | Harvest Cache | 18c | 45d | +12 dataBonus |
 | Tandem Cache | 22c | 45d | +4 hackPower, +6 stealth |
 

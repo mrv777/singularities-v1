@@ -132,7 +132,7 @@ interface BaseGameState {
     defense: number;
     creditBonus: number;
     dataBonus: number;
-    detectionReduction: number;
+    efficiency: number;
     healthMultiplier: number;
     hackRewardMultiplier: number;
     xpGainMultiplier: number;
@@ -675,11 +675,11 @@ export async function startGame(playerId: string, targetIndex: number) {
     const modEffects = stats.modifierEffects;
     const statsSnapshot = {
       hackPower: Math.round(stats.hackPower * stats.healthMultiplier),
-      stealth: stats.stealth + stats.detectionReduction,
+      stealth: stats.stealth,
       defense: stats.defense,
       creditBonus: stats.creditBonus,
       dataBonus: stats.dataBonus,
-      detectionReduction: stats.detectionReduction,
+      efficiency: stats.efficiency,
       healthMultiplier: stats.healthMultiplier,
       hackRewardMultiplier: modEffects.hackRewardMultiplier ?? 1,
       xpGainMultiplier: modEffects.xpGainMultiplier ?? 1,
@@ -1167,13 +1167,17 @@ export async function resolveGame(playerId: string) {
       const dataMultiplier = 1 + statsSnap.dataBonus / 100;
       const economicMult = MINIGAME_BALANCE.economicMultiplierByTier[getTierIndex(target.securityLevel)];
 
+      const hackPowerRewardBonus = 1 + Math.min(statsSnap.hackPower * 0.003, 0.45);
+
       const finalCredits = Math.floor(
         baseRewards.credits * economicMult * scoreMult * creditMultiplier
-        * statsSnap.hackRewardMultiplier * resourceMultiplier * MINIGAME_BALANCE.globalRewardMultiplier
+        * statsSnap.hackRewardMultiplier * resourceMultiplier
+        * MINIGAME_BALANCE.globalRewardMultiplier * hackPowerRewardBonus
       );
       const finalData = Math.floor(
         baseRewards.data * economicMult * scoreMult * dataMultiplier
-        * statsSnap.hackRewardMultiplier * resourceMultiplier * MINIGAME_BALANCE.globalRewardMultiplier
+        * statsSnap.hackRewardMultiplier * resourceMultiplier
+        * MINIGAME_BALANCE.globalRewardMultiplier * hackPowerRewardBonus
       );
       const finalReputation = Math.floor(baseRewards.reputation * MINIGAME_BALANCE.rewardMultiplier * scoreMult);
       const finalXp = Math.floor(
@@ -1199,8 +1203,9 @@ export async function resolveGame(playerId: string) {
       let damage = undefined;
 
       if (detectionMult > 0) {
+        const effectiveStealth = statsSnap.stealth + statsSnap.defense * 0.15;
         const effectiveDetection = Math.max(5, Math.min(95,
-          (target.detectionChance - statsSnap.stealth / 2) * statsSnap.detectionChanceMultiplier * detectionMult
+          (target.detectionChance - effectiveStealth / 2) * statsSnap.detectionChanceMultiplier * detectionMult
         ));
         const detectionRoll = randomInt(1, 100);
         detected = detectionRoll <= effectiveDetection;

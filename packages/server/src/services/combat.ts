@@ -33,9 +33,10 @@ import {
   SYSTEM_TYPES,
   SYSTEM_STATUS_THRESHOLDS,
   TRAIT_MAP,
+  DIVERSITY_BONUS,
   type LoadoutType,
 } from "@singularities/shared";
-import { resolveLoadoutStats } from "./stats.js";
+import { resolveLoadoutStats, type ResolvedStats } from "./stats.js";
 import { computeSystemHealth } from "./maintenance.js";
 import { getActiveModifierEffects } from "./modifiers.js";
 
@@ -55,6 +56,25 @@ function getStatusForHealth(health: number): string {
 }
 
 /**
+ * Compute power from resolved stats. Shared by getLoadoutPower and resolveAttack.
+ */
+function computePower(
+  stats: ResolvedStats,
+  loadoutType: LoadoutType
+): number {
+  const divBonus = DIVERSITY_BONUS[stats.categoryCount] ?? 0;
+  if (loadoutType === "defense") {
+    return Math.round(
+      stats.defense + stats.efficiency * 0.30 + stats.hackPower * 0.10 + divBonus
+    ) || PVP_DEFAULT_DEFENSE_POWER;
+  }
+  return Math.round(
+    (stats.hackPower + stats.stealth * 0.25 + stats.defense * 0.10 + divBonus)
+    * stats.healthMultiplier
+  ) || PVP_DEFAULT_DEFENSE_POWER;
+}
+
+/**
  * Get the total power of a player's loadout for a given type.
  * Uses the shared stat resolution pipeline.
  */
@@ -64,9 +84,7 @@ export async function getLoadoutPower(
   client?: TxClient
 ): Promise<number> {
   const stats = await resolveLoadoutStats(playerId, loadoutType, client);
-  const statKey = loadoutType === "defense" ? "defense" : "hackPower";
-  const raw = stats[statKey];
-  return raw || PVP_DEFAULT_DEFENSE_POWER;
+  return computePower(stats, loadoutType);
 }
 
 /**
@@ -192,12 +210,13 @@ export async function resolveAttack(
   const defenderCredits = defender.credits as number;
 
   // Resolve stats through shared pipeline (modules × level + traits + health)
-  const attackerStats = await resolveLoadoutStats(attackerId, "attack", client);
-  const defenderStats = await resolveLoadoutStats(defenderId, "defense", client);
+  const [attackerStats, defenderStats] = await Promise.all([
+    resolveLoadoutStats(attackerId, "attack", client),
+    resolveLoadoutStats(defenderId, "defense", client),
+  ]);
 
-  const finalAttack = Math.round(attackerStats.hackPower * attackerStats.healthMultiplier)
-    || PVP_DEFAULT_DEFENSE_POWER;
-  const finalDefense = defenderStats.defense || PVP_DEFAULT_DEFENSE_POWER;
+  const finalAttack = computePower(attackerStats, "attack");
+  const finalDefense = computePower(defenderStats, "defense");
 
   // Calculate win chance
   const rawChance = 50 + (finalAttack - finalDefense) / PVP_WIN_CHANCE_SCALE * 100;

@@ -62,12 +62,10 @@ function statValue(effects: Record<string, number>, level: number): number {
     if (key === "hackPower") val += scaled * 3;
     else if (key === "defense") val += scaled * 2.5;
     else if (key === "stealth") val += scaled * 2;
-    // Energy efficiency scales all action throughput and long-session stability.
-    else if (key === "energyEfficiency") val += scaled * 4;
+    // Efficiency mitigates health-penalty degradation in sustained play.
+    else if (key === "efficiency") val += scaled * 3;
     else if (key === "creditBonus") val += scaled * 3;
     else if (key === "dataBonus") val += scaled * 2;
-    else if (key === "detectionReduction") val += scaled * 1.5;
-    else if (key === "scanRange") val += scaled * 1.5;
     else val += scaled * 1;
   }
   return val;

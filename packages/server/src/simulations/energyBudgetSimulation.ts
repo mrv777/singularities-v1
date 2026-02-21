@@ -2,7 +2,7 @@
  * Energy Budget Simulation
  *
  * Tests actions per session, time to deplete, optimal action chains,
- * and the impact of energy efficiency modules and modifiers.
+ * and the impact of efficiency modules and modifiers.
  */
 import {
   ENERGY_BASE_MAX,

@@ -8,6 +8,18 @@ export const ICE_LAYER_STAT: Record<IceLayerType, "hackPower" | "stealth" | "def
   BLACK_ICE: "defense",
 };
 
+export const ICE_PASS_RATE_SCALE = 25; // sigmoid width
+export const ICE_MIN_PASS_RATE = 0.10; // floor (10%)
+export const ICE_MAX_PASS_RATE = 0.92; // ceiling (92%)
+
+/** Sigmoid probability of passing a layer given player stat vs threshold */
+export function computeLayerPassRate(playerStat: number, threshold: number): number {
+  if (playerStat <= 0) return 0;
+  const diff = playerStat - threshold;
+  const rate = 0.5 + 0.5 * Math.tanh(diff / ICE_PASS_RATE_SCALE);
+  return Math.max(ICE_MIN_PASS_RATE, Math.min(ICE_MAX_PASS_RATE, rate));
+}
+
 export const ICE_BREAKER_BALANCE = {
   energyCost: 18,
   dailyLimit: 3,
@@ -22,9 +34,9 @@ export const ICE_BREAKER_BALANCE = {
 
   /** Difficulty threshold for a layer */
   layerThreshold: (type: IceLayerType, depth: number, playerLevel: number): number => {
-    const bases: Record<IceLayerType, number> = { FIREWALL: 18, TRACER: 14, BLACK_ICE: 16 };
-    const depthScale: Record<IceLayerType, number> = { FIREWALL: 6, TRACER: 5, BLACK_ICE: 7 };
-    const levelScale: Record<IceLayerType, number> = { FIREWALL: 2, TRACER: 1.5, BLACK_ICE: 2.5 };
+    const bases: Record<IceLayerType, number> = { FIREWALL: 18, TRACER: 22, BLACK_ICE: 16 };
+    const depthScale: Record<IceLayerType, number> = { FIREWALL: 6, TRACER: 6, BLACK_ICE: 7 };
+    const levelScale: Record<IceLayerType, number> = { FIREWALL: 1.8, TRACER: 2.0, BLACK_ICE: 2.2 };
     return Math.round(bases[type] + depth * depthScale[type] + playerLevel * levelScale[type]);
   },
 

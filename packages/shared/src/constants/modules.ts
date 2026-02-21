@@ -15,11 +15,9 @@ export interface ModuleDefinition {
     hackPower?: number;
     stealth?: number;
     defense?: number;
-    energyEfficiency?: number;
-    scanRange?: number;
+    efficiency?: number;
     creditBonus?: number;
     dataBonus?: number;
-    detectionReduction?: number;
   };
 }
 
@@ -95,7 +93,7 @@ export const ALL_MODULES: ModuleDefinition[] = [
     baseCost: { credits: 160, data: 50 },
     costPerLevel: { credits: 100, data: 42 },
     dependencies: [],
-    effects: { hackPower: 1, detectionReduction: -1 },
+    effects: { hackPower: 1, stealth: -1 },
   },
   {
     id: "pri_b_portscanner",
@@ -107,7 +105,7 @@ export const ALL_MODULES: ModuleDefinition[] = [
     baseCost: { credits: 140, data: 65 },
     costPerLevel: { credits: 90, data: 50 },
     dependencies: [],
-    effects: { hackPower: 1, scanRange: 1 },
+    effects: { hackPower: 1, stealth: 1 },
   },
   // Advanced
   {
@@ -144,7 +142,7 @@ export const ALL_MODULES: ModuleDefinition[] = [
     baseCost: { credits: 240, data: 105 },
     costPerLevel: { credits: 200, data: 95 },
     dependencies: ["pri_b_bruteforce", "pri_b_packetflood", "pri_b_portscanner"],
-    effects: { hackPower: 6, energyEfficiency: -1 },
+    effects: { hackPower: 6, efficiency: -1 },
   },
   // Elite
   {
@@ -208,7 +206,7 @@ export const ALL_MODULES: ModuleDefinition[] = [
     baseCost: { credits: 150, data: 45 },
     costPerLevel: { credits: 92, data: 35 },
     dependencies: [],
-    effects: { energyEfficiency: 1 },
+    effects: { efficiency: 1 },
   },
   {
     id: "sec_b_creditsiphon",
@@ -245,7 +243,7 @@ export const ALL_MODULES: ModuleDefinition[] = [
     baseCost: { credits: 240, data: 82 },
     costPerLevel: { credits: 188, data: 75 },
     dependencies: ["sec_b_datamine", "sec_b_bandwidth", "sec_b_creditsiphon"],
-    effects: { energyEfficiency: 3 },
+    effects: { efficiency: 3 },
   },
   {
     id: "sec_a_profitmatrix",
@@ -282,7 +280,7 @@ export const ALL_MODULES: ModuleDefinition[] = [
     baseCost: { credits: 640, data: 272 },
     costPerLevel: { credits: 540, data: 240 },
     dependencies: ["sec_a_deepextract", "sec_a_resourceopt", "sec_a_profitmatrix"],
-    effects: { energyEfficiency: 6 },
+    effects: { efficiency: 6 },
   },
   {
     id: "sec_e_blackmarket",
@@ -321,7 +319,7 @@ export const ALL_MODULES: ModuleDefinition[] = [
     baseCost: { credits: 152, data: 52 },
     costPerLevel: { credits: 93, data: 42 },
     dependencies: [],
-    effects: { stealth: 1, detectionReduction: 1 },
+    effects: { stealth: 2 },
   },
   {
     id: "rel_b_lowprofile",
@@ -333,7 +331,7 @@ export const ALL_MODULES: ModuleDefinition[] = [
     baseCost: { credits: 142, data: 58 },
     costPerLevel: { credits: 88, data: 46 },
     dependencies: [],
-    effects: { detectionReduction: 2 },
+    effects: { stealth: 2 },
   },
   // Advanced
   {
@@ -346,7 +344,7 @@ export const ALL_MODULES: ModuleDefinition[] = [
     baseCost: { credits: 225, data: 112 },
     costPerLevel: { credits: 180, data: 95 },
     dependencies: ["rel_b_proxy", "rel_b_spoof", "rel_b_lowprofile"],
-    effects: { stealth: 5, detectionReduction: 2 },
+    effects: { stealth: 7 },
   },
   {
     id: "rel_a_meshcloak",
@@ -370,7 +368,7 @@ export const ALL_MODULES: ModuleDefinition[] = [
     baseCost: { credits: 232, data: 105 },
     costPerLevel: { credits: 188, data: 90 },
     dependencies: ["rel_b_proxy", "rel_b_spoof", "rel_b_lowprofile"],
-    effects: { detectionReduction: 5, energyEfficiency: 1 },
+    effects: { stealth: 5, efficiency: 1 },
   },
   // Elite
   {
@@ -383,7 +381,7 @@ export const ALL_MODULES: ModuleDefinition[] = [
     baseCost: { credits: 640, data: 336 },
     costPerLevel: { credits: 555, data: 285 },
     dependencies: ["rel_a_ghostnet", "rel_a_meshcloak", "rel_a_darkroute"],
-    effects: { stealth: 9, detectionReduction: 6 },
+    effects: { stealth: 15 },
   },
   {
     id: "rel_e_mirage",
@@ -395,7 +393,7 @@ export const ALL_MODULES: ModuleDefinition[] = [
     baseCost: { credits: 608, data: 320 },
     costPerLevel: { credits: 525, data: 270 },
     dependencies: ["rel_a_ghostnet", "rel_a_meshcloak", "rel_a_darkroute"],
-    effects: { stealth: 7, hackPower: 2, detectionReduction: 3 },
+    effects: { stealth: 10, hackPower: 2 },
   },
   {
     id: "rel_e_void",
@@ -407,7 +405,7 @@ export const ALL_MODULES: ModuleDefinition[] = [
     baseCost: { credits: 704, data: 368 },
     costPerLevel: { credits: 600, data: 315 },
     dependencies: ["rel_a_ghostnet", "rel_a_meshcloak", "rel_a_darkroute"],
-    effects: { stealth: 8, detectionReduction: 8 },
+    effects: { stealth: 16 },
   },
 
   // ═══ BACKUP (Defense) ═══
@@ -471,7 +469,7 @@ export const ALL_MODULES: ModuleDefinition[] = [
     baseCost: { credits: 248, data: 98 },
     costPerLevel: { credits: 195, data: 85 },
     dependencies: ["bak_b_firewall", "bak_b_integrity", "bak_b_autorestore"],
-    effects: { defense: 4, energyEfficiency: 1 },
+    effects: { defense: 4, efficiency: 1 },
   },
   {
     id: "bak_a_countermeasure",
@@ -508,7 +506,7 @@ export const ALL_MODULES: ModuleDefinition[] = [
     baseCost: { credits: 640, data: 336 },
     costPerLevel: { credits: 555, data: 285 },
     dependencies: ["bak_a_hardshell", "bak_a_redundancy", "bak_a_countermeasure"],
-    effects: { defense: 9, energyEfficiency: 2 },
+    effects: { defense: 9, efficiency: 2 },
   },
   {
     id: "bak_e_aegis",

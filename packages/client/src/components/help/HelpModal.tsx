@@ -252,8 +252,15 @@ function SectionContent({ section }: { section: Section }) {
           <div className="space-y-1">
             <div className="text-text-primary font-semibold text-[11px]">Combat</div>
             <p className="text-text-muted">
-              Each attack costs {PVP_ENERGY_COST} energy. Your infiltration loadout is used offensively while the
+              Each attack costs {PVP_ENERGY_COST} energy. Your attack loadout determines offensive power while the
               defender's defense loadout responds automatically. Winners gain rewards; losers can take system damage.
+            </p>
+          </div>
+          <div className="space-y-1">
+            <div className="text-text-primary font-semibold text-[11px]">Diversity Bonus</div>
+            <p className="text-text-muted">
+              Equipping modules from different categories grants a flat power bonus. Two categories gives +15 power,
+              three gives +30. Mono-category loadouts get no bonus.
             </p>
           </div>
         </div>
@@ -269,7 +276,7 @@ function SectionContent({ section }: { section: Section }) {
             <div className="text-text-primary font-semibold text-[11px]">Defense Loadout</div>
             <p className="text-text-muted">
               Equip up to 3 modules in defense slots. These are separate from your infiltration setup and activate
-              when another player attacks you. Defense, stealth, and detection-reduction effects are typically best.
+              when another player attacks you. Defense, stealth, and efficiency effects are typically best.
             </p>
           </div>
           <div className="space-y-1">

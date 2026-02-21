@@ -24,7 +24,6 @@ interface DataVaultState {
 const BUFF_LABELS: Record<DataVaultBuffKey, string> = {
   hackPower: "Hack Power",
   stealth: "Stealth",
-  detectionReduction: "Detection Reduction",
   dataBonus: "Data Gain",
 };
 
@@ -75,10 +74,9 @@ function getShortfall(player: Player | null, protocol: DataVaultProtocolDefiniti
 function getProtocolHint(protocol: DataVaultProtocolDefinition): string {
   const hack = protocol.buffs.hackPower ?? 0;
   const stealth = protocol.buffs.stealth ?? 0;
-  const detectionReduction = protocol.buffs.detectionReduction ?? 0;
   const dataBonus = protocol.buffs.dataBonus ?? 0;
 
-  if (hack > 0 && (stealth > 0 || detectionReduction > 0)) {
+  if (hack > 0 && stealth > 0) {
     return "Use for mixed offense + safety.";
   }
   if (hack > 0) {
@@ -87,7 +85,7 @@ function getProtocolHint(protocol: DataVaultProtocolDefinition): string {
   if (dataBonus > 0) {
     return "Use to grow data income.";
   }
-  if (stealth > 0 || detectionReduction > 0) {
+  if (stealth > 0) {
     return "Use to lower detection risk.";
   }
   return "Situational utility protocol.";
@@ -100,9 +98,7 @@ function getRecommendationReason(
 ): string {
   const hack = protocol.buffs.hackPower ?? 0;
   const stealth = protocol.buffs.stealth ?? 0;
-  const detectionReduction = protocol.buffs.detectionReduction ?? 0;
   const dataBonus = protocol.buffs.dataBonus ?? 0;
-  const safety = stealth + detectionReduction;
 
   if (!shortfall.affordable) {
     const parts: string[] = [];
@@ -111,10 +107,10 @@ function getRecommendationReason(
     return `Closest unlock once you gain ${parts.join(" and ")}.`;
   }
 
-  if (player && player.heatLevel >= 2 && safety > 0) {
+  if (player && player.heatLevel >= 2 && stealth > 0) {
     return "Best fit at high heat; strongest detection safety.";
   }
-  if (player && player.inPvpArena && safety > 0) {
+  if (player && player.inPvpArena && stealth > 0) {
     return "Best fit during PvP windows for stealth safety.";
   }
   if (player && player.data < 45 && dataBonus > 0) {
@@ -123,7 +119,7 @@ function getRecommendationReason(
   if (player && player.heatLevel <= 1 && hack > 0) {
     return "Best fit for current PvE pacing and success rate.";
   }
-  if (hack > 0 && safety > 0) {
+  if (hack > 0 && stealth > 0) {
     return "Balanced value across offense and stealth.";
   }
   if (hack > 0) {
@@ -132,7 +128,7 @@ function getRecommendationReason(
   if (dataBonus > 0) {
     return "Strongest data-yield acceleration right now.";
   }
-  if (safety > 0) {
+  if (stealth > 0) {
     return "Safest choice for lowering detection pressure.";
   }
   return protocol.recommendationReason ?? "Strong all-around value right now.";
@@ -145,20 +141,18 @@ function scoreProtocol(
 ): number {
   const hack = protocol.buffs.hackPower ?? 0;
   const stealth = protocol.buffs.stealth ?? 0;
-  const detectionReduction = protocol.buffs.detectionReduction ?? 0;
   const dataBonus = protocol.buffs.dataBonus ?? 0;
-  const safety = stealth + detectionReduction;
 
   const hackWeight = player.heatLevel >= 2 ? 0.9 : 1.9;
   const safetyWeight = player.heatLevel >= 2 ? 2.2 : player.heatLevel === 1 ? 1.5 : 0.8;
   const dataWeight = player.data < 45 ? 2.2 : 1.2;
 
-  let score = hack * hackWeight + safety * safetyWeight + dataBonus * dataWeight;
+  let score = hack * hackWeight + stealth * safetyWeight + dataBonus * dataWeight;
 
-  if (hack > 0 && safety > 0) {
+  if (hack > 0 && stealth > 0) {
     score += 2;
   }
-  if (player.inPvpArena && safety > 0) {
+  if (player.inPvpArena && stealth > 0) {
     score += 3;
   }
 

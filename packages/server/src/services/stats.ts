@@ -28,13 +28,13 @@ export interface ResolvedStats {
   hackPower: number;
   stealth: number;
   defense: number;
-  energyEfficiency: number;
-  scanRange: number;
+  efficiency: number;
   creditBonus: number;
   dataBonus: number;
-  detectionReduction: number;
   /** 0-1 multiplier from average system health */
   healthMultiplier: number;
+  /** Distinct module categories in this loadout (for diversity bonus) */
+  categoryCount: number;
   /** Today's daily modifier effects */
   modifierEffects: ModifierEffect;
 }
@@ -70,11 +70,9 @@ export async function resolveLoadoutStats(
     hackPower: 0,
     stealth: 0,
     defense: 0,
-    energyEfficiency: 0,
-    scanRange: 0,
+    efficiency: 0,
     creditBonus: 0,
     dataBonus: 0,
-    detectionReduction: 0,
   };
 
   for (const row of modRes.rows) {
@@ -94,6 +92,14 @@ export async function resolveLoadoutStats(
       }
     }
   }
+
+  // Count distinct module categories (for diversity bonus)
+  const categories = new Set<string>();
+  for (const row of modRes.rows) {
+    const catDef = MODULE_MAP[row.module_id as string];
+    if (catDef) categories.add(catDef.category);
+  }
+  const categoryCount = categories.size;
 
   // 2. Apply trait multipliers
   const traitRes = await dbq(
@@ -126,7 +132,7 @@ export async function resolveLoadoutStats(
         const computed = computeSystemHealth(r, modifierEffects);
         return sum + (computed.health as number);
       }, 0) / sysRes.rows.length;
-    healthMultiplier = Math.max(0.1, avg / 100);
+    healthMultiplier = Math.min(1.0, Math.max(0.1, avg / 100 + raw.efficiency * 0.003));
   }
 
   // Phase 4: Apply alignment perks at extreme values
@@ -168,6 +174,44 @@ export async function resolveLoadoutStats(
   return {
     ...aligned,
     healthMultiplier,
+    categoryCount,
     modifierEffects,
   };
+}
+
+/**
+ * Count distinct module categories in a loadout (for diversity bonus).
+ */
+export async function countLoadoutCategories(
+  playerId: string,
+  loadoutType: LoadoutType,
+  client?: TxClient
+): Promise<number> {
+  const dbq = makeQuery(client);
+  const res = await dbq(
+    `SELECT DISTINCT m.module_id FROM player_loadouts m
+     WHERE m.player_id = $1 AND m.loadout_type = $2 AND m.module_id IS NOT NULL`,
+    [playerId, loadoutType]
+  );
+  const categories = new Set<string>();
+  for (const row of res.rows) {
+    const def = MODULE_MAP[row.module_id as string];
+    if (def) categories.add(def.category);
+  }
+  return categories.size;
+}
+
+/**
+ * Count distinct categories from a list of module IDs (for simulations).
+ */
+export function getLoadoutCategoryCount(
+  moduleIds: (string | null)[]
+): number {
+  const categories = new Set<string>();
+  for (const id of moduleIds) {
+    if (id && MODULE_MAP[id]) {
+      categories.add(MODULE_MAP[id].category);
+    }
+  }
+  return categories.size;
 }

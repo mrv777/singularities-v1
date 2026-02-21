@@ -27,7 +27,7 @@ export function LoadoutPreview() {
             Power: {totalPower}
           </span>
           <button
-            onClick={() => openModal("loadout_editor")}
+            onClick={() => openModal("security_center")}
             className="text-[10px] text-text-muted hover:text-cyber-cyan transition-colors"
           >
             Edit

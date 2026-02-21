@@ -7,7 +7,7 @@ export const LEVEL_UNLOCKS: Record<string, number> = {
 };
 
 // Systems that are blocked while in sandbox mode
-const SANDBOX_BLOCKED: string[] = ["pvp_arena", "security_center"];
+const SANDBOX_BLOCKED: string[] = ["pvp_arena"];
 
 export const ENERGY_BASE_MAX = 130;
 export const ENERGY_BASE_REGEN_PER_HOUR = 19; // ~0.317/min → L1 fills in ~6.84h

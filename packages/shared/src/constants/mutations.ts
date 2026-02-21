@@ -16,13 +16,13 @@ export const MUTATION_VARIANTS: MutationVariant[] = [
     id: "ghost",
     name: "Ghost",
     description: "Module operates in stealth mode, reducing detection.",
-    effects: { stealth: 5, detectionReduction: 3 },
+    effects: { stealth: 8 },
   },
   {
     id: "overcharge",
     name: "Overcharge",
     description: "Module outputs double but drains more energy.",
-    effects: { hackPower: 6, energyEfficiency: -2 },
+    effects: { hackPower: 6, efficiency: -2 },
   },
   {
     id: "adaptive",

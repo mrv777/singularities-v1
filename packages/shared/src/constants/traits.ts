@@ -28,7 +28,7 @@ export const ALL_TRAITS: GeneticTrait[] = [
     name: "Hardened Core",
     description: "Reinforced architecture resists damage at the cost of agility.",
     positive: { stat: "defense", modifier: 0.20 },
-    negative: { stat: "energyEfficiency", modifier: -0.15 },
+    negative: { stat: "efficiency", modifier: -0.15 },
   },
   {
     id: "data_siphon",
@@ -48,7 +48,7 @@ export const ALL_TRAITS: GeneticTrait[] = [
     id: "rapid_adaptor",
     name: "Rapid Adaptor",
     description: "Energy systems reconfigure on the fly for efficiency.",
-    positive: { stat: "energyEfficiency", modifier: 0.20 },
+    positive: { stat: "efficiency", modifier: 0.20 },
     negative: { stat: "hackPower", modifier: -0.10 },
   },
   {
@@ -62,7 +62,7 @@ export const ALL_TRAITS: GeneticTrait[] = [
     id: "echo_resonance",
     name: "Echo Resonance",
     description: "Harmonic data patterns boost detection evasion.",
-    positive: { stat: "detectionReduction", modifier: 0.15 },
+    positive: { stat: "stealth", modifier: 0.15 },
     negative: { stat: "creditBonus", modifier: -0.10 },
   },
 ];
