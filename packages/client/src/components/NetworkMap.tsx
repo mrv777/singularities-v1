@@ -49,9 +49,10 @@ interface NetworkMapProps {
   playerLevel: number;
   unlockedSystems?: string[];
   isInSandbox?: boolean;
+  highlightNodeId?: string;
 }
 
-export function NetworkMap({ playerLevel, unlockedSystems, isInSandbox }: NetworkMapProps) {
+export function NetworkMap({ playerLevel, unlockedSystems, isInSandbox, highlightNodeId }: NetworkMapProps) {
   const rawOpenModal = useUIStore((s) => s.openModal);
   const openModal = useCallback((id: string) => {
     playSound("click");
@@ -209,6 +210,19 @@ export function NetworkMap({ playerLevel, unlockedSystems, isInSandbox }: Networ
             </g>
           </g>
 
+          {/* Tutorial spotlight */}
+          {highlightNodeId && (() => {
+            const target = NODES.find((n) => n.id === highlightNodeId);
+            if (!target) return null;
+            return (
+              <g>
+                <circle cx={target.x} cy={target.y} r={44} fill="none" stroke="var(--color-cyber-cyan)" strokeWidth={2} style={{ animation: "pulse-spotlight 1.5s ease-in-out infinite" }} />
+                <circle cx={target.x} cy={target.y} r={52} fill="none" stroke="var(--color-cyber-cyan)" strokeWidth={1} style={{ animation: "pulse-spotlight 1.5s ease-in-out 0.3s infinite" }} />
+                <circle cx={target.x} cy={target.y} r={60} fill="none" stroke="var(--color-cyber-cyan)" strokeWidth={0.5} style={{ animation: "pulse-spotlight 1.5s ease-in-out 0.6s infinite" }} />
+              </g>
+            );
+          })()}
+
           {NODES.map((node) => (
             <NetworkNode
               key={node.id}
@@ -266,9 +280,11 @@ export function NetworkMap({ playerLevel, unlockedSystems, isInSandbox }: Networ
               onClick={() => unlocked && openModal(node.id)}
               disabled={!unlocked}
               className={`w-full flex items-center gap-3 p-3 min-h-[48px] rounded border text-left text-sm transition-colors ${
-                unlocked
-                  ? "border-cyber-cyan/30 bg-bg-elevated hover:border-cyber-cyan text-text-primary"
-                  : "border-border-default bg-bg-surface text-text-muted cursor-not-allowed opacity-50"
+                highlightNodeId === node.id
+                  ? "border-cyber-cyan bg-cyber-cyan/10 text-text-primary ring-1 ring-cyber-cyan/40 animate-pulse"
+                  : unlocked
+                    ? "border-cyber-cyan/30 bg-bg-elevated hover:border-cyber-cyan text-text-primary"
+                    : "border-border-default bg-bg-surface text-text-muted cursor-not-allowed opacity-50"
               }`}
             >
               <span className={`text-lg ${unlocked ? "text-cyber-cyan" : ""}`}>

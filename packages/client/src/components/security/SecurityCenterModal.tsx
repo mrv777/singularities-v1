@@ -15,6 +15,7 @@ import type {
   PlayerLoadout,
 } from "@singularities/shared";
 import { ModuleSlotPicker } from "@/components/loadout/ModuleSlotPicker";
+import { useTutorialStore } from "@/stores/tutorial";
 import { useState, useEffect, useCallback } from "react";
 import {
   Shield,
@@ -62,6 +63,9 @@ export function SecurityCenterModal() {
   const [overview, setOverview] = useState<SecurityOverviewResponse | null>(
     null,
   );
+
+  const tutorialStep = useTutorialStore((s) => s.step);
+  const advanceTutorial = useTutorialStore((s) => s.advanceStep);
 
   const open = activeModal === "security_center";
   const pvpLevel = LEVEL_UNLOCKS.pvp_arena;
@@ -140,6 +144,10 @@ export function SecurityCenterModal() {
       );
       if (loadoutType === "infiltration") {
         setLoadout(result.loadout);
+      }
+      // Advance tutorial if player saved a non-empty loadout
+      if (tutorialStep === "equip" && slots[loadoutType].some(Boolean)) {
+        advanceTutorial();
       }
     } catch (err: any) {
       console.error("Save failed:", err.message);

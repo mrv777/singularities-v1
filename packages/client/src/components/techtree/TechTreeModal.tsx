@@ -19,6 +19,7 @@ import { useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { playSound } from "@/lib/sound";
 import { useGameFeedback } from "@/hooks/useGameFeedback";
+import { useTutorialStore } from "@/stores/tutorial";
 import { MODULE_PURCHASE_XP } from "@singularities/shared";
 
 const CATEGORIES: ModuleCategory[] = ["primary", "secondary", "relay", "backup"];
@@ -29,6 +30,8 @@ export function TechTreeModal() {
   const { player, setPlayer } = useAuthStore();
   const queryClient = useQueryClient();
   const { emitFloatNumber, emitParticleBurst } = useGameFeedback();
+  const tutorialStep = useTutorialStore((s) => s.step);
+  const advanceTutorial = useTutorialStore((s) => s.advanceStep);
 
   const [activeTab, setActiveTab] = useState<ModuleCategory>("primary");
   const [ownedModules, setOwnedModules] = useState<PlayerModule[]>([]);
@@ -96,6 +99,7 @@ export function TechTreeModal() {
       const modules = await api.getModules();
       setOwnedModules(modules.owned);
       queryClient.invalidateQueries({ queryKey: ["player"] });
+      if (tutorialStep === "upgrade") advanceTutorial();
     } catch (err: any) {
       console.error("Purchase failed:", err.message);
     } finally {

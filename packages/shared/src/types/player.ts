@@ -21,6 +21,7 @@ export interface Player {
   createdAt: string;
   seasonId: number | null;
   adaptationPeriodUntil: string | null;
+  tutorialStep: string;
 }
 
 export type SystemType =

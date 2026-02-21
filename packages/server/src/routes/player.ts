@@ -9,7 +9,7 @@ import {
   mapLoadoutRow,
   mapTraitRow,
 } from "../services/player.js";
-import { STARTING_RESOURCES, getUnlockedSystems, SANDBOX_EXIT_LEVEL } from "@singularities/shared";
+import { STARTING_RESOURCES, getUnlockedSystems, SANDBOX_EXIT_LEVEL, isValidTutorialProgression, TUTORIAL_STEPS } from "@singularities/shared";
 import { withTransaction } from "../db/pool.js";
 import { getCarryoverForWallet, processRebirth } from "../services/death.js";
 import { computeSystemHealth } from "../services/maintenance.js";
@@ -157,7 +157,8 @@ export async function playerRoutes(app: FastifyInstance) {
              is_in_sandbox = true,
              in_pvp_arena = false,
              energy = 100,
-             energy_updated_at = NOW()
+             energy_updated_at = NOW(),
+             tutorial_step = 'boot'
          WHERE id = $1`,
         [
           playerId,
@@ -261,6 +262,45 @@ export async function playerRoutes(app: FastifyInstance) {
       ]);
 
       return { player: mapPlayerRow(computeEnergy(updated.rows[0])) };
+    }
+  );
+
+  // Update tutorial step (forward-only)
+  app.patch(
+    "/api/player/tutorial",
+    { preHandler: [authGuard] },
+    async (request, reply) => {
+      const { sub: playerId } = request.user as AuthPayload;
+      const { step } = request.body as { step: string };
+
+      if (!step || !TUTORIAL_STEPS.includes(step as any)) {
+        return reply.code(400).send({
+          error: "Validation",
+          message: "Invalid tutorial step",
+          statusCode: 400,
+        });
+      }
+
+      const result = await query("SELECT tutorial_step FROM players WHERE id = $1", [playerId]);
+      if (result.rows.length === 0) {
+        return reply.code(404).send({
+          error: "Not Found",
+          message: "Player not found",
+          statusCode: 404,
+        });
+      }
+
+      const current = result.rows[0].tutorial_step as string;
+      if (!isValidTutorialProgression(current, step)) {
+        return reply.code(400).send({
+          error: "Bad Request",
+          message: `Cannot go from '${current}' to '${step}'`,
+          statusCode: 400,
+        });
+      }
+
+      await query("UPDATE players SET tutorial_step = $2 WHERE id = $1", [playerId, step]);
+      return { success: true, step };
     }
   );
 }

@@ -256,6 +256,11 @@ body {
   50%      { r: 32px; }
 }
 
+@keyframes pulse-spotlight {
+  0%, 100% { opacity: 0.15; }
+  50%      { opacity: 0.5; }
+}
+
 @keyframes flicker-locked {
   0%, 100% { opacity: 0.5; transform: translateX(0); }
   10%      { opacity: 0.3; transform: translateX(-1px); }

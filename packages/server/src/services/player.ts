@@ -46,6 +46,7 @@ export function mapPlayerRow(row: Record<string, unknown>) {
     createdAt: row.created_at as string,
     seasonId: (row.season_id as number) ?? null,
     adaptationPeriodUntil: (row.adaptation_period_until as string) ?? null,
+    tutorialStep: (row.tutorial_step as string) ?? "done",
   };
 }
 

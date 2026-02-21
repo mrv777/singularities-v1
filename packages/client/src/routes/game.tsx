@@ -20,12 +20,18 @@ import { DaemonForgeModal } from "@/components/daemonForge/DaemonForgeModal";
 import { WorldEventBanner } from "@/components/world/WorldEventBanner";
 import { DeathScreen } from "@/components/death/DeathScreen";
 import { ChatPanel } from "@/components/chat/ChatPanel";
+import { BootSequence } from "@/components/tutorial/BootSequence";
+import { TutorialHint } from "@/components/tutorial/TutorialHint";
+import { SystemUnlockOverlay } from "@/components/tutorial/SystemUnlockOverlay";
+import { NextActionHint } from "@/components/tutorial/NextActionHint";
+import { TUTORIAL_HIGHLIGHT_NODE, type TutorialStep } from "@singularities/shared";
 import { useState, useEffect } from "react";
 import { api } from "@/lib/api";
 import { wsManager } from "@/lib/ws";
 import { useChatStore } from "@/stores/chat";
 import { useQueryClient } from "@tanstack/react-query";
 import { useGameStore } from "@/stores/game";
+import { useTutorialStore } from "@/stores/tutorial";
 
 export const Route = createFileRoute("/game")({
   component: GamePage,
@@ -33,6 +39,7 @@ export const Route = createFileRoute("/game")({
 
 function RegistrationForm() {
   const { setPlayer } = useAuthStore();
+  const initTutorial = useTutorialStore((s) => s.initFromPlayer);
   const queryClient = useQueryClient();
   const [aiName, setAiName] = useState("");
   const [error, setError] = useState("");
@@ -45,6 +52,7 @@ function RegistrationForm() {
     try {
       const result = await api.register({ aiName: aiName.trim() });
       setPlayer(result.player);
+      initTutorial(result.player.tutorialStep);
       queryClient.invalidateQueries({ queryKey: ["player"] });
     } catch (err: any) {
       setError(err.message || "Registration failed");
@@ -111,6 +119,8 @@ function GamePage() {
   const addChatMessage = useChatStore((s) => s.addMessage);
   const setChatHistory = useChatStore((s) => s.setHistory);
   const setChatConnected = useChatStore((s) => s.setConnected);
+  const tutorialStep = useTutorialStore((s) => s.step);
+  const advanceTutorial = useTutorialStore((s) => s.advanceStep);
 
   // Load world events on mount
   useEffect(() => {
@@ -172,6 +182,13 @@ function GamePage() {
     return <RegistrationForm />;
   }
 
+  // Boot sequence overlay
+  if (tutorialStep === "boot") {
+    return <BootSequence onComplete={advanceTutorial} />;
+  }
+
+  const highlightNodeId = TUTORIAL_HIGHLIGHT_NODE[tutorialStep as TutorialStep] ?? undefined;
+
   return (
     <>
       <motion.div
@@ -182,15 +199,19 @@ function GamePage() {
       >
         <WorldEventBanner />
 
+        <TutorialHint />
+
         <div className="text-center mb-2">
           <p className="text-text-secondary text-xs">
             {player?.aiName ?? "AI"} — Systems online. Select a node to begin.
           </p>
+          <NextActionHint />
         </div>
 
         <NetworkMap
           playerLevel={player?.level ?? 1}
           isInSandbox={player?.isInSandbox}
+          highlightNodeId={highlightNodeId}
         />
 
         {/* Modals */}
@@ -211,6 +232,7 @@ function GamePage() {
         <HelpModal />
       </motion.div>
       <ChatPanel />
+      <SystemUnlockOverlay />
     </>
   );
 }

@@ -219,6 +219,14 @@ class ApiClient {
     });
   }
 
+  // Tutorial
+  updateTutorialStep(step: string) {
+    return this.fetch<{ success: boolean; step: string }>("/player/tutorial", {
+      method: "PATCH",
+      body: JSON.stringify({ step }),
+    });
+  }
+
   // Sandbox
   exitSandbox() {
     return this.fetch<ExitSandboxResponse>("/players/exit-sandbox", {

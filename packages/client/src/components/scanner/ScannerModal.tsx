@@ -18,6 +18,7 @@ import { PortSweep } from "./games/PortSweep";
 import { NetworkRelink } from "./games/NetworkRelink";
 import { ResourceCost } from "../ui/ResourceCost";
 import { useModifier } from "@/hooks/useModifier";
+import { useTutorialStore } from "@/stores/tutorial";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useState } from "react";
 import { playSound } from "@/lib/sound";
@@ -56,6 +57,9 @@ export function ScannerModal() {
     setPendingDecision,
   } = useGameStore();
 
+  const tutorialStep = useTutorialStore((s) => s.step);
+  const advanceTutorial = useTutorialStore((s) => s.advanceStep);
+
   const { applyCost } = useModifier();
   const effectiveScanCost = applyCost(SCAN_ENERGY_COST, "energyCostMultiplier");
 
@@ -93,6 +97,7 @@ export function ScannerModal() {
       queryClient.invalidateQueries({ queryKey: ["player"] });
       const me = await api.getMe();
       setPlayer(me.player);
+      if (tutorialStep === "scan") advanceTutorial();
     } catch (err: any) {
       setError(err.message ?? "Scan failed");
     } finally {
@@ -181,6 +186,9 @@ export function ScannerModal() {
       queryClient.invalidateQueries({ queryKey: ["player"] });
       setGameResult(result);
 
+      // Advance tutorial after hack completes
+      if (tutorialStep === "hack") advanceTutorial();
+
       // Check for pending decision
       api.getPendingDecision().then((r) => {
         if (r.decision) setPendingDecision(r.decision);
@@ -202,6 +210,8 @@ export function ScannerModal() {
     setGameResult,
     setPendingDecision,
     clearActiveGame,
+    tutorialStep,
+    advanceTutorial,
   ]);
 
   const handleResultDone = useCallback(() => {

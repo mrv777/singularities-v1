@@ -2,6 +2,7 @@ import { useEffect, useRef, type ReactNode } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { api, ApiError } from "@/lib/api";
 import { useAuthStore } from "@/stores/auth";
+import { useTutorialStore } from "@/stores/tutorial";
 import bs58 from "bs58";
 import { usePlayer } from "@/hooks/usePlayer";
 
@@ -12,6 +13,7 @@ import { usePlayer } from "@/hooks/usePlayer";
 export function AuthGate({ children }: { children: ReactNode }) {
   const { publicKey, signMessage, connected } = useWallet();
   const { isAuthenticated, setPlayer, logout } = useAuthStore();
+  const initTutorial = useTutorialStore((s) => s.initFromPlayer);
   const authenticatingRef = useRef(false);
   const { data: livePlayer, error: livePlayerError } = usePlayer();
 
@@ -45,6 +47,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
       .then(({ token, player }) => {
         api.setToken(token);
         setPlayer(player);
+        initTutorial(player.tutorialStep);
       })
       .catch((err) => {
         console.error("Authentication failed:", err);
@@ -63,7 +66,10 @@ export function AuthGate({ children }: { children: ReactNode }) {
 
     api
       .getMe()
-      .then(({ player }) => setPlayer(player))
+      .then(({ player }) => {
+        setPlayer(player);
+        initTutorial(player.tutorialStep);
+      })
       .catch(() => {
         api.setToken(null);
         logout();
@@ -74,8 +80,9 @@ export function AuthGate({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (livePlayer?.player) {
       setPlayer(livePlayer.player);
+      initTutorial(livePlayer.player.tutorialStep);
     }
-  }, [livePlayer?.player, setPlayer]);
+  }, [livePlayer?.player, setPlayer, initTutorial]);
 
   // Expired/invalid token while polling: clear session.
   useEffect(() => {
