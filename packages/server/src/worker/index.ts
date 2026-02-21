@@ -2,7 +2,6 @@ import { runCascadeTick } from "./jobs/cascadeTick.js";
 import { runHeatDecay } from "./jobs/heatDecay.js";
 import { runScriptExecution } from "./jobs/scriptExecution.js";
 import { runDailyModifierRotation } from "./jobs/dailyModifierRotation.js";
-import { runArenaReset } from "./jobs/arenaReset.js";
 import { runDeathCheck } from "./jobs/deathCheck.js";
 import { runNftTransferCheck } from "./jobs/nftTransferCheck.js";
 import { runWeeklyTopologyRotation } from "./jobs/weeklyTopologyRotation.js";
@@ -40,14 +39,13 @@ export function startWorker(): void {
   scheduleJob("heatDecay", runHeatDecay, 60 * 60 * 1000);           // Every 60 min
   scheduleJob("scriptExecution", runScriptExecution, 15 * 60 * 1000); // Every 15 min
   scheduleJob("dailyModifierRotation", runDailyModifierRotation, 60 * 60 * 1000); // Every hour
-  scheduleJob("arenaReset", runArenaReset, 60 * 60 * 1000);                       // Every hour
   scheduleJob("deathCheck", runDeathCheck, 30 * 60 * 1000);                       // Every 30 min
   scheduleJob("nftTransferCheck", runNftTransferCheck, 60 * 60 * 1000);           // Every hour
   scheduleJob("weeklyTopologyRotation", runWeeklyTopologyRotation, 60 * 60 * 1000); // Every hour
   scheduleJob("worldEventGeneration", runWorldEventGeneration, 60 * 60 * 1000);     // Every hour
   scheduleJob("seasonCheck", runSeasonCheck, 60 * 60 * 1000);                       // Every hour
 
-  console.log("[worker] Background worker started with 10 jobs.");
+  console.log("[worker] Background worker started with 9 jobs.");
 }
 
 export function stopWorker(): void {
