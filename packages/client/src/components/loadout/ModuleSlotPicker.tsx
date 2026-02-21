@@ -8,6 +8,7 @@ interface ModuleSlotPickerProps {
   ownedModules: PlayerModule[];
   onChange: (moduleId: string | null) => void;
   label?: string;
+  disabledModuleIds?: Set<string>;
 }
 
 export function ModuleSlotPicker({
@@ -16,6 +17,7 @@ export function ModuleSlotPicker({
   ownedModules,
   onChange,
   label = "SLOT",
+  disabledModuleIds,
 }: ModuleSlotPickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -108,16 +110,22 @@ export function ModuleSlotPicker({
             const d = MODULE_MAP[m.moduleId];
             if (!d) return null;
             const isSelected = selectedModuleId === m.moduleId;
+            const isDisabled = !isSelected && disabledModuleIds?.has(m.moduleId);
 
             return (
               <button
                 key={m.moduleId}
+                disabled={isDisabled}
                 onClick={() => {
                   onChange(m.moduleId);
                   setIsOpen(false);
                 }}
-                className={`w-full flex items-start gap-2 px-3 py-2 text-xs text-left hover:bg-bg-surface transition-colors border-t border-border-default ${
-                  isSelected ? "bg-bg-surface" : ""
+                className={`w-full flex items-start gap-2 px-3 py-2 text-xs text-left transition-colors border-t border-border-default ${
+                  isDisabled
+                    ? "opacity-35 cursor-not-allowed"
+                    : isSelected
+                      ? "bg-bg-surface"
+                      : "hover:bg-bg-surface"
                 }`}
               >
                 {isSelected ? (

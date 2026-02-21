@@ -3,12 +3,13 @@ import { useAuthStore } from "@/stores/auth";
 import { useUIStore } from "@/stores/ui";
 import { useUITier } from "@/hooks/useUITier";
 import { XP_THRESHOLDS, getXPForNextLevel } from "@singularities/shared";
-import { ModifierBadge } from "./ModifierBadge";
-import { TopologyBadge } from "./TopologyBadge";
+import { useModifier } from "@/hooks/useModifier";
+import { useTopology } from "@/hooks/useTopology";
 import { AlignmentIndicator } from "./alignment/AlignmentIndicator";
 import {
   X,
   Zap,
+  Globe,
   Database,
   Cpu,
   Shield,
@@ -155,10 +156,8 @@ export function MobileSidebar() {
           <div className="flex items-center gap-2">
             <AlignmentIndicator />
           </div>
-          <div className="flex flex-wrap gap-2">
-            <ModifierBadge />
-            <TopologyBadge />
-          </div>
+          <ModifierRow onNavigate={() => setSidebarOpen(false)} />
+          <TopologyRow onNavigate={() => setSidebarOpen(false)} />
           <div className={`${phaseColor} text-xs font-bold flex items-center gap-2`}>
             {phase === "PvE"
               ? <Activity size={14} className="text-cyber-green" />
@@ -208,5 +207,58 @@ function ResourceRow({
         )}
       </div>
     </div>
+  );
+}
+
+function ModifierRow({ onNavigate }: { onNavigate: () => void }) {
+  const { data } = useModifier();
+  const openModal = useUIStore((s) => s.openModal);
+
+  if (!data?.modifier) return null;
+
+  const { modifier } = data;
+  const isMajor = modifier.severity === "major";
+  const color = isMajor ? "text-cyber-amber" : "text-cyber-cyan";
+  const borderColor = isMajor ? "border-cyber-amber/30" : "border-cyber-cyan/30";
+  const bgColor = isMajor ? "bg-cyber-amber/5" : "bg-cyber-cyan/5";
+
+  return (
+    <button
+      onClick={() => { openModal("modifier_detail"); onNavigate(); }}
+      className={`flex items-center gap-3 w-full text-left ${borderColor} ${bgColor} rounded p-1.5 transition-colors`}
+    >
+      <div className={`w-7 h-7 rounded bg-bg-surface flex items-center justify-center border ${borderColor} shrink-0`}>
+        <Zap size={14} className={color} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="text-[10px] text-text-muted uppercase">Daily Modifier</div>
+        <div className={`text-sm font-bold font-mono ${color} truncate`}>{modifier.name}</div>
+      </div>
+    </button>
+  );
+}
+
+function TopologyRow({ onNavigate }: { onNavigate: () => void }) {
+  const { data } = useTopology();
+  const openModal = useUIStore((s) => s.openModal);
+
+  if (!data?.topology) return null;
+
+  const { topology } = data;
+  const summary = topology.boostEffect?.label ?? topology.boostedNode ?? "Active";
+
+  return (
+    <button
+      onClick={() => { openModal("topology_detail"); onNavigate(); }}
+      className="flex items-center gap-3 w-full text-left border-teal-400/30 bg-teal-400/5 rounded p-1.5 transition-colors"
+    >
+      <div className="w-7 h-7 rounded bg-bg-surface flex items-center justify-center border border-teal-400/30 shrink-0">
+        <Globe size={14} className="text-teal-400" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="text-[10px] text-text-muted uppercase">Grid Shift</div>
+        <div className="text-sm font-bold font-mono text-teal-400 truncate">{summary}</div>
+      </div>
+    </button>
   );
 }

@@ -87,7 +87,7 @@ export function ChatPanel() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 20 }}
             transition={{ duration: 0.2 }}
-            className="fixed bottom-20 right-4 z-50 w-[480px] max-h-[400px] sm:w-[480px] sm:max-h-[400px] max-sm:inset-0 max-sm:w-full max-sm:max-h-full max-sm:bottom-0 max-sm:right-0 border border-border-default bg-bg-surface rounded-lg overflow-hidden flex flex-col"
+            className="fixed bottom-20 right-4 z-50 w-[480px] max-h-[400px] sm:w-[480px] sm:max-h-[400px] max-sm:top-16 max-sm:bottom-0 max-sm:left-0 max-sm:right-0 max-sm:w-full max-sm:max-h-full border border-border-default bg-bg-surface rounded-lg overflow-hidden flex flex-col"
           >
             {/* Header */}
             <div className="flex items-center justify-between px-3 py-2 border-b border-border-default bg-bg-secondary">

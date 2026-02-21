@@ -56,16 +56,22 @@ export function LoadoutEditor() {
           Assign modules to your infiltration loadout. 3 slots available.
         </p>
 
-        {[0, 1, 2].map((i) => (
-          <ModuleSlotPicker
-            key={i}
-            slotIndex={i}
-            selectedModuleId={editSlots[i]}
-            ownedModules={ownedModules}
-            onChange={(moduleId) => handleSlotChange(i, moduleId)}
-            label="SLOT"
-          />
-        ))}
+        {[0, 1, 2].map((i) => {
+          const disabledModuleIds = new Set(
+            editSlots.filter((id, j) => j !== i && id != null) as string[]
+          );
+          return (
+            <ModuleSlotPicker
+              key={i}
+              slotIndex={i}
+              selectedModuleId={editSlots[i]}
+              ownedModules={ownedModules}
+              onChange={(moduleId) => handleSlotChange(i, moduleId)}
+              label="SLOT"
+              disabledModuleIds={disabledModuleIds}
+            />
+          );
+        })}
 
         <button
           onClick={handleSave}
