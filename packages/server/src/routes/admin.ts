@@ -6,7 +6,11 @@ import {
   getAdminOverview,
   getArenaBotPreview,
   getArenaBotsEnabled,
+  getEconomyOverview,
+  getPlayerDetail,
+  grantResources,
   recordAdminAction,
+  searchPlayers,
   setArenaBotsEnabled,
 } from "../services/admin.js";
 import { endSeason, createSeason, getCurrentSeason } from "../services/seasons.js";
@@ -155,6 +159,98 @@ export async function adminRoutes(app: FastifyInstance) {
           statusCode: 500,
         });
       }
+    }
+  );
+
+  // --- Player Lookup ---
+
+  app.get(
+    "/api/admin/players/search",
+    { preHandler: [authGuard, adminGuard] },
+    async (request, reply) => {
+      const q = (request.query as { q?: string }).q?.trim();
+      if (!q) {
+        return reply.code(400).send({
+          error: "Validation",
+          message: "q query param is required",
+          statusCode: 400,
+        });
+      }
+      return searchPlayers(q);
+    }
+  );
+
+  app.get(
+    "/api/admin/players/:id",
+    { preHandler: [authGuard, adminGuard] },
+    async (request, reply) => {
+      const { id } = request.params as { id: string };
+      const detail = await getPlayerDetail(id);
+      if (!detail) {
+        return reply.code(404).send({
+          error: "Not Found",
+          message: "Player not found",
+          statusCode: 404,
+        });
+      }
+      return detail;
+    }
+  );
+
+  app.post(
+    "/api/admin/players/:id/grant",
+    { preHandler: [authGuard, adminGuard] },
+    async (request, reply) => {
+      const user = request.user as AuthPayload;
+      const { id } = request.params as { id: string };
+      const body = (request.body ?? {}) as {
+        credits?: number;
+        data?: number;
+        processingPower?: number;
+        xp?: number;
+        reason?: string;
+      };
+
+      if (!body.reason?.trim()) {
+        return reply.code(400).send({
+          error: "Validation",
+          message: "reason is required",
+          statusCode: 400,
+        });
+      }
+
+      try {
+        return await grantResources(
+          id,
+          {
+            credits: body.credits,
+            data: body.data,
+            processingPower: body.processingPower,
+            xp: body.xp,
+          },
+          user.sub,
+          body.reason.trim(),
+          extractMeta(request)
+        );
+      } catch (err: any) {
+        const msg = err.message ?? "Failed to grant resources";
+        const code = msg === "Player not found" ? 404 : 400;
+        return reply.code(code).send({
+          error: code === 404 ? "Not Found" : "Grant Error",
+          message: msg,
+          statusCode: code,
+        });
+      }
+    }
+  );
+
+  // --- Economy Dashboard ---
+
+  app.get(
+    "/api/admin/economy",
+    { preHandler: [authGuard, adminGuard] },
+    async () => {
+      return getEconomyOverview();
     }
   );
 }

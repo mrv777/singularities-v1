@@ -30,6 +30,7 @@ export interface CombatLog {
     playstyle: string;
     rewardMultiplier: number;
   } | null;
+  opponentName: string | null;
   createdAt: string;
 }
 

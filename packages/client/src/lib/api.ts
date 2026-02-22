@@ -59,6 +59,11 @@ import type {
   AdminArenaBotSettingsResponse,
   AdminArenaBotPreviewResponse,
   AdminSeasonEndRequest,
+  AdminPlayerSearchResponse,
+  AdminPlayerDetailResponse,
+  AdminGrantResourcesRequest,
+  AdminGrantResourcesResponse,
+  AdminEconomyResponse,
   SystemHealthSummaryResponse,
   IceBreakerStatusResponse,
   IceBreakerInitiateResponse,
@@ -407,6 +412,25 @@ class ApiClient {
       method: "POST",
       body: JSON.stringify(data),
     });
+  }
+
+  searchAdminPlayers(q: string) {
+    return this.fetch<AdminPlayerSearchResponse>(`/admin/players/search?q=${encodeURIComponent(q)}`);
+  }
+
+  getAdminPlayerDetail(id: string) {
+    return this.fetch<AdminPlayerDetailResponse>(`/admin/players/${encodeURIComponent(id)}`);
+  }
+
+  adminGrantResources(id: string, data: Omit<AdminGrantResourcesRequest, "playerId">) {
+    return this.fetch<AdminGrantResourcesResponse>(`/admin/players/${encodeURIComponent(id)}/grant`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  getAdminEconomy() {
+    return this.fetch<AdminEconomyResponse>("/admin/economy");
   }
 
   // System Health Summary

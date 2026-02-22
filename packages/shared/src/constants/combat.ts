@@ -50,6 +50,10 @@ export const PVP_LOSER_SYSTEMS_MAX = 2;
 // Default defense power when no loadout configured
 export const PVP_DEFAULT_DEFENSE_POWER = 8;
 
+// PvP Recovery Shield: triggered after receiving multiple attacks
+export const PVP_SHIELD_TRIGGER_ATTACKS = 2;
+export const PVP_SHIELD_DURATION_SECONDS = 14400; // 4 hours
+
 // Combat narrative templates
 export const COMBAT_ATTACK_PHRASES = [
   "launches a neural spike at",

@@ -21,6 +21,9 @@ export interface Player {
   createdAt: string;
   seasonId: number | null;
   adaptationPeriodUntil: string | null;
+  pvpShieldUntil: string | null;
+  loginStreak: number;
+  lastStreakDate: string | null;
   tutorialStep: string;
 }
 

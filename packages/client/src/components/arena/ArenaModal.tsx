@@ -8,7 +8,7 @@ import { OpponentCard } from "./OpponentCard";
 import { CombatResultDisplay } from "./CombatResultDisplay";
 import { ResourceCost } from "../ui/ResourceCost";
 import { useState, useEffect } from "react";
-import { Shield, Clock, ScrollText } from "lucide-react";
+import { Shield, Clock, ScrollText, ShieldCheck } from "lucide-react";
 import { playSound } from "@/lib/sound";
 import {
   getLocalTimeZoneName,
@@ -137,6 +137,19 @@ export function ArenaModal() {
             }
           </span>
         </div>
+
+        {/* Recovery Shield Banner */}
+        {player?.pvpShieldUntil && new Date(player.pvpShieldUntil) > now && (() => {
+          const remaining = new Date(player.pvpShieldUntil).getTime() - now.getTime();
+          const hours = Math.floor(remaining / 3600000);
+          const minutes = Math.floor((remaining % 3600000) / 60000);
+          return (
+            <div className="flex items-center gap-2 text-xs px-3 py-2 rounded border border-cyber-cyan/30 bg-cyber-cyan/5 text-cyber-cyan">
+              <ShieldCheck size={12} />
+              <span>RECOVERY SHIELD ACTIVE — {hours}h {minutes}m remaining. You cannot be targeted in PvP.</span>
+            </div>
+          );
+        })()}
 
         {/* Tabs */}
         <div className="flex gap-1 border-b border-border-default">

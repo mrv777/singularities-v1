@@ -38,7 +38,7 @@ export async function getSeasonLeaderboard(limit = 20): Promise<SeasonLeaderboar
   if (!season) return [];
 
   const res = await query(
-    `SELECT id, ai_name, level, reputation
+    `SELECT id, ai_name, level, reputation, alignment
      FROM players
      WHERE season_id = $1 AND is_alive = true
      ORDER BY reputation DESC
@@ -52,6 +52,7 @@ export async function getSeasonLeaderboard(limit = 20): Promise<SeasonLeaderboar
     aiName: r.ai_name as string,
     level: r.level as number,
     reputation: r.reputation as number,
+    alignment: r.alignment as number,
   }));
 }
 

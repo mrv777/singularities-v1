@@ -2,6 +2,7 @@
 // Used by both routes and services to avoid duplication
 
 import { ENERGY_BASE_REGEN_PER_HOUR, ENERGY_REGEN_PER_LEVEL } from "@singularities/shared";
+import { redis } from "../db/redis.js";
 
 /**
  * Compute current energy on read using calculate-on-read pattern.
@@ -46,6 +47,9 @@ export function mapPlayerRow(row: Record<string, unknown>) {
     createdAt: row.created_at as string,
     seasonId: (row.season_id as number) ?? null,
     adaptationPeriodUntil: (row.adaptation_period_until as string) ?? null,
+    pvpShieldUntil: null as string | null,
+    loginStreak: (row.login_streak as number) ?? 0,
+    lastStreakDate: (row.last_streak_date as string) ?? null,
     tutorialStep: (row.tutorial_step as string) ?? "done",
   };
 }
@@ -112,6 +116,16 @@ export function mapCombatLogRow(row: Record<string, unknown>) {
       playstyle: string;
       rewardMultiplier: number;
     }) ?? null,
+    opponentName: (row.opponent_name as string) ?? null,
     createdAt: row.created_at as string,
   };
+}
+
+/**
+ * Check Redis for an active PvP recovery shield and return the expiry ISO string.
+ */
+export async function getPlayerPvpShieldUntil(playerId: string): Promise<string | null> {
+  const ttl = await redis.ttl(`pvp_shield:${playerId}`);
+  if (ttl <= 0) return null;
+  return new Date(Date.now() + ttl * 1000).toISOString();
 }

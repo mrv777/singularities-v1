@@ -1,5 +1,4 @@
 import { query, withTransaction, type TxClient } from "../db/pool.js";
-import { redis } from "../db/redis.js";
 import { computeEnergy, mapPlayerRow, mapSystemRow } from "./player.js";
 import { getActiveModifierEffects } from "./modifiers.js";
 import { hasActiveSentinel } from "./daemonForge.js";
@@ -9,7 +8,6 @@ import {
   ENERGY_COSTS,
   getRepairCreditCostForHealth,
   REPAIR_HEALTH_AMOUNT,
-  REPAIR_COOLDOWN_SECONDS,
   SENTINEL_DEGRADATION_MULTIPLIER,
   type ModifierEffect,
 } from "@singularities/shared";
@@ -72,7 +70,6 @@ export async function fullScan(playerId: string) {
  */
 export async function repairSystem(playerId: string, systemType: string) {
   const effects = await getPlayerModifierEffects(playerId);
-  const cooldownKey = `repair_cd:${playerId}:${systemType}`;
 
   return withTransaction(async (client: TxClient) => {
     // Lock player row first (serializes concurrent repair requests)
@@ -81,12 +78,6 @@ export async function repairSystem(playerId: string, systemType: string) {
       [playerId]
     );
 
-    // Check cooldown after acquiring row lock (now safe from races)
-    const cooldownActive = await redis.get(cooldownKey);
-    if (cooldownActive) {
-      const ttl = await redis.ttl(cooldownKey);
-      throw new RepairError(`Repair on cooldown. ${ttl}s remaining.`, 429);
-    }
     if (playerResult.rows.length === 0) {
       throw new RepairError("Player not found", 404);
     }
@@ -138,9 +129,6 @@ export async function repairSystem(playerId: string, systemType: string) {
       [playerId, newHealth, newStatus, systemType]
     );
 
-    // Set cooldown
-    await redis.set(cooldownKey, "1", "EX", REPAIR_COOLDOWN_SECONDS);
-
     // Return updated system and player
     const updatedPlayer = await client.query(
       "SELECT * FROM players WHERE id = $1",
@@ -160,7 +148,6 @@ export async function repairSystem(playerId: string, systemType: string) {
 
 type RepairAllSkipReason =
   | "full_health"
-  | "cooldown"
   | "insufficient_energy"
   | "insufficient_credits"
   | "budget_exhausted";
@@ -244,13 +231,6 @@ export async function repairAllSystems(playerId: string) {
         continue;
       }
 
-      const cooldownKey = `repair_cd:${playerId}:${systemType}`;
-      const cooldownActive = await redis.get(cooldownKey);
-      if (cooldownActive) {
-        skipReasonBySystem.set(systemType, "cooldown");
-        continue;
-      }
-
       if (remainingEnergy < energyCostPerRepair) {
         skipReasonBySystem.set(systemType, "insufficient_energy");
         budgetExhausted = true;
@@ -287,10 +267,6 @@ export async function repairAllSystems(playerId: string) {
     // worst damaged system that is actually affordable.
     if (planned.length === 0) {
       for (const candidate of repairCandidates) {
-        const cooldownKey = `repair_cd:${playerId}:${candidate.systemType}`;
-        const cooldownActive = await redis.get(cooldownKey);
-        if (cooldownActive) continue;
-
         const creditCost = Math.round(
           getRepairCreditCostForHealth(candidate.currentHealth, playerLevel)
           * (effects.repairCostMultiplier ?? 1)
@@ -323,9 +299,6 @@ export async function repairAllSystems(playerId: string) {
       .filter((item): item is RepairAllSkipped => item !== null);
 
     if (planned.length === 0) {
-      if (skipped.some((s) => s.reason === "cooldown")) {
-        throw new RepairError("All damaged systems are on repair cooldown", 429);
-      }
       if (skipped.some((s) => s.reason === "insufficient_energy")) {
         throw new RepairError(
           `Not enough energy. Need at least ${energyCostPerRepair}.`,
@@ -354,11 +327,6 @@ export async function repairAllSystems(playerId: string) {
          WHERE id = $1`,
         [item.rowId, item.newHealth, item.newStatus]
       );
-    }
-
-    for (const item of planned) {
-      const cooldownKey = `repair_cd:${playerId}:${item.systemType}`;
-      await redis.set(cooldownKey, "1", "EX", REPAIR_COOLDOWN_SECONDS);
     }
 
     const [updatedPlayerResult, updatedSystemsResult] = await Promise.all([

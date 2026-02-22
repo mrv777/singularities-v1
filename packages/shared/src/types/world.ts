@@ -49,6 +49,7 @@ export interface SeasonLeaderboardEntry {
   aiName: string;
   level: number;
   reputation: number;
+  alignment: number;
 }
 
 export interface NetworkStats {

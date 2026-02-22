@@ -18,6 +18,8 @@ import { HelpModal } from "@/components/help/HelpModal";
 import { IceBreakerModal } from "@/components/iceBreaker/IceBreakerModal";
 import { DaemonForgeModal } from "@/components/daemonForge/DaemonForgeModal";
 import { WorldEventBanner } from "@/components/world/WorldEventBanner";
+import { LoginStreakCard } from "@/components/LoginStreakCard";
+import { RecentBattleCard } from "@/components/arena/RecentBattleCard";
 import { DeathScreen } from "@/components/death/DeathScreen";
 import { ChatPanel } from "@/components/chat/ChatPanel";
 import { BootSequence } from "@/components/tutorial/BootSequence";
@@ -198,6 +200,8 @@ function GamePage() {
         className="space-y-6 py-4 px-2"
       >
         <WorldEventBanner />
+        {tutorialStep === "done" && <LoginStreakCard />}
+        {tutorialStep === "done" && <RecentBattleCard />}
 
         <TutorialHint />
 

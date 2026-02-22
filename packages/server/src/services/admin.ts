@@ -1,4 +1,4 @@
-import { query, type TxClient } from "../db/pool.js";
+import { query, withTransaction, type TxClient } from "../db/pool.js";
 import { getCurrentSeason } from "./seasons.js";
 import {
   BOT_MAX_ATTACKS_PER_DAY,
@@ -243,4 +243,326 @@ export function getArenaBotPreview(requestedLevel: number, actorPlayerId: string
   }));
 
   return { requestedLevel: level, bots };
+}
+
+// ---------------------------------------------------------------------------
+// Player Lookup
+// ---------------------------------------------------------------------------
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export async function searchPlayers(queryStr: string) {
+  const q = queryStr.trim();
+  if (!q) return { players: [] };
+
+  if (UUID_RE.test(q)) {
+    const res = await query(
+      `SELECT id, wallet_address, ai_name, level, is_alive, is_in_sandbox, last_active_at
+       FROM players WHERE id = $1 LIMIT 1`,
+      [q]
+    );
+    return {
+      players: res.rows.map(mapPlayerSearchRow),
+    };
+  }
+
+  const pattern = `%${q}%`;
+  const res = await query(
+    `SELECT id, wallet_address, ai_name, level, is_alive, is_in_sandbox, last_active_at
+     FROM players
+     WHERE wallet_address ILIKE $1 OR ai_name ILIKE $1
+     ORDER BY last_active_at DESC
+     LIMIT 20`,
+    [pattern]
+  );
+  return { players: res.rows.map(mapPlayerSearchRow) };
+}
+
+function mapPlayerSearchRow(row: Record<string, unknown>) {
+  return {
+    id: row.id as string,
+    walletAddress: row.wallet_address as string,
+    aiName: row.ai_name as string,
+    level: row.level as number,
+    isAlive: row.is_alive as boolean,
+    isInSandbox: row.is_in_sandbox as boolean,
+    lastActiveAt: (row.last_active_at as Date).toISOString(),
+  };
+}
+
+export async function getPlayerDetail(playerId: string) {
+  const [playerRes, systemsRes, modulesRes, loadoutsRes, traitsRes, combatRes, infiltRes, iceRes] =
+    await Promise.all([
+      query("SELECT * FROM players WHERE id = $1", [playerId]),
+      query(
+        "SELECT system_type, health, status FROM player_systems WHERE player_id = $1",
+        [playerId]
+      ),
+      query(
+        "SELECT module_id, level, mutation FROM player_modules WHERE player_id = $1",
+        [playerId]
+      ),
+      query(
+        "SELECT loadout_type, slot, module_id FROM player_loadouts WHERE player_id = $1 ORDER BY loadout_type, slot",
+        [playerId]
+      ),
+      query("SELECT trait_id FROM player_traits WHERE player_id = $1", [playerId]),
+      query(
+        `SELECT id, attacker_id, defender_id, result, credits_transferred, xp_awarded, is_bot_match, created_at
+         FROM combat_logs WHERE attacker_id = $1 OR defender_id = $1
+         ORDER BY created_at DESC LIMIT 10`,
+        [playerId]
+      ),
+      query(
+        `SELECT id, target_type, security_level, success, credits_earned, game_type, created_at
+         FROM infiltration_logs WHERE player_id = $1
+         ORDER BY created_at DESC LIMIT 10`,
+        [playerId]
+      ),
+      query(
+        `SELECT id, layers_attempted, layers_cleared, extracted, credits_earned, created_at
+         FROM ice_breaker_logs WHERE player_id = $1
+         ORDER BY created_at DESC LIMIT 10`,
+        [playerId]
+      ),
+    ]);
+
+  if (playerRes.rows.length === 0) return null;
+  const p = playerRes.rows[0];
+
+  return {
+    player: {
+      id: p.id as string,
+      walletAddress: p.wallet_address as string,
+      aiName: p.ai_name as string,
+      level: p.level as number,
+      xp: p.xp as number,
+      credits: p.credits as number,
+      energy: p.energy as number,
+      energyMax: p.energy_max as number,
+      processingPower: p.processing_power as number,
+      data: p.data as number,
+      reputation: p.reputation as number,
+      alignment: p.alignment as number,
+      heatLevel: p.heat_level as number,
+      isAlive: p.is_alive as boolean,
+      isInSandbox: p.is_in_sandbox as boolean,
+      inPvpArena: p.in_pvp_arena as boolean,
+      lastActiveAt: (p.last_active_at as Date).toISOString(),
+      createdAt: (p.created_at as Date).toISOString(),
+    },
+    systems: systemsRes.rows.map((r) => ({
+      systemType: r.system_type as string,
+      health: r.health as number,
+      status: r.status as string,
+    })),
+    modules: modulesRes.rows.map((r) => ({
+      moduleId: r.module_id as string,
+      level: r.level as number,
+      mutation: (r.mutation as string) ?? null,
+    })),
+    loadouts: loadoutsRes.rows.map((r) => ({
+      loadoutType: r.loadout_type as string,
+      slot: r.slot as number,
+      moduleId: (r.module_id as string) ?? null,
+    })),
+    traits: traitsRes.rows.map((r) => r.trait_id as string),
+    recentActivity: {
+      combatLogs: combatRes.rows.map((r) => ({
+        id: r.id as string,
+        role: (r.attacker_id === playerId ? "attacker" : "defender") as "attacker" | "defender",
+        opponentId:
+          r.attacker_id === playerId
+            ? ((r.defender_id as string) ?? null)
+            : ((r.attacker_id as string) ?? null),
+        result: r.result as string,
+        creditsTransferred: r.credits_transferred as number,
+        xpAwarded: r.xp_awarded as number,
+        isBotMatch: r.is_bot_match as boolean,
+        createdAt: (r.created_at as Date).toISOString(),
+      })),
+      infiltrationLogs: infiltRes.rows.map((r) => ({
+        id: r.id as string,
+        targetType: r.target_type as string,
+        securityLevel: r.security_level as number,
+        success: r.success as boolean,
+        creditsEarned: r.credits_earned as number,
+        gameType: (r.game_type as string) ?? null,
+        createdAt: (r.created_at as Date).toISOString(),
+      })),
+      iceBreakerLogs: iceRes.rows.map((r) => ({
+        id: r.id as string,
+        layersAttempted: r.layers_attempted as number,
+        layersCleared: r.layers_cleared as number,
+        extracted: r.extracted as boolean,
+        creditsEarned: r.credits_earned as number,
+        createdAt: (r.created_at as Date).toISOString(),
+      })),
+    },
+  };
+}
+
+export async function grantResources(
+  playerId: string,
+  grants: { credits?: number; data?: number; processingPower?: number; xp?: number },
+  adminPlayerId: string,
+  reason: string,
+  meta: AdminRequestMeta
+) {
+  const credits = grants.credits ?? 0;
+  const data = grants.data ?? 0;
+  const pp = grants.processingPower ?? 0;
+  const xp = grants.xp ?? 0;
+
+  if (credits === 0 && data === 0 && pp === 0 && xp === 0) {
+    throw new Error("At least one resource amount must be non-zero");
+  }
+
+  return withTransaction(async (client) => {
+    const res = await client.query(
+      `UPDATE players
+       SET credits = credits + $2,
+           data = data + $3,
+           processing_power = processing_power + $4,
+           xp = xp + $5
+       WHERE id = $1
+       RETURNING credits, data, processing_power, xp`,
+      [playerId, credits, data, pp, xp]
+    );
+
+    if (res.rows.length === 0) throw new Error("Player not found");
+
+    await recordAdminAction(
+      adminPlayerId,
+      "grant_resources",
+      { playerId, credits, data, processingPower: pp, xp, reason },
+      meta,
+      client
+    );
+
+    const row = res.rows[0];
+    return {
+      success: true as const,
+      newTotals: {
+        credits: row.credits as number,
+        data: row.data as number,
+        processingPower: row.processing_power as number,
+        xp: row.xp as number,
+      },
+    };
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Economy Overview
+// ---------------------------------------------------------------------------
+
+export async function getEconomyOverview() {
+  const today = todayDateString();
+
+  const [
+    circulationRes,
+    inflowInfilToday,
+    inflowPvpToday,
+    inflowIceToday,
+    inflowInfilWeek,
+    inflowPvpWeek,
+    inflowIceWeek,
+    levelDistRes,
+    modulePopRes,
+  ] = await Promise.all([
+    query(
+      `SELECT
+         COUNT(*) FILTER (WHERE is_alive) as alive_players,
+         COALESCE(SUM(credits), 0) as total_credits,
+         COALESCE(SUM(data), 0) as total_data,
+         COALESCE(SUM(processing_power), 0) as total_pp,
+         COALESCE(SUM(reputation), 0) as total_reputation,
+         COALESCE(AVG(credits) FILTER (WHERE is_alive), 0) as avg_credits,
+         COALESCE(AVG(level) FILTER (WHERE is_alive), 0) as avg_level
+       FROM players`
+    ),
+    query(
+      "SELECT COALESCE(SUM(credits_earned), 0) as credits FROM infiltration_logs WHERE created_at::date = $1",
+      [today]
+    ),
+    query(
+      "SELECT COALESCE(SUM(credits_transferred), 0) as credits FROM combat_logs WHERE created_at::date = $1",
+      [today]
+    ),
+    query(
+      "SELECT COALESCE(SUM(credits_earned), 0) as credits FROM ice_breaker_logs WHERE created_at::date = $1",
+      [today]
+    ),
+    query(
+      "SELECT COALESCE(SUM(credits_earned), 0) as credits FROM infiltration_logs WHERE created_at > NOW() - INTERVAL '7 days'"
+    ),
+    query(
+      "SELECT COALESCE(SUM(credits_transferred), 0) as credits FROM combat_logs WHERE created_at > NOW() - INTERVAL '7 days'"
+    ),
+    query(
+      "SELECT COALESCE(SUM(credits_earned), 0) as credits FROM ice_breaker_logs WHERE created_at > NOW() - INTERVAL '7 days'"
+    ),
+    query(
+      `SELECT level, COUNT(*)::int as count
+       FROM players WHERE is_alive = true
+       GROUP BY level ORDER BY level`
+    ),
+    query(
+      `SELECT module_id,
+         COUNT(*)::int as owners,
+         AVG(level)::numeric(3,1) as avg_level,
+         COUNT(*) FILTER (WHERE mutation IS NOT NULL)::int as mutated_count
+       FROM player_modules
+       GROUP BY module_id
+       ORDER BY owners DESC
+       LIMIT 20`
+    ),
+  ]);
+
+  const c = circulationRes.rows[0];
+  const toNum = (v: unknown) => Number(v) || 0;
+
+  const inflowTodayInfil = toNum(inflowInfilToday.rows[0]?.credits);
+  const inflowTodayPvp = toNum(inflowPvpToday.rows[0]?.credits);
+  const inflowTodayIce = toNum(inflowIceToday.rows[0]?.credits);
+
+  const inflowWeekInfil = toNum(inflowInfilWeek.rows[0]?.credits);
+  const inflowWeekPvp = toNum(inflowPvpWeek.rows[0]?.credits);
+  const inflowWeekIce = toNum(inflowIceWeek.rows[0]?.credits);
+
+  return {
+    generatedAt: new Date().toISOString(),
+    circulation: {
+      totalCredits: toNum(c.total_credits),
+      totalData: toNum(c.total_data),
+      totalProcessingPower: toNum(c.total_pp),
+      totalReputation: toNum(c.total_reputation),
+      avgCreditsPerPlayer: Math.round(toNum(c.avg_credits)),
+      avgLevelPerPlayer: Math.round(toNum(c.avg_level) * 10) / 10,
+      alivePlayers: toNum(c.alive_players),
+    },
+    flowToday: {
+      creditsFromInfiltration: inflowTodayInfil,
+      creditsFromPvp: inflowTodayPvp,
+      creditsFromIceBreaker: inflowTodayIce,
+      totalCreditsEarned: inflowTodayInfil + inflowTodayPvp + inflowTodayIce,
+    },
+    flowWeek: {
+      creditsFromInfiltration: inflowWeekInfil,
+      creditsFromPvp: inflowWeekPvp,
+      creditsFromIceBreaker: inflowWeekIce,
+      totalCreditsEarned: inflowWeekInfil + inflowWeekPvp + inflowWeekIce,
+    },
+    levelDistribution: levelDistRes.rows.map((r) => ({
+      level: r.level as number,
+      count: r.count as number,
+    })),
+    modulePopularity: modulePopRes.rows.map((r) => ({
+      moduleId: r.module_id as string,
+      owners: r.owners as number,
+      avgLevel: Number(r.avg_level),
+      mutatedCount: r.mutated_count as number,
+    })),
+  };
 }

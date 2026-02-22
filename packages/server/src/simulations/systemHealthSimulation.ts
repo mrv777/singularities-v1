@@ -7,13 +7,15 @@
 import {
   DEGRADATION_RATE_PER_HOUR,
   CASCADE_THRESHOLD,
-  REPAIR_COOLDOWN_SECONDS,
   REPAIR_HEALTH_AMOUNT,
   ENERGY_COSTS,
   MODIFIER_POOL,
   PASSIVE_CREDITS_PER_HOUR,
   getRepairCreditCostForHealth,
 } from "@singularities/shared";
+
+/** Simulated repair interval in minutes (models realistic player cadence). */
+const SIM_REPAIR_INTERVAL_MINUTES = 5;
 import {
   Rng,
   parseCliOptions,
@@ -201,7 +203,7 @@ function main() {
   const activeResults: MaintenanceResult[] = [];
   for (let i = 0; i < opts.runs; i++) {
     const rng = new Rng(opts.seed + i);
-    activeResults.push(runActiveMaintenance(opts.seed + i, REPAIR_COOLDOWN_SECONDS / 60, 1, 1, 0, rng));
+    activeResults.push(runActiveMaintenance(opts.seed + i, SIM_REPAIR_INTERVAL_MINUTES, 1, 1, 0, rng));
   }
   console.log("\n[Active Maintenance - Every 5 min]");
   console.log(`Avg health: ${average(activeResults.map((r) => r.avgHealth)).toFixed(1)}`);

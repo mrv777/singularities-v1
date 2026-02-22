@@ -56,9 +56,6 @@ export const ENERGY_COSTS = {
 export const REPAIR_CREDIT_COST = REPAIR_BALANCE.creditsBase;
 // Health restored per repair
 export const REPAIR_HEALTH_AMOUNT = 30;
-// Repair cooldown in seconds
-export const REPAIR_COOLDOWN_SECONDS = 300; // 5 minutes
-
 // Starting resources for new players
 export const STARTING_RESOURCES = {
   credits: 100,

@@ -57,7 +57,12 @@ export interface PlayerResponse {
   loadouts: PlayerLoadout[];
   traits: PlayerTrait[];
   unlockedSystems: string[];
-  passiveIncome: { credits: number; data: number } | null;
+  passiveIncome: {
+    credits: number;
+    data: number;
+    streakReward: { credits: number; data: number; processingPower: number } | null;
+    loginStreak: number;
+  } | null;
   activeModifier: ModifierDefinition | null;
 }
 
@@ -681,6 +686,146 @@ export interface GameStatusResponse {
   expiresAt?: string;
   startedAt?: string;
   expired?: boolean;
+}
+
+// Admin: Player Lookup
+export interface AdminPlayerSearchRequest {
+  query: string;
+}
+
+export interface AdminPlayerSearchResponse {
+  players: Array<{
+    id: string;
+    walletAddress: string;
+    aiName: string;
+    level: number;
+    isAlive: boolean;
+    isInSandbox: boolean;
+    lastActiveAt: string;
+  }>;
+}
+
+export interface AdminPlayerDetailResponse {
+  player: {
+    id: string;
+    walletAddress: string;
+    aiName: string;
+    level: number;
+    xp: number;
+    credits: number;
+    energy: number;
+    energyMax: number;
+    processingPower: number;
+    data: number;
+    reputation: number;
+    alignment: number;
+    heatLevel: number;
+    isAlive: boolean;
+    isInSandbox: boolean;
+    inPvpArena: boolean;
+    lastActiveAt: string;
+    createdAt: string;
+  };
+  systems: Array<{
+    systemType: string;
+    health: number;
+    status: string;
+  }>;
+  modules: Array<{
+    moduleId: string;
+    level: number;
+    mutation: string | null;
+  }>;
+  loadouts: Array<{
+    loadoutType: string;
+    slot: number;
+    moduleId: string | null;
+  }>;
+  traits: string[];
+  recentActivity: {
+    combatLogs: Array<{
+      id: string;
+      role: "attacker" | "defender";
+      opponentId: string | null;
+      result: string;
+      creditsTransferred: number;
+      xpAwarded: number;
+      isBotMatch: boolean;
+      createdAt: string;
+    }>;
+    infiltrationLogs: Array<{
+      id: string;
+      targetType: string;
+      securityLevel: number;
+      success: boolean;
+      creditsEarned: number;
+      gameType: string | null;
+      createdAt: string;
+    }>;
+    iceBreakerLogs: Array<{
+      id: string;
+      layersAttempted: number;
+      layersCleared: number;
+      extracted: boolean;
+      creditsEarned: number;
+      createdAt: string;
+    }>;
+  };
+}
+
+export interface AdminGrantResourcesRequest {
+  playerId: string;
+  credits?: number;
+  data?: number;
+  processingPower?: number;
+  xp?: number;
+  reason: string;
+}
+
+export interface AdminGrantResourcesResponse {
+  success: boolean;
+  newTotals: {
+    credits: number;
+    data: number;
+    processingPower: number;
+    xp: number;
+  };
+}
+
+// Admin: Economy Dashboard
+export interface AdminEconomyResponse {
+  generatedAt: string;
+  circulation: {
+    totalCredits: number;
+    totalData: number;
+    totalProcessingPower: number;
+    totalReputation: number;
+    avgCreditsPerPlayer: number;
+    avgLevelPerPlayer: number;
+    alivePlayers: number;
+  };
+  flowToday: {
+    creditsFromInfiltration: number;
+    creditsFromPvp: number;
+    creditsFromIceBreaker: number;
+    totalCreditsEarned: number;
+  };
+  flowWeek: {
+    creditsFromInfiltration: number;
+    creditsFromPvp: number;
+    creditsFromIceBreaker: number;
+    totalCreditsEarned: number;
+  };
+  levelDistribution: Array<{
+    level: number;
+    count: number;
+  }>;
+  modulePopularity: Array<{
+    moduleId: string;
+    owners: number;
+    avgLevel: number;
+    mutatedCount: number;
+  }>;
 }
 
 // Generic error

@@ -8,6 +8,7 @@ import {
   mapModuleRow,
   mapLoadoutRow,
   mapTraitRow,
+  getPlayerPvpShieldUntil,
 } from "../services/player.js";
 import { STARTING_RESOURCES, getUnlockedSystems, SANDBOX_EXIT_LEVEL, isValidTutorialProgression, TUTORIAL_STEPS } from "@singularities/shared";
 import { withTransaction } from "../db/pool.js";
@@ -63,10 +64,12 @@ export async function playerRoutes(app: FastifyInstance) {
 
       const row = computeEnergy(finalPlayerResult.rows[0]);
       const player = mapPlayerRow(row);
-      const [modifierEffects, activeModifier] = await Promise.all([
+      const [modifierEffects, activeModifier, pvpShieldUntil] = await Promise.all([
         getActiveModifierEffects(),
         getTodayModifier(),
+        getPlayerPvpShieldUntil(playerId),
       ]);
+      player.pvpShieldUntil = pvpShieldUntil;
 
       return {
         player,

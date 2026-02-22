@@ -7,7 +7,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import { ENERGY_COSTS, getRepairCreditCostForHealth } from "@singularities/shared";
 import type { PlayerSystem } from "@singularities/shared";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, ShieldCheck } from "lucide-react";
 import { ResourceCost } from "../ui/ResourceCost";
 import { useModifier } from "@/hooks/useModifier";
 import { playSound } from "@/lib/sound";
@@ -32,7 +32,6 @@ export function SystemStatusModal() {
     damagedCount: number;
     creditsSpent: number;
     energySpent: number;
-    skippedCooldown: number;
     skippedBudget: number;
   } | null>(null);
 
@@ -153,7 +152,6 @@ export function SystemStatusModal() {
       setSystems((prev) =>
         prev.map((system) => repairedMap.get(system.systemType) ?? system)
       );
-      const skippedCooldown = result.skipped.filter((s) => s.reason === "cooldown").length;
       const skippedBudget = result.skipped.filter(
         (s) =>
           s.reason === "insufficient_energy"
@@ -165,7 +163,6 @@ export function SystemStatusModal() {
         damagedCount: result.totals.damagedCount,
         creditsSpent: result.totals.creditsSpent,
         energySpent: result.totals.energySpent,
-        skippedCooldown,
         skippedBudget,
       });
       queryClient.invalidateQueries({ queryKey: ["player"] });
@@ -249,10 +246,22 @@ export function SystemStatusModal() {
           <div className="text-[10px] p-2 border border-cyber-green/30 rounded bg-cyber-green/5 text-cyber-green">
             Repaired {summary.repairedCount}/{summary.damagedCount} damaged systems.
             Spent <ResourceCost costs={{ credits: summary.creditsSpent, energy: summary.energySpent }} size={10} />.
-            {summary.skippedCooldown > 0 && ` ${summary.skippedCooldown} skipped by cooldown.`}
             {summary.skippedBudget > 0 && ` ${summary.skippedBudget} skipped due to resource budget.`}
           </div>
         )}
+
+        {/* Recovery shield banner */}
+        {player?.pvpShieldUntil && new Date(player.pvpShieldUntil) > new Date() && (() => {
+          const remaining = new Date(player.pvpShieldUntil).getTime() - Date.now();
+          const hours = Math.floor(remaining / 3600000);
+          const minutes = Math.floor((remaining % 3600000) / 60000);
+          return (
+            <div className="flex items-center gap-2 p-2 rounded border border-cyber-cyan/30 bg-cyber-cyan/5 text-cyber-cyan text-xs">
+              <ShieldCheck size={14} />
+              <span>RECOVERY SHIELD ACTIVE — {hours}h {minutes}m remaining</span>
+            </div>
+          );
+        })()}
 
         {/* Cascade warning banner */}
         {criticalCount > 0 && (

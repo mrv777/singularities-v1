@@ -187,7 +187,11 @@ export function NetStatsModal() {
                   }`}
                 >
                   <span className="text-text-muted w-6">#{entry.rank}</span>
-                  <span className="text-text-primary flex-1 truncate">{entry.aiName}</span>
+                  <span className="text-text-primary flex-1 truncate">
+                    {entry.alignment >= 0.8 && <span className="text-cyber-green mr-1" title="Benevolent">●</span>}
+                    {entry.alignment <= -0.8 && <span className="text-cyber-red mr-1" title="Domination">●</span>}
+                    {entry.aiName}
+                  </span>
                   <span className="text-text-muted">LV{entry.level}</span>
                   <span className="text-cyber-amber ml-2">{entry.reputation} REP</span>
                 </div>

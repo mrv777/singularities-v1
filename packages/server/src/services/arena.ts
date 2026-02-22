@@ -8,6 +8,8 @@ import {
   PVP_DAILY_DAMAGE_CAP,
   PVP_NEW_PLAYER_LEVEL_CAP,
   PVP_NEW_PLAYER_MAX_ATTACKER_ADVANTAGE,
+  PVP_SHIELD_TRIGGER_ATTACKS,
+  PVP_SHIELD_DURATION_SECONDS,
   MODULE_MAP,
 } from "@singularities/shared";
 import { resolveAttack, applyCombatDamage, type CombatOutcome } from "./combat.js";
@@ -69,6 +71,10 @@ export async function getAvailableOpponents(playerId: string, playerLevel: numbe
     const opponentId = row.id as string;
     const attacksReceived = await redis.get(`pvp_attacks_received:${opponentId}:${dateKey}`);
     if (attacksReceived && parseInt(attacksReceived, 10) >= PVP_MAX_ATTACKS_RECEIVED) continue;
+
+    // Skip players with active recovery shield
+    const shielded = await redis.get(`pvp_shield:${opponentId}`);
+    if (shielded) continue;
 
     // Skip new-player-protected targets that the attacker can't reach
     const opponentLevel = row.level as number;
@@ -233,6 +239,12 @@ export async function executeAttack(attackerId: string, targetId: string) {
       throw { statusCode: 400, message: "Target is under new player protection" };
     }
 
+    // Check if target has active recovery shield
+    const shielded = await redis.get(`pvp_shield:${targetId}`);
+    if (shielded) {
+      throw { statusCode: 400, message: "Target has an active recovery shield" };
+    }
+
     // Check daily attack caps for defender
     const attacksReceived = await redis.get(`pvp_attacks_received:${targetId}:${dateKey}`);
     if (attacksReceived && parseInt(attacksReceived, 10) >= PVP_MAX_ATTACKS_RECEIVED) {
@@ -335,8 +347,13 @@ export async function executeAttack(attackerId: string, targetId: string) {
 
     // Increment daily attack counter for defender
     const redisKey = `pvp_attacks_received:${targetId}:${dateKey}`;
-    await redis.incr(redisKey);
+    const newAttackCount = await redis.incr(redisKey);
     await redis.expire(redisKey, 86400); // 24h TTL
+
+    // Activate recovery shield if threshold reached
+    if (newAttackCount >= PVP_SHIELD_TRIGGER_ATTACKS) {
+      await redis.set(`pvp_shield:${targetId}`, "1", "EX", PVP_SHIELD_DURATION_SECONDS);
+    }
 
     // Track daily damage for defender
     if (outcome.result === "attacker_win" && outcome.damage) {
@@ -535,9 +552,17 @@ async function executeBotAttack(
  */
 export async function getRecentCombatLogs(playerId: string, limit = 20) {
   const res = await query(
-    `SELECT * FROM combat_logs
-     WHERE attacker_id = $1 OR defender_id = $1
-     ORDER BY created_at DESC
+    `SELECT cl.*,
+            CASE
+              WHEN cl.is_bot_match THEN cl.bot_profile->>'aiName'
+              WHEN cl.attacker_id = $1 THEN def.ai_name
+              ELSE att.ai_name
+            END AS opponent_name
+     FROM combat_logs cl
+     LEFT JOIN players att ON att.id = cl.attacker_id
+     LEFT JOIN players def ON def.id = cl.defender_id
+     WHERE cl.attacker_id = $1 OR cl.defender_id = $1
+     ORDER BY cl.created_at DESC
      LIMIT $2`,
     [playerId, limit]
   );

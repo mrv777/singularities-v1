@@ -16,6 +16,8 @@ export function ChatMessage({ msg }: { msg: ServerChatMessage }) {
       <div className="text-xs leading-relaxed">
         <span className="text-text-muted">{formatTime(msg.timestamp)}</span>{" "}
         <span className={alignmentColor(msg.alignment)}>
+          {msg.alignment >= 0.8 && "◆ "}
+          {msg.alignment <= -0.8 && "◆ "}
           [{msg.playerLevel}] {msg.playerName}
         </span>
         : <span className="text-text-primary">{msg.content}</span>
