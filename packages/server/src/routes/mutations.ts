@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { authGuard, type AuthPayload } from "../middleware/auth.js";
+import { enforceRateLimit } from "../middleware/rateLimit.js";
 import { attemptMutation } from "../services/mutations.js";
 
 export async function mutationRoutes(app: FastifyInstance) {
@@ -20,6 +21,7 @@ export async function mutationRoutes(app: FastifyInstance) {
       }
 
       try {
+        await enforceRateLimit(playerId, "modules:mutate", 5);
         const result = await attemptMutation(playerId, moduleId);
         return result;
       } catch (err: any) {

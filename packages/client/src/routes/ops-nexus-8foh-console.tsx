@@ -47,6 +47,7 @@ function AdminPage() {
   // Player Lookup
   const [playerQuery, setPlayerQuery] = useState("");
   const [playerResults, setPlayerResults] = useState<AdminPlayerSearchResponse["players"]>([]);
+  const [playerResultsLabel, setPlayerResultsLabel] = useState<"recent" | "search">("recent");
   const [selectedPlayer, setSelectedPlayer] = useState<AdminPlayerDetailResponse | null>(null);
   const [playerSearching, setPlayerSearching] = useState(false);
   const [playerLoading, setPlayerLoading] = useState(false);
@@ -147,6 +148,20 @@ function AdminPage() {
   };
 
   // Player search
+  const loadRecentPlayers = async () => {
+    setPlayerSearching(true);
+    setError("");
+    try {
+      const res = await api.listAdminRecentPlayers();
+      setPlayerResults(res.players);
+      setPlayerResultsLabel("recent");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load recent players");
+    } finally {
+      setPlayerSearching(false);
+    }
+  };
+
   const searchPlayers = async () => {
     const q = playerQuery.trim();
     if (!q) return;
@@ -156,6 +171,7 @@ function AdminPage() {
     try {
       const res = await api.searchAdminPlayers(q);
       setPlayerResults(res.players);
+      setPlayerResultsLabel("search");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Player search failed");
     } finally {
@@ -220,6 +236,13 @@ function AdminPage() {
   useEffect(() => {
     if (tab === "economy" && !economy && !economyLoading) {
       loadEconomy().catch(() => {});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab]);
+
+  useEffect(() => {
+    if (tab === "player" && playerResults.length === 0 && !playerSearching) {
+      loadRecentPlayers().catch(() => {});
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab]);
@@ -457,6 +480,10 @@ function AdminPage() {
 
           {/* Results list */}
           {playerResults.length > 0 && (
+            <div>
+              <p className="text-[10px] uppercase tracking-wide text-text-muted mb-1">
+                {playerResultsLabel === "recent" ? "Recently Active" : "Search Results"}
+              </p>
             <div className="border border-border-default rounded overflow-hidden">
               {playerResults.map((p) => (
                 <button
@@ -478,9 +505,10 @@ function AdminPage() {
                 </button>
               ))}
             </div>
+            </div>
           )}
 
-          {playerResults.length === 0 && playerQuery && !playerSearching && (
+          {playerResults.length === 0 && playerQuery && !playerSearching && playerResultsLabel === "search" && (
             <p className="text-text-muted text-xs">No results. Try a different search term.</p>
           )}
 

@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { authGuard, type AuthPayload } from "../middleware/auth.js";
+import { enforceRateLimit } from "../middleware/rateLimit.js";
 import {
   getDaemonForgeStatus,
   craftDaemon,
@@ -44,6 +45,7 @@ export async function daemonForgeRoutes(app: FastifyInstance) {
         });
       }
       try {
+        await enforceRateLimit(playerId, "daemon:craft", 5);
         return await craftDaemon(playerId, daemonType);
       } catch (err) {
         if (err instanceof DaemonForgeError) {
@@ -72,6 +74,7 @@ export async function daemonForgeRoutes(app: FastifyInstance) {
         });
       }
       try {
+        await enforceRateLimit(playerId, "daemon:deploy", 5);
         return await deployDaemon(playerId, daemonId, duration);
       } catch (err) {
         if (err instanceof DaemonForgeError) {
@@ -100,6 +103,7 @@ export async function daemonForgeRoutes(app: FastifyInstance) {
         });
       }
       try {
+        await enforceRateLimit(playerId, "daemon:collect", 5);
         return await collectDaemon(playerId, daemonId);
       } catch (err) {
         if (err instanceof DaemonForgeError) {

@@ -1,5 +1,7 @@
 import { query, withTransaction, type TxClient } from "../db/pool.js";
 import { getCurrentSeason } from "./seasons.js";
+import { computeSystemHealth, getPlayerModifierEffects } from "./maintenance.js";
+import { computeEnergy } from "./player.js";
 import {
   BOT_MAX_ATTACKS_PER_DAY,
   BOT_MAX_BACKFILL_PER_REQUEST,
@@ -251,6 +253,16 @@ export function getArenaBotPreview(requestedLevel: number, actorPlayerId: string
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+export async function listRecentPlayers() {
+  const res = await query(
+    `SELECT id, wallet_address, ai_name, level, is_alive, is_in_sandbox, last_active_at
+     FROM players
+     ORDER BY last_active_at DESC
+     LIMIT 20`
+  );
+  return { players: res.rows.map(mapPlayerSearchRow) };
+}
+
 export async function searchPlayers(queryStr: string) {
   const q = queryStr.trim();
   if (!q) return { players: [] };
@@ -291,11 +303,11 @@ function mapPlayerSearchRow(row: Record<string, unknown>) {
 }
 
 export async function getPlayerDetail(playerId: string) {
-  const [playerRes, systemsRes, modulesRes, loadoutsRes, traitsRes, combatRes, infiltRes, iceRes] =
+  const [playerRes, systemsRes, modulesRes, loadoutsRes, traitsRes, combatRes, infiltRes, iceRes, modifierEffects] =
     await Promise.all([
       query("SELECT * FROM players WHERE id = $1", [playerId]),
       query(
-        "SELECT system_type, health, status FROM player_systems WHERE player_id = $1",
+        "SELECT * FROM player_systems WHERE player_id = $1",
         [playerId]
       ),
       query(
@@ -325,10 +337,11 @@ export async function getPlayerDetail(playerId: string) {
          ORDER BY created_at DESC LIMIT 10`,
         [playerId]
       ),
+      getPlayerModifierEffects(playerId),
     ]);
 
   if (playerRes.rows.length === 0) return null;
-  const p = playerRes.rows[0];
+  const p = computeEnergy(playerRes.rows[0]);
 
   return {
     player: {
@@ -351,11 +364,14 @@ export async function getPlayerDetail(playerId: string) {
       lastActiveAt: (p.last_active_at as Date).toISOString(),
       createdAt: (p.created_at as Date).toISOString(),
     },
-    systems: systemsRes.rows.map((r) => ({
-      systemType: r.system_type as string,
-      health: r.health as number,
-      status: r.status as string,
-    })),
+    systems: systemsRes.rows.map((r) => {
+      const computed = computeSystemHealth(r, modifierEffects);
+      return {
+        systemType: computed.system_type as string,
+        health: computed.health as number,
+        status: computed.status as string,
+      };
+    }),
     modules: modulesRes.rows.map((r) => ({
       moduleId: r.module_id as string,
       level: r.level as number,

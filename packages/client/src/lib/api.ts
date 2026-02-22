@@ -418,6 +418,10 @@ class ApiClient {
     return this.fetch<AdminPlayerSearchResponse>(`/admin/players/search?q=${encodeURIComponent(q)}`);
   }
 
+  listAdminRecentPlayers() {
+    return this.fetch<AdminPlayerSearchResponse>("/admin/players/search");
+  }
+
   getAdminPlayerDetail(id: string) {
     return this.fetch<AdminPlayerDetailResponse>(`/admin/players/${encodeURIComponent(id)}`);
   }

@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { authGuard, type AuthPayload } from "../middleware/auth.js";
+import { enforceRateLimit } from "../middleware/rateLimit.js";
 import { query } from "../db/pool.js";
 import { computeEnergy, mapPlayerRow } from "../services/player.js";
 import {
@@ -49,6 +50,7 @@ export async function arenaRoutes(app: FastifyInstance) {
       const { sub: playerId } = request.user as AuthPayload;
 
       try {
+        await enforceRateLimit(playerId, "arena:enter", 3);
         const player = await enterArena(playerId);
         return { success: true, player };
       } catch (err: any) {
@@ -70,6 +72,7 @@ export async function arenaRoutes(app: FastifyInstance) {
       const { sub: playerId } = request.user as AuthPayload;
 
       try {
+        await enforceRateLimit(playerId, "arena:leave", 3);
         const player = await leaveArena(playerId);
         return { success: true, player };
       } catch (err: any) {
@@ -108,6 +111,7 @@ export async function arenaRoutes(app: FastifyInstance) {
       }
 
       try {
+        await enforceRateLimit(playerId, "arena:attack", 5);
         const result = await executeAttack(playerId, targetId);
         return result;
       } catch (err: any) {

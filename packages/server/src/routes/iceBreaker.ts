@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { authGuard, type AuthPayload } from "../middleware/auth.js";
+import { enforceRateLimit } from "../middleware/rateLimit.js";
 import {
   getIceBreakerStatus,
   initiateBreach,
@@ -38,6 +39,7 @@ export async function iceBreakerRoutes(app: FastifyInstance) {
     async (request, reply) => {
       const { sub: playerId } = request.user as AuthPayload;
       try {
+        await enforceRateLimit(playerId, "icebreaker:initiate", 5);
         return await initiateBreach(playerId);
       } catch (err) {
         if (err instanceof IceBreakerError) {
@@ -58,6 +60,7 @@ export async function iceBreakerRoutes(app: FastifyInstance) {
     async (request, reply) => {
       const { sub: playerId } = request.user as AuthPayload;
       try {
+        await enforceRateLimit(playerId, "icebreaker:resolve", 10);
         return await resolveLayer(playerId);
       } catch (err) {
         if (err instanceof IceBreakerError) {
@@ -78,6 +81,7 @@ export async function iceBreakerRoutes(app: FastifyInstance) {
     async (request, reply) => {
       const { sub: playerId } = request.user as AuthPayload;
       try {
+        await enforceRateLimit(playerId, "icebreaker:extract", 5);
         return await extractRewards(playerId);
       } catch (err) {
         if (err instanceof IceBreakerError) {

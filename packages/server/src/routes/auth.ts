@@ -1,4 +1,5 @@
 import type { FastifyInstance } from "fastify";
+import { enforceRateLimit } from "../middleware/rateLimit.js";
 import {
   createChallenge,
   verifySignature,
@@ -17,6 +18,7 @@ export async function authRoutes(app: FastifyInstance) {
         .send({ error: "Bad Request", message: "walletAddress is required", statusCode: 400 });
     }
 
+    await enforceRateLimit(walletAddress, "auth:challenge", 5);
     const challenge = await createChallenge(walletAddress);
     return challenge;
   });
@@ -37,6 +39,7 @@ export async function authRoutes(app: FastifyInstance) {
       });
     }
 
+    await enforceRateLimit(walletAddress, "auth:verify", 5);
     const valid = await verifySignature(walletAddress, signature, nonce);
     if (!valid) {
       return reply

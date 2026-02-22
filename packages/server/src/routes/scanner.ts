@@ -2,30 +2,14 @@ import type { FastifyInstance } from "fastify";
 import { authGuard, type AuthPayload } from "../middleware/auth.js";
 import { scanTargets } from "../services/scanner.js";
 import { startGame, submitMove, resolveGame, getGameStatus, MinigameError } from "../services/minigame.js";
-import { redis } from "../db/redis.js";
+import { enforceRateLimit } from "../middleware/rateLimit.js";
 
-const RATE_LIMIT_WINDOW_SECONDS = 10;
 const SCANNER_RATE_LIMITS = {
   startGame: 8,
   move: 45,
   resolve: 8,
   status: 30,
 } as const;
-
-async function enforceScannerRateLimit(
-  playerId: string,
-  action: keyof typeof SCANNER_RATE_LIMITS
-) {
-  const bucket = Math.floor(Date.now() / (RATE_LIMIT_WINDOW_SECONDS * 1000));
-  const key = `rl:scanner:${action}:${playerId}:${bucket}`;
-  const count = await redis.incr(key);
-  if (count === 1) {
-    await redis.expire(key, RATE_LIMIT_WINDOW_SECONDS + 1);
-  }
-  if (count > SCANNER_RATE_LIMITS[action]) {
-    throw new MinigameError("Too many scanner actions. Slow down and try again.", 429);
-  }
-}
 
 function handleError(err: any, reply: any) {
   if (err instanceof MinigameError || err.statusCode) {
@@ -68,7 +52,7 @@ export async function scannerRoutes(app: FastifyInstance) {
       }
 
       try {
-        await enforceScannerRateLimit(playerId, "startGame");
+        await enforceRateLimit(playerId, "scanner:startGame", SCANNER_RATE_LIMITS.startGame);
         return await startGame(playerId, targetIndex);
       } catch (err: any) {
         return handleError(err, reply);
@@ -93,7 +77,7 @@ export async function scannerRoutes(app: FastifyInstance) {
       }
 
       try {
-        await enforceScannerRateLimit(playerId, "move");
+        await enforceRateLimit(playerId, "scanner:move", SCANNER_RATE_LIMITS.move);
         return await submitMove(playerId, move);
       } catch (err: any) {
         return handleError(err, reply);
@@ -108,7 +92,7 @@ export async function scannerRoutes(app: FastifyInstance) {
     async (request, reply) => {
       const { sub: playerId } = request.user as AuthPayload;
       try {
-        await enforceScannerRateLimit(playerId, "resolve");
+        await enforceRateLimit(playerId, "scanner:resolve", SCANNER_RATE_LIMITS.resolve);
         return await resolveGame(playerId);
       } catch (err: any) {
         return handleError(err, reply);
@@ -123,7 +107,7 @@ export async function scannerRoutes(app: FastifyInstance) {
     async (request, reply) => {
       const { sub: playerId } = request.user as AuthPayload;
       try {
-        await enforceScannerRateLimit(playerId, "status");
+        await enforceRateLimit(playerId, "scanner:status", SCANNER_RATE_LIMITS.status);
         return await getGameStatus(playerId);
       } catch (err: any) {
         return handleError(err, reply);

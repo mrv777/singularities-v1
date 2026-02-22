@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { authGuard, type AuthPayload } from "../middleware/auth.js";
+import { enforceRateLimit } from "../middleware/rateLimit.js";
 import { query } from "../db/pool.js";
 import { ALL_MODULES } from "@singularities/shared";
 import { mapModuleRow } from "../services/player.js";
@@ -42,6 +43,7 @@ export async function moduleRoutes(app: FastifyInstance) {
       }
 
       try {
+        await enforceRateLimit(playerId, "modules:purchase", 5);
         const result = await purchaseOrUpgradeModule(playerId, moduleId);
         return result;
       } catch (err: any) {

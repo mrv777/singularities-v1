@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { authGuard, type AuthPayload } from "../middleware/auth.js";
+import { enforceRateLimit } from "../middleware/rateLimit.js";
 import {
   fullScan,
   repairSystem,
@@ -23,6 +24,7 @@ export async function maintenanceRoutes(app: FastifyInstance) {
     { preHandler: [authGuard] },
     async (request) => {
       const { sub: playerId } = request.user as AuthPayload;
+      await enforceRateLimit(playerId, "maintenance:fullScan", 3);
       const systems = await fullScan(playerId);
       return { systems };
     }
@@ -44,6 +46,7 @@ export async function maintenanceRoutes(app: FastifyInstance) {
       }
 
       try {
+        await enforceRateLimit(playerId, "maintenance:repair", 5);
         const result = await repairSystem(playerId, systemType);
         return result;
       } catch (err) {
@@ -66,6 +69,7 @@ export async function maintenanceRoutes(app: FastifyInstance) {
       const { sub: playerId } = request.user as AuthPayload;
 
       try {
+        await enforceRateLimit(playerId, "maintenance:repairAll", 3);
         const result = await repairAllSystems(playerId);
         return result;
       } catch (err) {

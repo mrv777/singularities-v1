@@ -9,6 +9,7 @@ import {
   getEconomyOverview,
   getPlayerDetail,
   grantResources,
+  listRecentPlayers,
   recordAdminAction,
   searchPlayers,
   setArenaBotsEnabled,
@@ -167,14 +168,10 @@ export async function adminRoutes(app: FastifyInstance) {
   app.get(
     "/api/admin/players/search",
     { preHandler: [authGuard, adminGuard] },
-    async (request, reply) => {
+    async (request) => {
       const q = (request.query as { q?: string }).q?.trim();
       if (!q) {
-        return reply.code(400).send({
-          error: "Validation",
-          message: "q query param is required",
-          statusCode: 400,
-        });
+        return listRecentPlayers();
       }
       return searchPlayers(q);
     }
