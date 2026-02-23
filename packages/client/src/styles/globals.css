@@ -22,7 +22,7 @@
   --color-border-bright: #3a3a4a;
 
   --font-mono: "JetBrains Mono", "Fira Code", "SF Mono", monospace;
-  --font-display: "Space Grotesk", system-ui, sans-serif;
+  --font-display: "Orbitron", system-ui, sans-serif;
 }
 
 /* Base styles */
@@ -286,4 +286,25 @@ body {
 @keyframes slide-in-left {
   from { transform: translateX(-100%); }
   to   { transform: translateX(0); }
+}
+
+/* ─── Reduced motion ──────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .scanlines::after {
+    opacity: 0 !important;
+  }
+
+  .glitch-hover:hover {
+    animation: none !important;
+  }
+
+  [data-shake] {
+    animation: none !important;
+  }
 }

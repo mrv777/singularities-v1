@@ -45,6 +45,84 @@ function getHealthColor(worstStatus: string | undefined): string {
   return "var(--color-cyber-cyan)";
 }
 
+// Map node IDs to their asset file names (for mobile thumbnails)
+const NODE_ASSET_MAP: Record<string, string> = {
+  scanner: "/assets/nodes/scanner.webp",
+  data_vault: "/assets/nodes/data-vault.webp",
+  ice_breaker: "/assets/nodes/ice-breaker.webp",
+  daemon_forge: "/assets/nodes/daemon-forge.webp",
+  pvp_arena: "/assets/nodes/arena.webp",
+  script_manager: "/assets/nodes/scripts.webp",
+  security_center: "/assets/nodes/security-center.webp",
+  tech_tree: "/assets/nodes/tech-tree.webp",
+};
+
+interface MobileNodeButtonProps {
+  node: NodeDef;
+  playerLevel: number;
+  unlockedSystems?: string[];
+  highlight?: boolean;
+  topologyStyle: { glow?: string; tint?: string };
+  healthColor: string;
+  onClick: (id: string) => void;
+}
+
+function MobileNodeButton({ node, playerLevel, unlockedSystems, highlight, topologyStyle, healthColor, onClick }: MobileNodeButtonProps) {
+  const unlocked = unlockedSystems
+    ? unlockedSystems.includes(node.id)
+    : playerLevel >= node.unlockLevel;
+  const isBoosted = !!topologyStyle.tint && topologyStyle.tint === "#00ff88";
+  const ringColor = unlocked ? healthColor : "var(--color-border-default)";
+
+  return (
+    <button
+      onClick={() => unlocked && onClick(node.id)}
+      disabled={!unlocked}
+      className={`flex flex-col items-center justify-center gap-1 p-2 min-h-[80px] rounded-lg border transition-colors ${
+        highlight
+          ? "border-cyber-cyan bg-cyber-cyan/10 ring-1 ring-cyber-cyan/40 animate-pulse"
+          : unlocked
+            ? "border-border-default bg-bg-elevated hover:border-cyber-cyan"
+            : "border-border-default bg-bg-surface opacity-40 cursor-not-allowed"
+      }`}
+    >
+      <div className="relative">
+        <div
+          className="w-8 h-8 rounded-full overflow-hidden border-2"
+          style={{
+            borderColor: ringColor,
+            boxShadow: isBoosted ? `0 0 6px ${topologyStyle.tint}` : undefined,
+          }}
+        >
+          {NODE_ASSET_MAP[node.id] ? (
+            <img
+              src={NODE_ASSET_MAP[node.id]}
+              alt={node.label}
+              className={`w-full h-full object-cover ${!unlocked ? "grayscale" : ""}`}
+              loading="lazy"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center bg-bg-primary text-cyber-cyan">
+              {node.icon}
+            </div>
+          )}
+        </div>
+        {!unlocked && (
+          <div className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-bg-surface border border-border-default flex items-center justify-center">
+            <Lock size={8} className="text-text-muted" />
+          </div>
+        )}
+      </div>
+      <span className={`text-[9px] font-bold tracking-wider leading-tight text-center ${unlocked ? "text-text-primary" : "text-text-muted"}`}>
+        {node.label}
+      </span>
+      {!unlocked && (
+        <span className="text-[8px] text-text-muted">LVL {node.unlockLevel}</span>
+      )}
+    </button>
+  );
+}
+
 interface NetworkMapProps {
   playerLevel: number;
   unlockedSystems?: string[];
@@ -249,63 +327,83 @@ export function NetworkMap({ playerLevel, unlockedSystems, isInSandbox, highligh
         </div>
       )}
 
-      {/* Mobile list fallback */}
-      <div className="sm:hidden space-y-2">
-        {/* System Health button (mobile equivalent of clicking AI Core) */}
-        <button
-          onClick={() => openModal("system_maintenance")}
-          className="w-full flex items-center gap-3 p-3 min-h-[48px] rounded border text-left text-sm transition-colors border-cyber-cyan/30 bg-bg-elevated hover:border-cyber-cyan text-text-primary"
-        >
-          <span className="text-lg" style={{ color: coreColor }}>
-            <Activity size={20} />
-          </span>
-          <span className="flex-1">System Health</span>
-          {systemHealthSummary && systemHealthSummary.worstStatus !== "OPTIMAL" && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded border" style={{
-              color: coreColor,
-              borderColor: coreColor,
-            }}>
-              {systemHealthSummary.worstStatus}
-            </span>
-          )}
-        </button>
-
-        {NODES.map((node) => {
-          const unlocked = unlockedSystems
-            ? unlockedSystems.includes(node.id)
-            : playerLevel >= node.unlockLevel;
-          return (
-            <button
+      {/* Mobile radial icon grid */}
+      <div className="sm:hidden px-2">
+        <div className="grid grid-cols-3 gap-2 max-w-[320px] mx-auto">
+          {/* Top row: nodes 0-2 */}
+          {NODES.slice(0, 3).map((node) => (
+            <MobileNodeButton
               key={node.id}
-              onClick={() => unlocked && openModal(node.id)}
-              disabled={!unlocked}
-              className={`w-full flex items-center gap-3 p-3 min-h-[48px] rounded border text-left text-sm transition-colors ${
-                highlightNodeId === node.id
-                  ? "border-cyber-cyan bg-cyber-cyan/10 text-text-primary ring-1 ring-cyber-cyan/40 animate-pulse"
-                  : unlocked
-                    ? "border-cyber-cyan/30 bg-bg-elevated hover:border-cyber-cyan text-text-primary"
-                    : "border-border-default bg-bg-surface text-text-muted cursor-not-allowed opacity-50"
-              }`}
+              node={node}
+              playerLevel={playerLevel}
+              unlockedSystems={unlockedSystems}
+              highlight={highlightNodeId === node.id}
+              topologyStyle={getNodeStyle(node.id)}
+              healthColor={coreColor}
+              onClick={openModal}
+            />
+          ))}
+
+          {/* Middle row: node 7 (Tech Tree), AI Core center, node 4 (Security) */}
+          <MobileNodeButton
+            node={NODES[7]}
+            playerLevel={playerLevel}
+            unlockedSystems={unlockedSystems}
+            highlight={highlightNodeId === NODES[7].id}
+            topologyStyle={getNodeStyle(NODES[7].id)}
+            healthColor={coreColor}
+            onClick={openModal}
+          />
+          {/* AI Core center button */}
+          <button
+            onClick={() => openModal("system_maintenance")}
+            className="flex flex-col items-center justify-center gap-1 p-2 min-h-[80px] rounded-lg border-2 transition-colors border-cyber-cyan/40 bg-bg-elevated hover:border-cyber-cyan"
+          >
+            <div
+              className="w-12 h-12 rounded-full flex items-center justify-center border-2"
+              style={{ borderColor: coreColor, boxShadow: `0 0 8px ${coreColor}44` }}
             >
-              <span className={`text-lg ${unlocked ? "text-cyber-cyan" : ""}`}>
-                {node.icon}
+              <Cpu size={24} style={{ color: coreColor }} />
+            </div>
+            <span className="text-[9px] text-text-primary font-bold tracking-wider">AI CORE</span>
+            {systemHealthSummary && systemHealthSummary.worstStatus !== "OPTIMAL" && (
+              <span className="text-[8px] font-bold" style={{ color: coreColor }}>
+                {systemHealthSummary.worstStatus}
               </span>
-              <span className="flex-1">{node.label}</span>
-              {!unlocked && (
-                <span className="text-xs text-text-muted flex items-center gap-1">
-                  <Lock size={10} /> LVL {node.unlockLevel}
-                </span>
-              )}
-            </button>
-          );
-        })}
+            )}
+          </button>
+          <MobileNodeButton
+            node={NODES[4]}
+            playerLevel={playerLevel}
+            unlockedSystems={unlockedSystems}
+            highlight={highlightNodeId === NODES[4].id}
+            topologyStyle={getNodeStyle(NODES[4].id)}
+            healthColor={coreColor}
+            onClick={openModal}
+          />
+
+          {/* Bottom row: pvp_arena, script_manager, daemon_forge */}
+          {[NODES[5], NODES[6], NODES[3]].map((node) => (
+            <MobileNodeButton
+              key={node.id}
+              node={node}
+              playerLevel={playerLevel}
+              unlockedSystems={unlockedSystems}
+              highlight={highlightNodeId === node.id}
+              topologyStyle={getNodeStyle(node.id)}
+              healthColor={coreColor}
+              onClick={openModal}
+            />
+          ))}
+        </div>
+
         {/* Help entry */}
         <button
           onClick={() => openModal("help")}
-          className="w-full flex items-center gap-3 p-3 min-h-[48px] rounded border text-left text-sm transition-colors border-border-default bg-bg-elevated hover:border-cyber-cyan text-text-secondary"
+          className="mt-3 w-full flex items-center justify-center gap-2 p-2 min-h-[40px] rounded border text-[10px] transition-colors border-border-default bg-bg-elevated hover:border-cyber-cyan text-text-secondary tracking-wider"
         >
-          <span className="text-lg text-text-muted"><HelpCircle size={20} /></span>
-          <span className="flex-1">Operations Manual</span>
+          <HelpCircle size={14} />
+          OPERATIONS MANUAL
         </button>
       </div>
     </>

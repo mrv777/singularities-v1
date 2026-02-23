@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { playSound } from "@/lib/sound";
 import { useAuthStore } from "@/stores/auth";
 
@@ -18,6 +18,7 @@ const SYSTEM_CHECKS = [
 
 export function BootSequence({ onComplete }: BootSequenceProps) {
   const aiName = useAuthStore((s) => s.player?.aiName) ?? "UNKNOWN";
+  const prefersReducedMotion = useReducedMotion();
   const [phase, setPhase] = useState(0);
   const [visibleLines, setVisibleLines] = useState(0);
   const [checksComplete, setChecksComplete] = useState(0);
@@ -27,6 +28,11 @@ export function BootSequence({ onComplete }: BootSequenceProps) {
     setFading(true);
     setTimeout(onComplete, 600);
   }, [onComplete]);
+
+  // Skip entire boot sequence if reduced motion
+  useEffect(() => {
+    if (prefersReducedMotion) finish();
+  }, [prefersReducedMotion, finish]);
 
   // Phase progression
   useEffect(() => {

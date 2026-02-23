@@ -36,8 +36,10 @@ export function useGameFeedback() {
    * Trigger a CSS screen-shake animation.
    * - subtle: 3px — for warnings, minor hits
    * - dramatic: 8px — for death, critical events
+   * Skipped when prefers-reduced-motion is active.
    */
   const triggerShake = useCallback((intensity: "subtle" | "dramatic" = "subtle") => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const root = document.documentElement;
     // Remove attribute first to allow re-triggering
     root.removeAttribute("data-shake");

@@ -1,5 +1,5 @@
 import * as Dialog from "@radix-ui/react-dialog";
-import { motion, AnimatePresence, type PanInfo } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion, type PanInfo } from "framer-motion";
 import { X } from "lucide-react";
 import { type ReactNode, useEffect, useRef } from "react";
 import { playSound } from "@/lib/sound";
@@ -26,6 +26,7 @@ export function Modal({
 }: ModalProps) {
   const isMobile = useIsMobile();
   const { tier } = useUITier();
+  const prefersReducedMotion = useReducedMotion();
   const prevOpen = useRef(open);
 
   useEffect(() => {
@@ -34,22 +35,25 @@ export function Modal({
     prevOpen.current = open;
   }, [open]);
 
-  // Tier-aware animation variants
-  const contentAnimation = tier === 1
-    ? { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 }, transition: { duration: 0.15 } as const }
-    : tier === 3
-      ? { 
-          initial: { y: 20, scale: 0.95, opacity: 0 }, 
-          animate: { y: 0, scale: 1, opacity: 1 }, 
-          exit: { y: 20, scale: 0.95, opacity: 0 }, 
-          transition: { type: "spring" as const, stiffness: 400, damping: 25 } 
-        }
-      : { 
-          initial: { y: 20, scale: 0.97, opacity: 0 }, 
-          animate: { y: 0, scale: 1, opacity: 1 }, 
-          exit: { y: 20, scale: 0.97, opacity: 0 }, 
-          transition: { duration: 0.25, ease: "easeOut" as const } 
-        };
+  // Tier-aware animation variants (skip motion when user prefers reduced motion)
+  const noMotion = { initial: { opacity: 1 }, animate: { opacity: 1 }, exit: { opacity: 0 }, transition: { duration: 0.01 } as const };
+  const contentAnimation = prefersReducedMotion
+    ? noMotion
+    : tier === 1
+      ? { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 }, transition: { duration: 0.15 } as const }
+      : tier === 3
+        ? {
+            initial: { y: 20, scale: 0.95, opacity: 0 },
+            animate: { y: 0, scale: 1, opacity: 1 },
+            exit: { y: 20, scale: 0.95, opacity: 0 },
+            transition: { type: "spring" as const, stiffness: 400, damping: 25 }
+          }
+        : {
+            initial: { y: 20, scale: 0.97, opacity: 0 },
+            animate: { y: 0, scale: 1, opacity: 1 },
+            exit: { y: 20, scale: 0.97, opacity: 0 },
+            transition: { duration: 0.25, ease: "easeOut" as const }
+          };
 
   const handleDragEnd = (_: unknown, info: PanInfo) => {
     if (info.offset.y > 100 || info.velocity.y > 500) {
@@ -95,7 +99,7 @@ export function Modal({
                     </motion.div>
 
                     <div className="flex items-center justify-between px-4 py-2 border-b border-border-default bg-bg-secondary shrink-0">
-                      <Dialog.Title className="text-cyber-cyan text-sm font-semibold tracking-wider">
+                      <Dialog.Title className="text-cyber-cyan text-sm font-semibold tracking-wider font-display">
                         {title}
                       </Dialog.Title>
                       <Dialog.Close asChild>
@@ -159,7 +163,7 @@ export function Modal({
                       <div className="hud-corner hud-corner-lg hud-corner-tl border-cyber-cyan" style={{ opacity: 0.9 }} />
                       <div className="hud-corner hud-corner-lg hud-corner-br border-cyber-cyan" style={{ opacity: 0.9 }} />
 
-                      <Dialog.Title className="text-cyber-cyan text-sm font-bold tracking-[0.2em] uppercase flex items-center gap-2">
+                      <Dialog.Title className="text-cyber-cyan text-sm font-bold tracking-[0.2em] uppercase flex items-center gap-2 font-display">
                         <span className="text-cyber-cyan/60 text-xs">▸</span>
                         {title}
                       </Dialog.Title>

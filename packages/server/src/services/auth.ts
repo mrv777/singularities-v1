@@ -3,7 +3,7 @@ import nacl from "tweetnacl";
 import bs58 from "bs58";
 import { query } from "../db/pool.js";
 import { SYSTEM_TYPES } from "@singularities/shared";
-import { mapPlayerRow } from "./player.js";
+import { mapPlayerRow, computeEnergy } from "./player.js";
 import { getCurrentSeason } from "./seasons.js";
 
 const NONCE_EXPIRY_MINUTES = 5;
@@ -100,5 +100,5 @@ export async function findOrCreatePlayer(walletAddress: string) {
     [playerId, ...SYSTEM_TYPES]
   );
 
-  return mapPlayerRow(result.rows[0]);
+  return mapPlayerRow(computeEnergy(result.rows[0]));
 }

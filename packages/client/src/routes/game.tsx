@@ -1,22 +1,10 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
 import { useAuthStore } from "@/stores/auth";
 import { motion } from "framer-motion";
+import { CyberButton } from "@/components/ui/CyberButton";
+import { CyberInput } from "@/components/ui/CyberInput";
 import { NetworkMap } from "@/components/NetworkMap";
-import { ScannerModal } from "@/components/scanner/ScannerModal";
-import { TechTreeModal } from "@/components/techtree/TechTreeModal";
-import { ModifierDetailModal } from "@/components/ModifierDetailModal";
-import { TopologyDetailModal } from "@/components/TopologyDetailModal";
-import { SystemStatusModal } from "@/components/maintenance/SystemStatusModal";
-import { ScriptManagerModal } from "@/components/scripts/ScriptManagerModal";
-import { DataVaultModal } from "@/components/dataVault/DataVaultModal";
-import { ArenaModal } from "@/components/arena/ArenaModal";
-import { SecurityCenterModal } from "@/components/security/SecurityCenterModal";
-import { SandboxExitModal } from "@/components/SandboxExitModal";
-import { NetStatsModal } from "@/components/stats/NetStatsModal";
 import { DecisionModal } from "@/components/decisions/DecisionModal";
-import { HelpModal } from "@/components/help/HelpModal";
-import { IceBreakerModal } from "@/components/iceBreaker/IceBreakerModal";
-import { DaemonForgeModal } from "@/components/daemonForge/DaemonForgeModal";
 import { WorldEventBanner } from "@/components/world/WorldEventBanner";
 import { LoginStreakCard } from "@/components/LoginStreakCard";
 import { RecentBattleCard } from "@/components/arena/RecentBattleCard";
@@ -27,13 +15,58 @@ import { TutorialHint } from "@/components/tutorial/TutorialHint";
 import { SystemUnlockOverlay } from "@/components/tutorial/SystemUnlockOverlay";
 import { NextActionHint } from "@/components/tutorial/NextActionHint";
 import { TUTORIAL_HIGHLIGHT_NODE, type TutorialStep } from "@singularities/shared";
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense, type ComponentType } from "react";
 import { api } from "@/lib/api";
 import { wsManager } from "@/lib/ws";
 import { useChatStore } from "@/stores/chat";
 import { useQueryClient } from "@tanstack/react-query";
 import { useGameStore } from "@/stores/game";
+import { useUIStore } from "@/stores/ui";
 import { useTutorialStore } from "@/stores/tutorial";
+
+/* ── Lazy modal imports ──────────────────────────────────────────────────── */
+const ScannerModal = lazy(() => import("@/components/scanner/ScannerModal").then(m => ({ default: m.ScannerModal })));
+const TechTreeModal = lazy(() => import("@/components/techtree/TechTreeModal").then(m => ({ default: m.TechTreeModal })));
+const ModifierDetailModal = lazy(() => import("@/components/ModifierDetailModal").then(m => ({ default: m.ModifierDetailModal })));
+const TopologyDetailModal = lazy(() => import("@/components/TopologyDetailModal").then(m => ({ default: m.TopologyDetailModal })));
+const SystemStatusModal = lazy(() => import("@/components/maintenance/SystemStatusModal").then(m => ({ default: m.SystemStatusModal })));
+const ScriptManagerModal = lazy(() => import("@/components/scripts/ScriptManagerModal").then(m => ({ default: m.ScriptManagerModal })));
+const DataVaultModal = lazy(() => import("@/components/dataVault/DataVaultModal").then(m => ({ default: m.DataVaultModal })));
+const ArenaModal = lazy(() => import("@/components/arena/ArenaModal").then(m => ({ default: m.ArenaModal })));
+const SecurityCenterModal = lazy(() => import("@/components/security/SecurityCenterModal").then(m => ({ default: m.SecurityCenterModal })));
+const SandboxExitModal = lazy(() => import("@/components/SandboxExitModal").then(m => ({ default: m.SandboxExitModal })));
+const NetStatsModal = lazy(() => import("@/components/stats/NetStatsModal").then(m => ({ default: m.NetStatsModal })));
+const HelpModal = lazy(() => import("@/components/help/HelpModal").then(m => ({ default: m.HelpModal })));
+const IceBreakerModal = lazy(() => import("@/components/iceBreaker/IceBreakerModal").then(m => ({ default: m.IceBreakerModal })));
+const DaemonForgeModal = lazy(() => import("@/components/daemonForge/DaemonForgeModal").then(m => ({ default: m.DaemonForgeModal })));
+
+const MODAL_MAP: Record<string, ComponentType> = {
+  scanner: ScannerModal,
+  tech_tree: TechTreeModal,
+  modifier_detail: ModifierDetailModal,
+  topology_detail: TopologyDetailModal,
+  system_maintenance: SystemStatusModal,
+  script_manager: ScriptManagerModal,
+  data_vault: DataVaultModal,
+  pvp_arena: ArenaModal,
+  security_center: SecurityCenterModal,
+  sandbox_exit: SandboxExitModal,
+  network_stats: NetStatsModal,
+  help: HelpModal,
+  ice_breaker: IceBreakerModal,
+  daemon_forge: DaemonForgeModal,
+};
+
+function ModalRouter() {
+  const activeModal = useUIStore((s) => s.activeModal);
+  const ModalComponent = activeModal ? MODAL_MAP[activeModal] : null;
+  if (!ModalComponent) return null;
+  return (
+    <Suspense fallback={null}>
+      <ModalComponent />
+    </Suspense>
+  );
+}
 
 export const Route = createFileRoute("/game")({
   component: GamePage,
@@ -78,34 +111,25 @@ function RegistrationForm() {
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="text-text-muted text-[10px] uppercase tracking-wider block mb-1">
-              AI Designation
-            </label>
-            <input
-              type="text"
-              value={aiName}
-              onChange={(e) => setAiName(e.target.value)}
-              placeholder="Enter AI name..."
-              maxLength={20}
-              className="w-full bg-bg-primary border border-border-default rounded px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-cyber-cyan focus:outline-none transition-colors"
-            />
-            <div className="text-text-muted text-[10px] mt-1">
-              2-20 characters, alphanumeric + spaces
-            </div>
+          <CyberInput
+            label="AI Designation"
+            value={aiName}
+            onChange={(e) => setAiName(e.target.value)}
+            placeholder="Enter AI name..."
+            maxLength={20}
+            error={error || undefined}
+          />
+          <div className="text-text-muted text-[10px] -mt-3">
+            2-20 characters, alphanumeric + spaces
           </div>
 
-          {error && (
-            <div className="text-cyber-red text-xs">{error}</div>
-          )}
-
-          <button
+          <CyberButton
             type="submit"
             disabled={submitting || aiName.trim().length < 2}
-            className="w-full py-2.5 border border-cyber-cyan text-cyber-cyan rounded hover:bg-cyber-cyan/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed text-sm font-semibold"
+            className="w-full"
           >
             {submitting ? "Initializing..." : "ACTIVATE"}
-          </button>
+          </CyberButton>
         </form>
       </div>
     </motion.div>
@@ -218,22 +242,10 @@ function GamePage() {
           highlightNodeId={highlightNodeId}
         />
 
-        {/* Modals */}
-        <ScannerModal />
-        <TechTreeModal />
-        <ModifierDetailModal />
-        <TopologyDetailModal />
-        <SystemStatusModal />
-        <ScriptManagerModal />
-        <DataVaultModal />
-        <ArenaModal />
-        <SecurityCenterModal />
-        <NetStatsModal />
-        <SandboxExitModal />
+        {/* Lazy-mounted modal — only the active one renders */}
+        <ModalRouter />
+        {/* DecisionModal is state-driven (not from activeModal), always mounted */}
         <DecisionModal />
-        <IceBreakerModal />
-        <DaemonForgeModal />
-        <HelpModal />
       </motion.div>
       <ChatPanel />
       <SystemUnlockOverlay />

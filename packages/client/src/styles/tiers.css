@@ -16,26 +16,27 @@
 }
 
 /* -----------------------------------------------------------
-   Tier 1 — Retro Terminal (green monochrome)
+   Tier 1 — Retro Terminal (green-dominant with secondary accent)
    ----------------------------------------------------------- */
 .ui-tier-1 {
-  --color-cyber-cyan: #00ff88;
+  --color-cyber-cyan: #33ffaa;
   --color-cyber-magenta: #00cc66;
   --color-cyber-amber: #88ff44;
   --color-bg-surface: #0f1a0f;
   --color-bg-elevated: #152015;
-  --scanline-opacity: 0.06;
+  --scanline-opacity: 0.035;
 }
 
-/* Suppress glows in Tier 1 */
+/* Muted glows in Tier 1 (~50% of Tier 2) */
 .ui-tier-1 .glow-cyan,
 .ui-tier-1 .glow-magenta,
 .ui-tier-1 .glow-green {
-  text-shadow: none;
+  text-shadow: 0 0 6px color-mix(in srgb, currentColor 25%, transparent);
 }
 
 .ui-tier-1 .border-glow-cyan {
-  box-shadow: none;
+  box-shadow: 0 0 4px color-mix(in srgb, var(--color-cyber-cyan) 15%, transparent),
+    inset 0 0 4px color-mix(in srgb, var(--color-cyber-cyan) 5%, transparent);
 }
 
 /* -----------------------------------------------------------

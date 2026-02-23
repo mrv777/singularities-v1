@@ -6,6 +6,7 @@ import { wsManager } from "@/lib/ws";
 import { ChatMessage } from "./ChatMessage";
 import type { ChatChannel } from "@singularities/shared";
 import { playSound } from "@/lib/sound";
+import { CyberButton } from "@/components/ui/CyberButton";
 
 const TABS: { id: ChatChannel; label: string }[] = [
   { id: "global", label: "Global" },
@@ -150,13 +151,13 @@ export function ChatPanel() {
                     disabled={!connected}
                     className="flex-1 bg-bg-primary border border-border-default rounded px-2 py-1.5 text-xs text-text-primary placeholder:text-text-muted focus:border-cyber-cyan focus:outline-none disabled:opacity-50"
                   />
-                  <button
+                  <CyberButton
                     onClick={handleSend}
                     disabled={!connected || !input.trim()}
-                    className="px-3 py-1.5 text-xs text-cyber-cyan border border-cyber-cyan/50 rounded hover:bg-cyber-cyan/10 transition-colors disabled:opacity-30"
+                    size="sm"
                   >
                     Send
-                  </button>
+                  </CyberButton>
                 </div>
                 <div className="text-[9px] text-text-muted text-right mt-0.5">
                   {input.length}/{MAX_INPUT}

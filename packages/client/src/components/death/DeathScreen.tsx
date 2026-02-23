@@ -1,4 +1,4 @@
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { useState, useEffect, useMemo } from "react";
 import {
   SYSTEM_LABELS,
@@ -9,6 +9,7 @@ import {
   DEATH_TEMPLATES,
 } from "@singularities/shared";
 import { playSound } from "@/lib/sound";
+import { CyberButton } from "@/components/ui/CyberButton";
 
 interface DeathScreenProps {
   aiName: string;
@@ -20,6 +21,7 @@ export function DeathScreen({ aiName, onRestart }: DeathScreenProps) {
     () => fillTemplate(pickTemplate(DEATH_TEMPLATES), { name: aiName }),
     [aiName]
   );
+  const prefersReducedMotion = useReducedMotion();
   const [phase, setPhase] = useState(0);
   // Phase 0: System shutdown sequence
   // Phase 1: Death message
@@ -27,13 +29,17 @@ export function DeathScreen({ aiName, onRestart }: DeathScreenProps) {
 
   useEffect(() => {
     playSound("death");
+    if (prefersReducedMotion) {
+      setPhase(2);
+      return;
+    }
     const t1 = setTimeout(() => setPhase(1), SYSTEM_TYPES.length * 500 + 500);
     const t2 = setTimeout(() => setPhase(2), SYSTEM_TYPES.length * 500 + 2500);
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
     };
-  }, []);
+  }, [prefersReducedMotion]);
 
   return (
     <motion.div
@@ -99,12 +105,9 @@ export function DeathScreen({ aiName, onRestart }: DeathScreenProps) {
               </p>
             </div>
 
-            <button
-              onClick={onRestart}
-              className="px-8 py-3 border border-cyber-cyan text-cyber-cyan rounded hover:bg-cyber-cyan/10 transition-colors text-sm font-semibold tracking-wider"
-            >
+            <CyberButton onClick={onRestart} size="lg">
               MINT NEW AI
-            </button>
+            </CyberButton>
           </motion.div>
         )}
       </div>

@@ -77,7 +77,10 @@ export function Header() {
     : 0;
 
   return (
-    <header className="h-16 border-b border-border-default bg-bg-secondary/80 backdrop-blur-md flex items-center px-4 gap-4 relative z-50">
+    <header
+      className="h-16 border-b border-border-default bg-bg-secondary/80 backdrop-blur-md flex items-center px-4 gap-4 relative z-50"
+      style={{ borderTop: `2px solid ${phase.phase === "PvP" ? "var(--color-cyber-magenta)" : "var(--color-cyber-green)"}` }}
+    >
       <button
         onClick={toggleSidebar}
         className="text-text-secondary hover:text-cyber-cyan transition-colors lg:hidden min-w-[40px] min-h-[40px] flex items-center justify-center border border-border-default rounded bg-bg-surface/50"
@@ -91,7 +94,7 @@ export function Header() {
           <Terminal size={14} className="text-cyber-cyan" />
           <GlitchText
             text="SINGULARITIES"
-            className={`text-cyber-cyan font-bold text-sm tracking-widest leading-none ${tier === 1 ? "" : "glow-cyan"}`}
+            className={`text-cyber-cyan font-bold text-sm tracking-widest leading-none font-display ${tier === 1 ? "" : "glow-cyan"}`}
           />
         </div>
         <span className="text-[8px] text-text-muted tracking-[0.2em] font-mono mt-0.5">
@@ -166,117 +169,90 @@ export function Header() {
             </div>
 
             {/* Resources Group */}
-            <div className="hud-box flex items-center gap-4 px-3 h-10 rounded-sm">
+            <div className="hud-box flex items-center gap-3 px-2.5 h-10 rounded-sm">
               <div className="hud-corner hud-corner-tl border-cyber-amber" />
               <div className="hud-corner hud-corner-tr border-cyber-amber" />
               <div className="hud-corner hud-corner-bl border-cyber-amber" />
               <div className="hud-corner hud-corner-br border-cyber-amber" />
               <CyberTooltip content="Credits — Main currency for purchases and upgrades">
-                <div className="flex items-center gap-2 group">
+                <div className="flex items-center gap-1.5 group">
                   <Coins
                     size={12}
                     className="text-cyber-amber group-hover:scale-110 transition-transform"
                   />
-                  <div className="flex flex-col">
-                    <span className="text-cyber-amber text-[10px] font-bold leading-none font-mono">
-                      {player.credits.toLocaleString()}
-                    </span>
-                    <span className="text-[7px] text-text-muted mt-0.5 tracking-tighter">
-                      CREDITS
-                    </span>
-                  </div>
+                  <span className="text-cyber-amber text-[10px] font-bold leading-none font-mono">
+                    {player.credits.toLocaleString()}
+                  </span>
                 </div>
               </CyberTooltip>
 
               <CyberTooltip content="Energy — Consumed by scanning, hacking, and repairs">
-                <div className="flex items-center gap-2 group">
+                <div className="flex items-center gap-1.5 group">
                   <Zap
                     size={12}
                     className="text-cyber-cyan group-hover:scale-110 transition-transform"
                   />
-                  <div className="flex flex-col">
-                    <div className="flex items-center gap-1.5">
-                      <span className={`text-[10px] font-bold leading-none font-mono ${energyPercent < 20 ? "text-cyber-amber" : "text-cyber-cyan"}`}>
-                        {player.energy}/{player.energyMax}
-                      </span>
-                      <div className="w-10 h-2.5 bg-bg-primary/50 rounded-full overflow-hidden border border-white/5">
-                        <div
-                          className={`h-full transition-[width] duration-[600ms] ease-out ${
-                            energyPercent < 20
-                              ? "shadow-[0_0_6px_var(--color-cyber-amber)]"
-                              : "bg-cyber-cyan shadow-[0_0_6px_var(--color-cyber-cyan)]"
-                          }`}
-                          style={{
-                            width: `${energyPercent}%`,
-                            ...(energyPercent < 20
-                              ? { animation: "energy-pulse-low 1.5s ease-in-out infinite" }
-                              : { backgroundColor: "var(--color-cyber-cyan)" }),
-                          }}
-                        />
-                      </div>
-                    </div>
-                    <span className="text-[7px] text-text-muted mt-0.5 tracking-tighter">
-                      ENERGY_RES
-                    </span>
+                  <span className={`text-[10px] font-bold leading-none font-mono ${energyPercent < 20 ? "text-cyber-amber" : "text-cyber-cyan"}`}>
+                    {player.energy}/{player.energyMax}
+                  </span>
+                  <div className="w-10 h-2.5 bg-bg-primary/50 rounded-full overflow-hidden border border-white/5">
+                    <div
+                      className={`h-full transition-[width] duration-[600ms] ease-out ${
+                        energyPercent < 20
+                          ? "shadow-[0_0_6px_var(--color-cyber-amber)]"
+                          : "bg-cyber-cyan shadow-[0_0_6px_var(--color-cyber-cyan)]"
+                      }`}
+                      style={{
+                        width: `${energyPercent}%`,
+                        ...(energyPercent < 20
+                          ? { animation: "energy-pulse-low 1.5s ease-in-out infinite" }
+                          : { backgroundColor: "var(--color-cyber-cyan)" }),
+                      }}
+                    />
                   </div>
                 </div>
               </CyberTooltip>
 
               <CyberTooltip content="Data — Used for crafting and module upgrades">
-                <div className="flex items-center gap-2 group">
+                <div className="flex items-center gap-1.5 group">
                   <Database
                     size={12}
                     className="text-cyber-green group-hover:scale-110 transition-transform"
                   />
-                  <div className="flex flex-col">
-                    <span className="text-cyber-green text-[10px] font-bold leading-none font-mono">
-                      {player.data}
-                    </span>
-                    <span className="text-[7px] text-text-muted mt-0.5 tracking-tighter">
-                      DATA_STR
-                    </span>
-                  </div>
+                  <span className="text-cyber-green text-[10px] font-bold leading-none font-mono">
+                    {player.data}
+                  </span>
                 </div>
               </CyberTooltip>
             </div>
 
             {/* Systems Group */}
-            <div className="hud-box flex items-center gap-4 px-3 h-10 rounded-sm">
+            <div className="hud-box flex items-center gap-3 px-2.5 h-10 rounded-sm">
               <div className="hud-corner hud-corner-tl border-cyber-magenta" />
               <div className="hud-corner hud-corner-tr border-cyber-magenta" />
               <div className="hud-corner hud-corner-bl border-cyber-magenta" />
               <div className="hud-corner hud-corner-br border-cyber-magenta" />
               <CyberTooltip content="Processing Power — Determines max loadout capacity">
-                <div className="flex items-center gap-2 group">
+                <div className="flex items-center gap-1.5 group">
                   <Cpu
                     size={12}
                     className="text-cyber-magenta group-hover:scale-110 transition-transform"
                   />
-                  <div className="flex flex-col">
-                    <span className="text-cyber-magenta text-[10px] font-bold leading-none font-mono">
-                      {player.processingPower}
-                    </span>
-                    <span className="text-[7px] text-text-muted mt-0.5 tracking-tighter">
-                      CPU_LOAD
-                    </span>
-                  </div>
+                  <span className="text-cyber-magenta text-[10px] font-bold leading-none font-mono">
+                    {player.processingPower}
+                  </span>
                 </div>
               </CyberTooltip>
 
               <CyberTooltip content="Reputation — Your standing in the network">
-                <div className="flex items-center gap-2 group">
+                <div className="flex items-center gap-1.5 group">
                   <Star
                     size={12}
                     className="text-text-secondary group-hover:scale-110 transition-transform"
                   />
-                  <div className="flex flex-col">
-                    <span className="text-text-secondary text-[10px] font-bold leading-none font-mono">
-                      {player.reputation}
-                    </span>
-                    <span className="text-[7px] text-text-muted mt-0.5 tracking-tighter">
-                      REP_STAT
-                    </span>
-                  </div>
+                  <span className="text-text-secondary text-[10px] font-bold leading-none font-mono">
+                    {player.reputation}
+                  </span>
                 </div>
               </CyberTooltip>
 
@@ -284,12 +260,8 @@ export function Header() {
               <AlignmentIndicator />
             </div>
 
-            {/* Status Group */}
-            <div className="flex items-center gap-3 px-3 h-full">
-              <div className="flex flex-col gap-1">
-                <ModifierBadge />
-                <TopologyBadge />
-              </div>
+            {/* Phase + Status Group */}
+            <div className="flex items-center gap-2 px-2 h-full">
               <CyberTooltip
                 content={
                   <div className="space-y-1">
@@ -327,6 +299,10 @@ export function Header() {
                   </div>
                 </div>
               </CyberTooltip>
+              <div className="flex flex-col gap-0.5">
+                <ModifierBadge />
+                <TopologyBadge />
+              </div>
             </div>
           </div>
 
