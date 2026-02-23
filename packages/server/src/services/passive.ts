@@ -110,8 +110,9 @@ export async function materializePassiveIncome(
   const totalData = income.data + (streakReward?.data ?? 0);
   const totalPP = streakReward?.processingPower ?? 0;
 
-  // Conditional UPDATE: only applies if last_active_at hasn't changed since we read it.
-  // Prevents double-award from concurrent /me requests.
+  // Conditional UPDATE: only applies if last_active_at is still > 5 min ago.
+  // Prevents double-award from concurrent /me requests without relying on exact
+  // timestamp equality (which breaks due to JS Date's ms-precision vs PG's µs-precision).
   const updateResult = await query(
     `UPDATE players
      SET credits = credits + $2,
@@ -120,8 +121,8 @@ export async function materializePassiveIncome(
          last_active_at = NOW(),
          login_streak = $5,
          last_streak_date = $6::date
-     WHERE id = $1 AND last_active_at = $7`,
-    [playerId, totalCredits, totalData, totalPP, newStreak, streakReward ? todayUTC : (lastStreakDate ?? null), originalLastActive]
+     WHERE id = $1 AND last_active_at < NOW() - INTERVAL '5 minutes'`,
+    [playerId, totalCredits, totalData, totalPP, newStreak, streakReward ? todayUTC : (lastStreakDate ?? null)]
   );
 
   // If 0 rows updated, another request already materialized the income

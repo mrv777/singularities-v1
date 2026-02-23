@@ -57,6 +57,16 @@ export async function playerRoutes(app: FastifyInstance) {
         ? await materializePassiveIncome(playerId)
         : null;
 
+      // Always keep last_active_at current. Passive income handles it when it fires,
+      // but if income was zero or < 5 min since last visit, stamp it here instead.
+      // Use a DB-side guard so concurrent requests don't race.
+      if (!passiveIncome) {
+        query(
+          "UPDATE players SET last_active_at = NOW() WHERE id = $1 AND last_active_at < NOW() - INTERVAL '5 minutes'",
+          [playerId]
+        ).catch(() => {});
+      }
+
       // Re-read player if passive income was awarded (credits/data changed)
       const finalPlayerResult = passiveIncome
         ? await query("SELECT * FROM players WHERE id = $1", [playerId])
