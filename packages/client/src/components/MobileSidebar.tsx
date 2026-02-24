@@ -6,6 +6,7 @@ import { XP_THRESHOLDS, getXPForNextLevel } from "@singularities/shared";
 import { useModifier } from "@/hooks/useModifier";
 import { useTopology } from "@/hooks/useTopology";
 import { AlignmentIndicator } from "./alignment/AlignmentIndicator";
+import { AnimatedNumber } from "./ui/AnimatedNumber";
 import {
   X,
   Zap,
@@ -130,23 +131,24 @@ export function MobileSidebar() {
         <div className="p-4 border-b border-border-default space-y-3">
           <div className="text-[9px] text-text-muted uppercase tracking-wider font-bold mb-2">Resources</div>
 
-          <ResourceRow icon={<Coins size={14} className="text-cyber-amber" />} label="Credits" value={player.credits.toLocaleString()} color="text-cyber-amber" />
+          <ResourceRow icon={<Coins size={14} className="text-cyber-amber" />} label="Credits" numericValue={player.credits} color="text-cyber-amber" />
           <ResourceRow
             icon={<Zap size={14} className="text-cyber-cyan" />}
             label="Energy"
-            value={`${player.energy}/${player.energyMax}`}
+            numericValue={player.energy}
+            numericFormat={(n) => `${Math.round(n)}/${player.energyMax}`}
             color={energyPercent < 20 ? "text-cyber-amber" : "text-cyber-cyan"}
             bar={{ percent: energyPercent, low: energyPercent < 20 }}
           />
-          <ResourceRow icon={<Database size={14} className="text-cyber-green" />} label="Data" value={String(player.data)} color="text-cyber-green" />
+          <ResourceRow icon={<Database size={14} className="text-cyber-green" />} label="Data" numericValue={player.data} color="text-cyber-green" />
         </div>
 
         {/* Systems */}
         <div className="p-4 border-b border-border-default space-y-3">
           <div className="text-[9px] text-text-muted uppercase tracking-wider font-bold mb-2">Systems</div>
 
-          <ResourceRow icon={<Cpu size={14} className="text-cyber-magenta" />} label="Processing Power" value={String(player.processingPower)} color="text-cyber-magenta" />
-          <ResourceRow icon={<Star size={14} className="text-text-secondary" />} label="Reputation" value={String(player.reputation)} color="text-text-secondary" />
+          <ResourceRow icon={<Cpu size={14} className="text-cyber-magenta" />} label="Processing Power" numericValue={player.processingPower} color="text-cyber-magenta" />
+          <ResourceRow icon={<Star size={14} className="text-text-secondary" />} label="Reputation" numericValue={player.reputation} color="text-text-secondary" />
         </div>
 
         {/* Status */}
@@ -179,13 +181,15 @@ export function MobileSidebar() {
 function ResourceRow({
   icon,
   label,
-  value,
+  numericValue,
+  numericFormat,
   color,
   bar,
 }: {
   icon: React.ReactNode;
   label: string;
-  value: string;
+  numericValue: number;
+  numericFormat?: (n: number) => string;
   color: string;
   bar?: { percent: number; low: boolean };
 }) {
@@ -196,7 +200,11 @@ function ResourceRow({
       </div>
       <div className="flex-1 min-w-0">
         <div className="text-[10px] text-text-muted uppercase">{label}</div>
-        <div className={`text-sm font-bold font-mono ${color}`}>{value}</div>
+        <AnimatedNumber
+          value={numericValue}
+          format={numericFormat}
+          className={`text-sm font-bold font-mono ${color}`}
+        />
         {bar && (
           <div className="w-full h-1 bg-bg-primary rounded-full overflow-hidden mt-0.5">
             <div

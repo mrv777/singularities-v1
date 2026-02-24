@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import type { ArenaAttackResponse } from "@singularities/shared";
 import { ResourceCost } from "../ui/ResourceCost";
 import { playSound } from "@/lib/sound";
+import { useGameFeedback } from "@/hooks/useGameFeedback";
 
 interface CombatResultDisplayProps {
   result: ArenaAttackResponse;
@@ -11,11 +12,27 @@ interface CombatResultDisplayProps {
 
 export function CombatResultDisplay({ result, onClose }: CombatResultDisplayProps) {
   const [visibleLines, setVisibleLines] = useState(0);
+  const [showFlash, setShowFlash] = useState(true);
   const won = result.result === "attacker_win";
+  const { triggerShake, emitFloatNumber, emitParticleBurst } = useGameFeedback();
 
   useEffect(() => {
     playSound(won ? "pvpWin" : "pvpLoss");
-  }, [won]);
+    triggerShake(won ? "subtle" : "dramatic");
+    emitParticleBurst(
+      undefined,
+      won ? "var(--color-cyber-green)" : "var(--color-cyber-red)"
+    );
+    if (result.rewards?.credits) {
+      const prefix = won ? "+" : "";
+      emitFloatNumber(
+        `${prefix}${result.rewards.credits} CR`,
+        won ? "green" : "amber"
+      );
+    }
+    const flashTimer = setTimeout(() => setShowFlash(false), 300);
+    return () => clearTimeout(flashTimer);
+  }, [won, triggerShake, emitFloatNumber, emitParticleBurst, result.rewards?.credits]);
 
   useEffect(() => {
     if (visibleLines < result.narrative.length) {
@@ -27,7 +44,25 @@ export function CombatResultDisplay({ result, onClose }: CombatResultDisplayProp
   }, [visibleLines, result.narrative.length]);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 relative">
+      {/* Flash overlay */}
+      <AnimatePresence>
+        {showFlash && (
+          <motion.div
+            initial={{ opacity: 0.6 }}
+            animate={{ opacity: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="absolute inset-0 z-10 rounded pointer-events-none"
+            style={{
+              backgroundColor: won
+                ? "rgba(0, 255, 136, 0.15)"
+                : "rgba(255, 51, 51, 0.15)",
+            }}
+          />
+        )}
+      </AnimatePresence>
+
       {/* Narrative */}
       <div className="bg-bg-primary border border-border-default rounded p-3 font-mono text-[11px] space-y-1 max-h-64 overflow-y-auto">
         {result.narrative.slice(0, visibleLines).map((line, i) => (

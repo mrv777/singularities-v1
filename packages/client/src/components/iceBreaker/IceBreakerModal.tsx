@@ -195,7 +195,7 @@ export function IceBreakerModal() {
             </p>
             <button
               onClick={handleInitiate}
-              disabled={acting || !status || status.dailyAttemptsRemaining <= 0 || status.cooldownTTL > 0 || !player || player.energy < ICE_BREAKER_BALANCE.energyCost}
+              disabled={acting || !status || status.dailyAttemptsRemaining <= 0 || status.cooldownTTL > 0 || !player || (ICE_BREAKER_BALANCE.energyCost > 0 && player.energy < ICE_BREAKER_BALANCE.energyCost)}
               className="px-6 py-2 min-h-[44px] border border-cyber-cyan text-cyber-cyan rounded hover:bg-cyber-cyan/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed text-sm font-semibold"
             >
               {acting ? "Initiating..." : (
@@ -204,7 +204,7 @@ export function IceBreakerModal() {
                 </span>
               )}
             </button>
-            {player && player.energy < ICE_BREAKER_BALANCE.energyCost && (
+            {player && ICE_BREAKER_BALANCE.energyCost > 0 && player.energy < ICE_BREAKER_BALANCE.energyCost && (
               <p className="text-cyber-red text-xs mt-2">Insufficient energy</p>
             )}
             {status && status.dailyAttemptsRemaining <= 0 && (

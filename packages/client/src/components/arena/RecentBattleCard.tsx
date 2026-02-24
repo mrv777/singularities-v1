@@ -1,4 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { motion } from "framer-motion";
 import { api } from "@/lib/api";
 import { useAuthStore } from "@/stores/auth";
 import { useUIStore } from "@/stores/ui";
@@ -36,7 +37,12 @@ export function RecentBattleCard() {
   };
 
   return (
-    <div className="w-full max-w-3xl mx-auto">
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+      className="w-full max-w-3xl mx-auto"
+    >
       <div
         className={`flex items-center gap-3 px-3 py-2 rounded border text-xs cursor-pointer hover:opacity-90 transition-opacity ${
           won
@@ -60,6 +66,6 @@ export function RecentBattleCard() {
         </div>
         <span className="text-text-muted/50 text-[10px] ml-auto shrink-0">View all</span>
       </div>
-    </div>
+    </motion.div>
   );
 }

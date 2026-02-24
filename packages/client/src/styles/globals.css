@@ -133,7 +133,14 @@ body {
   position: relative;
   background: color-mix(in srgb, var(--color-bg-surface) 40%, transparent);
   border: 1px solid var(--color-border-default);
-  backdrop-filter: blur(4px);
+  backdrop-filter: blur(8px) saturate(1.2);
+}
+
+/* Reduce blur on mobile for performance */
+@media (max-width: 768px) {
+  .hud-box {
+    backdrop-filter: blur(4px);
+  }
 }
 
 .cyber-grid {
@@ -286,6 +293,35 @@ body {
 @keyframes slide-in-left {
   from { transform: translateX(-100%); }
   to   { transform: translateX(0); }
+}
+
+/* ─── Animated number flash ────────────────────────────────────────────────── */
+@keyframes num-gain {
+  0%   { filter: brightness(1); color: var(--color-cyber-green); }
+  100% { filter: brightness(1); color: inherit; }
+}
+@keyframes num-loss {
+  0%   { filter: brightness(1); color: var(--color-cyber-red); }
+  100% { filter: brightness(1); color: inherit; }
+}
+.animate-num-gain { animation: num-gain 0.3s ease-out; }
+.animate-num-loss { animation: num-loss 0.3s ease-out; }
+
+/* ─── Skeleton shimmer ─────────────────────────────────────────────────────── */
+@keyframes skeleton-shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton-bar {
+  background: linear-gradient(
+    90deg,
+    var(--color-bg-elevated) 25%,
+    color-mix(in srgb, var(--color-cyber-cyan) 8%, var(--color-bg-elevated)) 50%,
+    var(--color-bg-elevated) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s ease-in-out infinite;
 }
 
 /* ─── Reduced motion ──────────────────────────────────────────────────────── */

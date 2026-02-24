@@ -21,7 +21,7 @@ export function computeLayerPassRate(playerStat: number, threshold: number): num
 }
 
 export const ICE_BREAKER_BALANCE = {
-  energyCost: 18,
+  energyCost: 0,
   dailyLimit: 3,
   cooldownSeconds: 600,
 

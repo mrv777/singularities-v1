@@ -1,6 +1,8 @@
 import { Modal } from "../Modal";
 import { useUIStore } from "@/stores/ui";
 import { ScriptCard } from "./ScriptCard";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { Terminal } from "lucide-react";
 import { api } from "@/lib/api";
 import { useState, useEffect } from "react";
 import {
@@ -182,9 +184,10 @@ export function ScriptManagerModal() {
         {loading && scripts.length === 0 ? (
           <div className="text-text-muted text-sm text-center py-8">Loading scripts...</div>
         ) : scripts.length === 0 ? (
-          <div className="text-text-muted text-sm text-center py-8">
-            No scripts created. Scripts automate actions based on triggers.
-          </div>
+          <EmptyState
+            icon={<Terminal size={24} />}
+            message="No scripts created. Scripts automate actions based on triggers."
+          />
         ) : (
           <div className="space-y-2">
             {scripts.map((script) => (

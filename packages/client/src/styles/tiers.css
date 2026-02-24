@@ -27,6 +27,11 @@
   --scanline-opacity: 0.035;
 }
 
+/* Tier 1 keeps retro minimal blur */
+.ui-tier-1 .hud-box {
+  backdrop-filter: blur(4px);
+}
+
 /* Muted glows in Tier 1 (~50% of Tier 2) */
 .ui-tier-1 .glow-cyan,
 .ui-tier-1 .glow-magenta,
@@ -56,6 +61,12 @@
   --color-bg-surface: #1a1a2e;
   --color-bg-elevated: #222240;
   --scanline-opacity: 0.005;
+}
+
+/* Tier 3 gets premium blur + edge glow */
+.ui-tier-3 .hud-box {
+  backdrop-filter: blur(12px) saturate(1.3);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--color-cyber-cyan) 6%, transparent);
 }
 
 /* Enhanced glows in Tier 3 */

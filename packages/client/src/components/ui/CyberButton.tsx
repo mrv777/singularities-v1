@@ -1,10 +1,12 @@
 import { forwardRef, type ButtonHTMLAttributes } from "react";
+import { motion } from "framer-motion";
 import { useUITier } from "@/hooks/useUITier";
 
 type Variant = "primary" | "danger" | "ghost";
 type Size = "sm" | "md" | "lg";
 
-interface CyberButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+// Omit drag-related props that conflict with Framer Motion
+interface CyberButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "onDrag" | "onDragStart" | "onDragEnd" | "onAnimationStart"> {
   variant?: Variant;
   size?: Size;
 }
@@ -43,9 +45,12 @@ export const CyberButton = forwardRef<HTMLButtonElement, CyberButtonProps>(
     const { tier } = useUITier();
 
     return (
-      <button
+      <motion.button
         ref={ref}
         disabled={disabled}
+        whileHover={disabled ? undefined : { scale: 1.02 }}
+        whileTap={disabled ? undefined : { scale: 0.96 }}
+        transition={{ type: "spring", stiffness: 400, damping: 20 }}
         className={[
           "border rounded font-semibold tracking-wider transition-colors",
           sizeClasses[size],
@@ -59,7 +64,7 @@ export const CyberButton = forwardRef<HTMLButtonElement, CyberButtonProps>(
         {...rest}
       >
         {children}
-      </button>
+      </motion.button>
     );
   },
 );

@@ -3,6 +3,8 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import { api, ApiError } from "@/lib/api";
 import { useAuthStore } from "@/stores/auth";
 import { useTutorialStore } from "@/stores/tutorial";
+import { useToastStore } from "@/stores/toast";
+import { playSound } from "@/lib/sound";
 import bs58 from "bs58";
 import { usePlayer } from "@/hooks/usePlayer";
 
@@ -14,7 +16,9 @@ export function AuthGate({ children }: { children: ReactNode }) {
   const { publicKey, signMessage, connected } = useWallet();
   const { isAuthenticated, setPlayer, logout } = useAuthStore();
   const initTutorial = useTutorialStore((s) => s.initFromPlayer);
+  const addToast = useToastStore((s) => s.addToast);
   const authenticatingRef = useRef(false);
+  const prevLevelRef = useRef<number | null>(null);
   const { data: livePlayer, error: livePlayerError } = usePlayer();
 
   // Auto-authenticate when wallet connects
@@ -79,10 +83,18 @@ export function AuthGate({ children }: { children: ReactNode }) {
   // Keep local auth store in sync with the polled /player/me query.
   useEffect(() => {
     if (livePlayer?.player) {
+      const newLevel = livePlayer.player.level;
+      // Detect level-up
+      if (prevLevelRef.current !== null && newLevel > prevLevelRef.current) {
+        playSound("levelUp");
+        addToast("levelup", "LEVEL UP!", `You reached level ${newLevel}`);
+      }
+      prevLevelRef.current = newLevel;
+
       setPlayer(livePlayer.player);
       initTutorial(livePlayer.player.tutorialStep);
     }
-  }, [livePlayer?.player, setPlayer, initTutorial]);
+  }, [livePlayer?.player, setPlayer, initTutorial, addToast]);
 
   // Expired/invalid token while polling: clear session.
   useEffect(() => {

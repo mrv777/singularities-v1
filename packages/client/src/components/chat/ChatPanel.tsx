@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useChatStore } from "@/stores/chat";
 import { wsManager } from "@/lib/ws";
 import { ChatMessage } from "./ChatMessage";
+import { EmptyState } from "@/components/ui/EmptyState";
 import type { ChatChannel } from "@singularities/shared";
 import { playSound } from "@/lib/sound";
 import { CyberButton } from "@/components/ui/CyberButton";
@@ -131,9 +132,16 @@ export function ChatPanel() {
               style={{ maxHeight: "calc(100% - 120px)" }}
             >
               {filtered.length === 0 ? (
-                <div className="text-text-muted text-[10px] text-center py-4">
-                  No messages yet.
-                </div>
+                <EmptyState
+                  icon={<MessageSquare size={24} />}
+                  message={
+                    activeTab === "global"
+                      ? "No messages yet. Say hello!"
+                      : activeTab === "events"
+                        ? "No world events detected."
+                        : "No activity recorded."
+                  }
+                />
               ) : (
                 filtered.map((msg) => <ChatMessage key={msg.id} msg={msg} />)
               )}

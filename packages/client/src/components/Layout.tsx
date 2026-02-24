@@ -5,6 +5,7 @@ import { MobileSidebar } from "./MobileSidebar";
 import { useUITier } from "@/hooks/useUITier";
 import { FloatingNumberLayer } from "./ui/FloatingNumber";
 import { ParticleLayer } from "./ui/ParticleBurst";
+import { ToastLayer } from "./ui/ToastLayer";
 
 export function Layout({ children }: { children: ReactNode }) {
   const { tierClass } = useUITier();
@@ -22,6 +23,7 @@ export function Layout({ children }: { children: ReactNode }) {
         {/* Game feedback overlays — pointer-events: none, highest z-index */}
         <FloatingNumberLayer />
         <ParticleLayer />
+        <ToastLayer />
       </div>
     </Tooltip.Provider>
   );

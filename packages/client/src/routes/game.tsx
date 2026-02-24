@@ -15,6 +15,7 @@ import { TutorialHint } from "@/components/tutorial/TutorialHint";
 import { SystemUnlockOverlay } from "@/components/tutorial/SystemUnlockOverlay";
 import { NextActionHint } from "@/components/tutorial/NextActionHint";
 import { TUTORIAL_HIGHLIGHT_NODE, type TutorialStep } from "@singularities/shared";
+import { ModalSkeleton } from "@/components/ui/ModalSkeleton";
 import { useState, useEffect, lazy, Suspense, type ComponentType } from "react";
 import { api } from "@/lib/api";
 import { wsManager } from "@/lib/ws";
@@ -23,6 +24,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useGameStore } from "@/stores/game";
 import { useUIStore } from "@/stores/ui";
 import { useTutorialStore } from "@/stores/tutorial";
+import { useToastStore } from "@/stores/toast";
 
 /* ── Lazy modal imports ──────────────────────────────────────────────────── */
 const ScannerModal = lazy(() => import("@/components/scanner/ScannerModal").then(m => ({ default: m.ScannerModal })));
@@ -62,7 +64,7 @@ function ModalRouter() {
   const ModalComponent = activeModal ? MODAL_MAP[activeModal] : null;
   if (!ModalComponent) return null;
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<ModalSkeleton />}>
       <ModalComponent />
     </Suspense>
   );
@@ -145,6 +147,7 @@ function GamePage() {
   const addChatMessage = useChatStore((s) => s.addMessage);
   const setChatHistory = useChatStore((s) => s.setHistory);
   const setChatConnected = useChatStore((s) => s.setConnected);
+  const addToast = useToastStore((s) => s.addToast);
   const tutorialStep = useTutorialStore((s) => s.step);
   const advanceTutorial = useTutorialStore((s) => s.advanceStep);
 
@@ -163,7 +166,20 @@ function GamePage() {
   useEffect(() => {
     if (player?.isAlive) {
       wsManager.setHandlers({
-        onMessage: addChatMessage,
+        onMessage: (msg) => {
+          addChatMessage(msg);
+          // Fire toast for activity & event messages
+          if (msg.channel === "activity") {
+            const content = msg.content;
+            const type = content.includes("level") ? "levelup" as const
+              : content.includes("won") || content.includes("victory") ? "combat" as const
+              : content.includes("lost") || content.includes("defeat") ? "error" as const
+              : "info" as const;
+            addToast(type, "Activity", content);
+          } else if (msg.channel === "events") {
+            addToast("warning", "World Event", msg.content);
+          }
+        },
         onHistory: setChatHistory,
         onConnected: () => setChatConnected(true),
         onDisconnected: () => setChatConnected(false),
@@ -171,7 +187,7 @@ function GamePage() {
       wsManager.connect();
       return () => wsManager.disconnect();
     }
-  }, [player?.isAlive, addChatMessage, setChatHistory, setChatConnected]);
+  }, [player?.isAlive, addChatMessage, setChatHistory, setChatConnected, addToast]);
 
   if (!isAuthenticated && hasStoredToken) {
     return (
