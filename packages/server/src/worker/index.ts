@@ -7,6 +7,7 @@ import { runNftTransferCheck } from "./jobs/nftTransferCheck.js";
 import { runWeeklyTopologyRotation } from "./jobs/weeklyTopologyRotation.js";
 import { runWorldEventGeneration } from "./jobs/worldEventGeneration.js";
 import { runSeasonCheck } from "./jobs/seasonCheck.js";
+import { runPendingMintCleanup } from "./jobs/pendingMintCleanup.js";
 
 const intervals: NodeJS.Timeout[] = [];
 
@@ -44,8 +45,9 @@ export function startWorker(): void {
   scheduleJob("weeklyTopologyRotation", runWeeklyTopologyRotation, 60 * 60 * 1000); // Every hour
   scheduleJob("worldEventGeneration", runWorldEventGeneration, 60 * 60 * 1000);     // Every hour
   scheduleJob("seasonCheck", runSeasonCheck, 60 * 60 * 1000);                       // Every hour
+  scheduleJob("pendingMintCleanup", runPendingMintCleanup, 5 * 60 * 1000);          // Every 5 min
 
-  console.log("[worker] Background worker started with 9 jobs.");
+  console.log("[worker] Background worker started with 10 jobs.");
 }
 
 export function stopWorker(): void {

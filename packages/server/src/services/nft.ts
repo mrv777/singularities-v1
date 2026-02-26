@@ -5,7 +5,9 @@ import {
   create,
   burnV1,
   fetchAssetV1,
+  fetchCollectionV1,
   mplCore,
+  type CollectionV1,
 } from "@metaplex-foundation/mpl-core";
 import {
   publicKey as umiPublicKey,
@@ -69,6 +71,19 @@ function getUmiSigner(): KeypairSigner {
   return umiServerSigner!;
 }
 
+let cachedCollection: CollectionV1 | null = null;
+
+async function getCollection(umiInstance: Umi): Promise<CollectionV1 | undefined> {
+  if (!env.COLLECTION_ADDRESS) return undefined;
+  if (!cachedCollection) {
+    cachedCollection = await fetchCollectionV1(
+      umiInstance,
+      umiPublicKey(env.COLLECTION_ADDRESS)
+    );
+  }
+  return cachedCollection;
+}
+
 // ---------------------------------------------------------------------------
 // Build mint transaction (partially signed by server)
 // ---------------------------------------------------------------------------
@@ -100,10 +115,13 @@ export async function buildMintTransaction(
 
   const metadataUri = `${env.NFT_METADATA_BASE_URL}/api/nft/metadata/${mintAddress}`;
 
+  const collection = await getCollection(umiInstance);
+
   const createBuilder = create(umiInstance, {
     asset: umiAssetSigner,
     name: aiName,
     uri: metadataUri,
+    collection,
     plugins: [
       {
         type: "BurnDelegate",
@@ -198,11 +216,11 @@ export async function burnNft(mintAddress: string): Promise<string> {
   const umiInstance = getUmi();
   const signer = getUmiSigner();
 
+  const collection = await getCollection(umiInstance);
+
   const builder = burnV1(umiInstance, {
     asset: umiPublicKey(mintAddress),
-    collection: env.COLLECTION_ADDRESS
-      ? umiPublicKey(env.COLLECTION_ADDRESS)
-      : undefined,
+    collection: collection ? collection.publicKey : undefined,
     authority: signer,
   });
 

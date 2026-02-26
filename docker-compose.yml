@@ -45,6 +45,9 @@ services:
     build:
       context: .
       dockerfile: packages/client/Dockerfile
+      args:
+        VITE_SOLANA_RPC_URL: ${VITE_SOLANA_RPC_URL:-https://api.devnet.solana.com}
+        VITE_SOLANA_NETWORK: ${VITE_SOLANA_NETWORK:-devnet}
     restart: unless-stopped
     ports:
       - "80:80"

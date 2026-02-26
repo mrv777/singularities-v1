@@ -18,6 +18,12 @@ RUN pnpm install --frozen-lockfile
 COPY packages/shared/ packages/shared/
 COPY packages/client/ packages/client/
 
+# Client env vars (baked into the Vite build via .env at envDir root)
+ARG VITE_SOLANA_RPC_URL=https://api.devnet.solana.com
+ARG VITE_SOLANA_NETWORK=devnet
+RUN printf "VITE_SOLANA_RPC_URL=%s\nVITE_SOLANA_NETWORK=%s\n" \
+  "$VITE_SOLANA_RPC_URL" "$VITE_SOLANA_NETWORK" > .env
+
 # Build shared then client
 RUN pnpm --filter @singularities/shared build
 RUN pnpm --filter @singularities/client build
