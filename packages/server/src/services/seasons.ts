@@ -76,23 +76,24 @@ export async function endSeason(adminEnded = false): Promise<void> {
   if (!season) return;
 
   await withTransaction(async (client) => {
-    // Get top player
+    // Get top 3 players
     const topRes = await client.query(
       `SELECT id, reputation FROM players
        WHERE season_id = $1 AND is_alive = true
-       ORDER BY reputation DESC LIMIT 1`,
+       ORDER BY reputation DESC LIMIT 3`,
       [season.id]
     );
 
-    if (topRes.rows.length > 0) {
+    for (let i = 0; i < topRes.rows.length; i++) {
+      const rank = i + 1;
       await client.query(
         `INSERT INTO season_winners (season_id, player_id, reputation, trophy_metadata)
          VALUES ($1, $2, $3, $4)`,
         [
           season.id,
-          topRes.rows[0].id,
-          topRes.rows[0].reputation,
-          JSON.stringify({ seasonName: season.name }),
+          topRes.rows[i].id,
+          topRes.rows[i].reputation,
+          JSON.stringify({ seasonName: season.name, rank }),
         ]
       );
     }

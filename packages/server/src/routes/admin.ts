@@ -15,6 +15,11 @@ import {
   setArenaBotsEnabled,
 } from "../services/admin.js";
 import { endSeason, createSeason, getCurrentSeason } from "../services/seasons.js";
+import {
+  getRewardSummary,
+  executePayouts,
+  retryFailedPayouts,
+} from "../services/seasonRewards.js";
 
 function extractMeta(request: { ip: string; headers: Record<string, unknown> }) {
   const rawUa = request.headers["user-agent"];
@@ -248,6 +253,107 @@ export async function adminRoutes(app: FastifyInstance) {
     { preHandler: [authGuard, adminGuard] },
     async () => {
       return getEconomyOverview();
+    }
+  );
+
+  // --- Season Rewards ---
+
+  app.get(
+    "/api/admin/season/rewards/:seasonId",
+    { preHandler: [authGuard, adminGuard] },
+    async (request, reply) => {
+      const { seasonId } = request.params as { seasonId: string };
+      const id = Number(seasonId);
+      if (!Number.isFinite(id)) {
+        return reply.code(400).send({
+          error: "Validation",
+          message: "seasonId must be numeric",
+          statusCode: 400,
+        });
+      }
+
+      const summary = await getRewardSummary(id);
+      if (!summary) {
+        return reply.code(404).send({
+          error: "Not Found",
+          message: "No reward pool found for this season",
+          statusCode: 404,
+        });
+      }
+
+      return summary;
+    }
+  );
+
+  app.post(
+    "/api/admin/season/rewards/:seasonId/payout",
+    { preHandler: [authGuard, adminGuard] },
+    async (request, reply) => {
+      const user = request.user as AuthPayload;
+      const { seasonId } = request.params as { seasonId: string };
+      const id = Number(seasonId);
+      if (!Number.isFinite(id)) {
+        return reply.code(400).send({
+          error: "Validation",
+          message: "seasonId must be numeric",
+          statusCode: 400,
+        });
+      }
+
+      const body = (request.body ?? {}) as { confirm?: string; retry?: boolean };
+
+      if (body.retry) {
+        try {
+          const result = await retryFailedPayouts(id);
+          await recordAdminAction(
+            user.sub,
+            "season_payout_retry",
+            { seasonId: id, retried: result.retried.length },
+            extractMeta(request)
+          );
+          return { success: true, ...result };
+        } catch (err: any) {
+          return reply.code(500).send({
+            error: "Payout Error",
+            message: err.message ?? "Failed to retry payouts",
+            statusCode: 500,
+          });
+        }
+      }
+
+      if (body.confirm !== "PAYOUT") {
+        return reply.code(400).send({
+          error: "Validation",
+          message: "confirm must be exactly 'PAYOUT'",
+          statusCode: 400,
+        });
+      }
+
+      try {
+        const result = await executePayouts(id);
+        await recordAdminAction(
+          user.sub,
+          "season_payout_executed",
+          {
+            seasonId: id,
+            payouts: result.payouts.map((p) => ({
+              rank: p.rank,
+              wallet: p.wallet,
+              lamports: p.lamports,
+              status: p.status,
+            })),
+            carryoverCreated: result.carryoverCreated,
+          },
+          extractMeta(request)
+        );
+        return { success: true, ...result };
+      } catch (err: any) {
+        return reply.code(500).send({
+          error: "Payout Error",
+          message: err.message ?? "Failed to execute payouts",
+          statusCode: 500,
+        });
+      }
     }
   );
 }

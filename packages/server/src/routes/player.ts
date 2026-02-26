@@ -19,6 +19,7 @@ import { materializePassiveIncome } from "../services/passive.js";
 import { buildMintTransaction, submitMintTransaction } from "../services/nft.js";
 import { getMintPriceLamports } from "../services/solPrice.js";
 import { generateNftImage } from "../services/nftImage.js";
+import { recordMintRevenue } from "../services/seasonRewards.js";
 
 export async function playerRoutes(app: FastifyInstance) {
   // Get current player profile (protected)
@@ -239,6 +240,11 @@ export async function playerRoutes(app: FastifyInstance) {
           statusCode: 500,
         });
       }
+
+      // Track mint revenue for season reward pool (fire and forget)
+      getMintPriceLamports()
+        .then(({ lamports }) => recordMintRevenue(lamports))
+        .catch((err) => console.error("[seasonRewards] Failed to record mint revenue:", err));
 
       // Generate the NFT image now that mint is confirmed
       const existing = await query("SELECT * FROM players WHERE id = $1", [

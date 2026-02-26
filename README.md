@@ -32,6 +32,20 @@ Each player mints an MPL-Core NFT during registration. The NFT represents the pl
 - **Death/burn**: Server burns NFT via BurnDelegate plugin; failed burns queued for retry
 - **Metadata**: Dynamic endpoint serves NFT metadata and images for wallets/explorers
 
+### Season Rewards
+
+50% of all mint revenue flows into the season rewards pool. At the end of each season:
+
+- **80%** of the pool is awarded to the current season's top 3 leaderboard players:
+  - 1st place: 56.25%
+  - 2nd place: 31.25%
+  - 3rd place: 12.5%
+- **20%** of the pool carries over to seed the next season's reward pool.
+
+Example with $200 total mint revenue ($100 pool): 1st gets $45, 2nd gets $25, 3rd gets $10. The remaining $20 seeds season 2's pool.
+
+Payouts are admin-triggered after season end via `POST /api/admin/season/rewards/:id/payout` (requires `{ confirm: "PAYOUT" }`). Failed transfers can be retried with `{ retry: true }`.
+
 ### Wallet Authentication
 
 Players connect via Phantom or Solflare. Authentication uses challenge-response message signing (not transaction signing) to issue JWT tokens.
@@ -85,7 +99,7 @@ Security model:
 - Admin APIs are disabled unless `ADMIN_ENABLED=true`.
 - Admin access is allowlist-based (player ID and/or wallet address).
 - Admin middleware verifies JWT wallet matches the player's current wallet in DB.
-- High-risk action (`POST /api/admin/season/end`) requires explicit confirmation text (`END SEASON`).
+- High-risk actions require explicit confirmation text: `POST /api/admin/season/end` (`END SEASON`), `POST /api/admin/season/rewards/:id/payout` (`PAYOUT`).
 - Admin writes are recorded in `admin_audit_logs`.
 
 ## Arena Bot System

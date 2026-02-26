@@ -5,6 +5,7 @@ import {
   getSeasonLeaderboard,
   getPlayerRank,
 } from "../services/seasons.js";
+import { getPublicPoolInfo } from "../services/seasonRewards.js";
 
 export async function seasonRoutes(app: FastifyInstance) {
   // Get current season info
@@ -16,7 +17,8 @@ export async function seasonRoutes(app: FastifyInstance) {
       const daysRemaining = season
         ? Math.max(0, Math.ceil((new Date(season.endsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
         : 0;
-      return { season, daysRemaining };
+      const rewardPool = season ? await getPublicPoolInfo(season.id) : null;
+      return { season, daysRemaining, rewardPool };
     }
   );
 
