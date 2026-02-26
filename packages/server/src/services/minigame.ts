@@ -1188,269 +1188,284 @@ export async function resolveGame(playerId: string) {
       }
     }
 
-    const result = await withTransaction(async (client) => {
-      const pRes = await client.query("SELECT * FROM players WHERE id = $1 FOR UPDATE", [playerId]);
-      const playerRow = computeEnergy(pRes.rows[0]);
+    let result;
+    try {
+      result = await withTransaction(async (client) => {
+        const pRes = await client.query("SELECT * FROM players WHERE id = $1 FOR UPDATE", [playerId]);
+        const playerRow = computeEnergy(pRes.rows[0]);
 
-      // Calculate gradient rewards
-      const baseRewards = getBaseReward(target.securityLevel);
-      const scoreMult = rewardsEligible ? computeRewardMultiplier(score) : 0;
-      const creditMultiplier = 1 + statsSnap.creditBonus / 100;
-      const dataMultiplier = 1 + statsSnap.dataBonus / 100;
-      const economicMult = MINIGAME_BALANCE.economicMultiplierByTier[getTierIndex(target.securityLevel)];
+        // Calculate gradient rewards
+        const baseRewards = getBaseReward(target.securityLevel);
+        const scoreMult = rewardsEligible ? computeRewardMultiplier(score) : 0;
+        const creditMultiplier = 1 + statsSnap.creditBonus / 100;
+        const dataMultiplier = 1 + statsSnap.dataBonus / 100;
+        const economicMult = MINIGAME_BALANCE.economicMultiplierByTier[getTierIndex(target.securityLevel)];
 
-      const hackPowerRewardBonus = 1 + Math.min(statsSnap.hackPower * 0.003, 0.45);
+        const hackPowerRewardBonus = 1 + Math.min(statsSnap.hackPower * 0.003, 0.45);
 
-      const finalCredits = Math.floor(
-        baseRewards.credits * economicMult * scoreMult * creditMultiplier
-        * statsSnap.hackRewardMultiplier * resourceMultiplier
-        * MINIGAME_BALANCE.globalRewardMultiplier * hackPowerRewardBonus
-      );
-      const finalData = Math.floor(
-        baseRewards.data * economicMult * scoreMult * dataMultiplier
-        * statsSnap.hackRewardMultiplier * resourceMultiplier
-        * MINIGAME_BALANCE.globalRewardMultiplier * hackPowerRewardBonus
-      );
-      const finalReputation = Math.floor(baseRewards.reputation * MINIGAME_BALANCE.rewardMultiplier * scoreMult);
-      const finalXp = Math.floor(
-        baseRewards.xp * MINIGAME_BALANCE.rewardMultiplier * scoreMult
-        * statsSnap.xpGainMultiplier * MINIGAME_BALANCE.globalRewardMultiplier
-      );
-
-      // Processing power only at score >= 75% on security >= 65
-      const processingPowerReward =
-        score >= MINIGAME_BALANCE.processingPowerScoreThreshold
-        && target.securityLevel >= MINIGAME_BALANCE.processingPowerSecurityThreshold
-          ? Math.max(1, Math.floor(
-              randomInt(
-                SCANNER_BALANCE.highRiskProcessingPower.min,
-                SCANNER_BALANCE.highRiskProcessingPower.max
-              ) * resourceMultiplier
-            ))
-          : 0;
-
-      // Detection based on score
-      const detectionMult = getDetectionMultiplier(score);
-      let detected = false;
-      let damage = undefined;
-
-      if (detectionMult > 0) {
-        const effectiveStealth = statsSnap.stealth + statsSnap.defense * 0.15;
-        const effectiveDetection = Math.max(5, Math.min(95,
-          (target.detectionChance - effectiveStealth / 2) * statsSnap.detectionChanceMultiplier * detectionMult
-        ));
-        const detectionRoll = chainResult ? chainResult.detectionRoll : randomInt(1, 100);
-        detected = detectionRoll <= effectiveDetection;
-      }
-
-      // Residual detection on clean hacks at high security.
-      // High-security targets run persistent intrusion monitoring that logs breach
-      // signatures even on clean exits. Relay routing (stealth) masks the traces.
-      if (!detected && score >= 50) {
-        const { securityThreshold, securityScale, stealthDivisor } = SCANNER_BALANCE.residualDetection;
-        const residual = Math.max(0,
-          (target.securityLevel - securityThreshold) * securityScale - statsSnap.stealth / stealthDivisor
+        const finalCredits = Math.floor(
+          baseRewards.credits * economicMult * scoreMult * creditMultiplier
+          * statsSnap.hackRewardMultiplier * resourceMultiplier
+          * MINIGAME_BALANCE.globalRewardMultiplier * hackPowerRewardBonus
         );
-        if (residual > 0) {
-          const residualRoll = chainResult ? chainResult.successRoll : randomInt(1, 100);
-          detected = residualRoll <= residual;
+        const finalData = Math.floor(
+          baseRewards.data * economicMult * scoreMult * dataMultiplier
+          * statsSnap.hackRewardMultiplier * resourceMultiplier
+          * MINIGAME_BALANCE.globalRewardMultiplier * hackPowerRewardBonus
+        );
+        const finalReputation = Math.floor(baseRewards.reputation * MINIGAME_BALANCE.rewardMultiplier * scoreMult);
+        const finalXp = Math.floor(
+          baseRewards.xp * MINIGAME_BALANCE.rewardMultiplier * scoreMult
+          * statsSnap.xpGainMultiplier * MINIGAME_BALANCE.globalRewardMultiplier
+        );
+
+        // Processing power only at score >= 75% on security >= 65
+        const processingPowerReward =
+          score >= MINIGAME_BALANCE.processingPowerScoreThreshold
+          && target.securityLevel >= MINIGAME_BALANCE.processingPowerSecurityThreshold
+            ? Math.max(1, Math.floor(
+                randomInt(
+                  SCANNER_BALANCE.highRiskProcessingPower.min,
+                  SCANNER_BALANCE.highRiskProcessingPower.max
+                ) * resourceMultiplier
+              ))
+            : 0;
+
+        // Detection based on score
+        const detectionMult = getDetectionMultiplier(score);
+        let detected = false;
+        let damage = undefined;
+
+        if (detectionMult > 0) {
+          const effectiveStealth = statsSnap.stealth + statsSnap.defense * 0.15;
+          const effectiveDetection = Math.max(5, Math.min(95,
+            (target.detectionChance - effectiveStealth / 2) * statsSnap.detectionChanceMultiplier * detectionMult
+          ));
+          const detectionRoll = chainResult ? chainResult.detectionRoll : randomInt(1, 100);
+          detected = detectionRoll <= effectiveDetection;
         }
-      }
 
-      if (detected) {
-        const heatLevel = playerRow.heat_level as number;
-        const config = getHeatDamageConfig(heatLevel);
-
-        const systemsRes = await client.query(
-          "SELECT * FROM player_systems WHERE player_id = $1 FOR UPDATE",
-          [playerId]
-        );
-        const systems = systemsRes.rows;
-        const affectedCount = Math.min(config.systemsAffected, systems.length);
-        if (chainResult) {
-          for (let i = systems.length - 1; i > 0; i--) {
-            const j = deriveFromSeed(chainResult.damageSeed, 0, i, i + 4) % (i + 1);
-            [systems[i], systems[j]] = [systems[j], systems[i]];
-          }
-        } else {
-          for (let i = systems.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [systems[i], systems[j]] = [systems[j], systems[i]];
+        // Residual detection on clean hacks at high security.
+        // High-security targets run persistent intrusion monitoring that logs breach
+        // signatures even on clean exits. Relay routing (stealth) masks the traces.
+        if (!detected && score >= 50) {
+          const { securityThreshold, securityScale, stealthDivisor } = SCANNER_BALANCE.residualDetection;
+          const residual = Math.max(0,
+            (target.securityLevel - securityThreshold) * securityScale - statsSnap.stealth / stealthDivisor
+          );
+          if (residual > 0) {
+            const residualRoll = chainResult ? chainResult.successRoll : randomInt(1, 100);
+            detected = residualRoll <= residual;
           }
         }
-        const affected = systems.slice(0, affectedCount);
 
-        const damageSystems: Array<{ systemType: string; damage: number }> = [];
-        for (let idx = 0; idx < affected.length; idx++) {
-          const sys = affected[idx];
-          const computed = computeSystemHealth(sys, {});
-          const currentHealth = computed.health as number;
-          const dmg = chainResult
-            ? deriveFromSeed(chainResult.damageSeed, config.minDamage, config.maxDamage, idx)
-            : randomInt(config.minDamage, config.maxDamage);
-          const newHealth = Math.max(0, currentHealth - dmg);
-          const newStatus = getStatusForHealth(newHealth);
+        if (detected) {
+          const heatLevel = playerRow.heat_level as number;
+          const config = getHeatDamageConfig(heatLevel);
+
+          const systemsRes = await client.query(
+            "SELECT * FROM player_systems WHERE player_id = $1 FOR UPDATE",
+            [playerId]
+          );
+          const systems = systemsRes.rows;
+          const affectedCount = Math.min(config.systemsAffected, systems.length);
+          if (chainResult) {
+            for (let i = systems.length - 1; i > 0; i--) {
+              const j = deriveFromSeed(chainResult.damageSeed, 0, i, i + 4) % (i + 1);
+              [systems[i], systems[j]] = [systems[j], systems[i]];
+            }
+          } else {
+            for (let i = systems.length - 1; i > 0; i--) {
+              const j = Math.floor(Math.random() * (i + 1));
+              [systems[i], systems[j]] = [systems[j], systems[i]];
+            }
+          }
+          const affected = systems.slice(0, affectedCount);
+
+          const damageSystems: Array<{ systemType: string; damage: number }> = [];
+          for (let idx = 0; idx < affected.length; idx++) {
+            const sys = affected[idx];
+            const computed = computeSystemHealth(sys, {});
+            const currentHealth = computed.health as number;
+            const dmg = chainResult
+              ? deriveFromSeed(chainResult.damageSeed, config.minDamage, config.maxDamage, idx)
+              : randomInt(config.minDamage, config.maxDamage);
+            const newHealth = Math.max(0, currentHealth - dmg);
+            const newStatus = getStatusForHealth(newHealth);
+            await client.query(
+              `UPDATE player_systems SET health = $2, status = $3, updated_at = NOW() WHERE id = $1`,
+              [sys.id, newHealth, newStatus]
+            );
+            damageSystems.push({ systemType: sys.system_type as string, damage: dmg });
+          }
+
           await client.query(
-            `UPDATE player_systems SET health = $2, status = $3, updated_at = NOW() WHERE id = $1`,
-            [sys.id, newHealth, newStatus]
+            `UPDATE players SET heat_level = heat_level + 1 WHERE id = $1`,
+            [playerId]
           );
-          damageSystems.push({ systemType: sys.system_type as string, damage: dmg });
+
+          damage = { systems: damageSystems };
         }
 
-        await client.query(
-          `UPDATE players SET heat_level = heat_level + 1 WHERE id = $1`,
-          [playerId]
-        );
-
-        damage = { systems: damageSystems };
-      }
-
-      // Apply rewards
-      if (shouldResetHeatAfterMinigame(score, detected)) {
-        // Reset heat only for meaningful successful infiltration outcomes.
-        await client.query(
-          `UPDATE players
-           SET credits = credits + $2,
-               data = data + $3,
-               reputation = reputation + $4,
-               processing_power = processing_power + $5,
-               heat_level = 0
-           WHERE id = $1`,
-          [playerId, finalCredits, finalData, finalReputation, processingPowerReward]
-        );
-      } else {
-        // All other outcomes keep current heat progression.
-        await client.query(
-          `UPDATE players
-           SET credits = credits + $2,
-               data = data + $3,
-               reputation = reputation + $4,
-               processing_power = processing_power + $5
-           WHERE id = $1`,
-          [playerId, finalCredits, finalData, finalReputation, processingPowerReward]
-        );
-      }
-
-      const rewards = {
-        credits: finalCredits,
-        data: finalData,
-        reputation: finalReputation,
-        xp: finalXp,
-        processingPower: processingPowerReward > 0 ? processingPowerReward : undefined,
-      };
-
-      // Award XP
-      const xpResult = await awardXP(playerId, finalXp, client);
-
-      // Hook: first successful game each day
-      if (score >= 50) {
-        const dailyBuffKey = `daily:first_success_buff:${playerId}:${todayDateString()}`;
-        const alreadyGranted = await redis.get(dailyBuffKey);
-        if (!alreadyGranted) {
-          await redis.set(dailyBuffKey, "1", "EX", 86400);
-          await applyTimedBuff(
-            playerId, "hackPower",
-            HOOK_BALANCE.firstSuccessDailyBuff.hackPower,
-            HOOK_BALANCE.firstSuccessDailyBuff.durationSeconds
+        // Apply rewards
+        if (shouldResetHeatAfterMinigame(score, detected)) {
+          // Reset heat only for meaningful successful infiltration outcomes.
+          await client.query(
+            `UPDATE players
+             SET credits = credits + $2,
+                 data = data + $3,
+                 reputation = reputation + $4,
+                 processing_power = processing_power + $5,
+                 heat_level = 0
+             WHERE id = $1`,
+            [playerId, finalCredits, finalData, finalReputation, processingPowerReward]
           );
-          await applyTimedBuff(
-            playerId, "stealth",
-            HOOK_BALANCE.firstSuccessDailyBuff.stealth,
-            HOOK_BALANCE.firstSuccessDailyBuff.durationSeconds
+        } else {
+          // All other outcomes keep current heat progression.
+          await client.query(
+            `UPDATE players
+             SET credits = credits + $2,
+                 data = data + $3,
+                 reputation = reputation + $4,
+                 processing_power = processing_power + $5
+             WHERE id = $1`,
+            [playerId, finalCredits, finalData, finalReputation, processingPowerReward]
           );
         }
-      }
 
-      // Build narrative
-      let narrative: string;
-      if (score >= 50 && detected) {
-        // Clean hack, but high-security persistent monitoring logged the breach signature
-        const damageReport = damage?.systems.map(d => `${d.systemType}: -${d.damage}HP`).join(", ") ?? "";
-        narrative = fillTemplate(pickTemplate(HACK_SUCCESS_TRACED_TEMPLATES), {
-          target: target.name,
-          security: target.securityLevel,
+        const rewards = {
           credits: finalCredits,
           data: finalData,
           reputation: finalReputation,
-          damageReport,
-        });
-        if (xpResult.levelUp) {
-          narrative += `\n> LEVEL UP! Now level ${xpResult.newLevel}`;
-        }
-      } else if (score >= 50) {
-        narrative = fillTemplate(pickTemplate(HACK_SUCCESS_TEMPLATES), {
-          target: target.name,
-          security: target.securityLevel,
-          power: statsSnap.hackPower,
-          credits: finalCredits,
-          data: finalData,
-          reputation: finalReputation,
-          processingPower: processingPowerReward,
-          rounds: state.moveHistory.length,
-        });
-        if (xpResult.levelUp) {
-          narrative += `\n> LEVEL UP! Now level ${xpResult.newLevel}`;
-        }
-      } else if (detected) {
-        const damageReport = damage?.systems.map(d => `${d.systemType}: -${d.damage}HP`).join(", ") ?? "";
-        narrative = fillTemplate(pickTemplate(HACK_FAIL_DETECTED_TEMPLATES), {
-          target: target.name,
-          detection: Math.round(target.detectionChance),
-          damageReport,
-        });
-      } else {
-        narrative = fillTemplate(pickTemplate(HACK_FAIL_UNDETECTED_TEMPLATES), {
-          target: target.name,
-          security: target.securityLevel,
-          stealth: statsSnap.stealth,
-          power: statsSnap.hackPower,
-        });
-      }
+          xp: finalXp,
+          processingPower: processingPowerReward > 0 ? processingPowerReward : undefined,
+        };
 
-      // Log infiltration
-      await client.query(
-        `INSERT INTO infiltration_logs
-           (player_id, target_type, security_level, success, detected,
-            credits_earned, reputation_earned, damage_taken, chain_verified, tx_signature,
-            game_type, score, moves_count, game_duration_ms)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
-        [
-          playerId,
-          target.type,
-          target.securityLevel,
-          score >= 50,
-          detected,
-          rewards.credits,
-          rewards.reputation,
-          damage ? JSON.stringify(damage.systems) : null,
-          !!chainResult,
-          chainResult?.txSignature ?? null,
-          target.gameType,
+        // Award XP
+        const xpResult = await awardXP(playerId, finalXp, client);
+
+        // Hook: first successful game each day
+        if (score >= 50) {
+          const dailyBuffKey = `daily:first_success_buff:${playerId}:${todayDateString()}`;
+          const alreadyGranted = await redis.get(dailyBuffKey);
+          if (!alreadyGranted) {
+            await redis.set(dailyBuffKey, "1", "EX", 86400);
+            await applyTimedBuff(
+              playerId, "hackPower",
+              HOOK_BALANCE.firstSuccessDailyBuff.hackPower,
+              HOOK_BALANCE.firstSuccessDailyBuff.durationSeconds
+            );
+            await applyTimedBuff(
+              playerId, "stealth",
+              HOOK_BALANCE.firstSuccessDailyBuff.stealth,
+              HOOK_BALANCE.firstSuccessDailyBuff.durationSeconds
+            );
+          }
+        }
+
+        // Build narrative
+        let narrative: string;
+        if (score >= 50 && detected) {
+          // Clean hack, but high-security persistent monitoring logged the breach signature
+          const damageReport = damage?.systems.map(d => `${d.systemType}: -${d.damage}HP`).join(", ") ?? "";
+          narrative = fillTemplate(pickTemplate(HACK_SUCCESS_TRACED_TEMPLATES), {
+            target: target.name,
+            security: target.securityLevel,
+            credits: finalCredits,
+            data: finalData,
+            reputation: finalReputation,
+            damageReport,
+          });
+          if (xpResult.levelUp) {
+            narrative += `\n> LEVEL UP! Now level ${xpResult.newLevel}`;
+          }
+        } else if (score >= 50) {
+          narrative = fillTemplate(pickTemplate(HACK_SUCCESS_TEMPLATES), {
+            target: target.name,
+            security: target.securityLevel,
+            power: statsSnap.hackPower,
+            credits: finalCredits,
+            data: finalData,
+            reputation: finalReputation,
+            processingPower: processingPowerReward,
+            rounds: state.moveHistory.length,
+          });
+          if (xpResult.levelUp) {
+            narrative += `\n> LEVEL UP! Now level ${xpResult.newLevel}`;
+          }
+        } else if (detected) {
+          const damageReport = damage?.systems.map(d => `${d.systemType}: -${d.damage}HP`).join(", ") ?? "";
+          narrative = fillTemplate(pickTemplate(HACK_FAIL_DETECTED_TEMPLATES), {
+            target: target.name,
+            detection: Math.round(target.detectionChance),
+            damageReport,
+          });
+        } else {
+          narrative = fillTemplate(pickTemplate(HACK_FAIL_UNDETECTED_TEMPLATES), {
+            target: target.name,
+            security: target.securityLevel,
+            stealth: statsSnap.stealth,
+            power: statsSnap.hackPower,
+          });
+        }
+
+        // Log infiltration
+        await client.query(
+          `INSERT INTO infiltration_logs
+             (player_id, target_type, security_level, success, detected,
+              credits_earned, reputation_earned, damage_taken, chain_verified, tx_signature,
+              game_type, score, moves_count, game_duration_ms)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
+          [
+            playerId,
+            target.type,
+            target.securityLevel,
+            score >= 50,
+            detected,
+            rewards.credits,
+            rewards.reputation,
+            damage ? JSON.stringify(damage.systems) : null,
+            !!chainResult,
+            chainResult?.txSignature ?? null,
+            target.gameType,
+            score,
+            moveCount,
+            gameDurationMs,
+          ]
+        );
+
+        const finalRes = await client.query("SELECT * FROM players WHERE id = $1", [playerId]);
+        const finalPlayer = computeEnergy(finalRes.rows[0]);
+
+        return {
           score,
-          moveCount,
-          gameDurationMs,
-        ]
-      );
-
-      const finalRes = await client.query("SELECT * FROM players WHERE id = $1", [playerId]);
-      const finalPlayer = computeEnergy(finalRes.rows[0]);
-
-      return {
-        score,
-        rewards,
-        detected,
-        damage,
-        narrative,
-        levelUp: xpResult.levelUp,
-        newLevel: xpResult.newLevel,
-        player: mapPlayerRow({
-          ...finalRes.rows[0],
-          energy: finalPlayer.energy,
-        }),
-        chainVerified: !!chainResult,
-        txSignature: chainResult?.txSignature ?? null,
-      };
-    });
+          rewards,
+          detected,
+          damage,
+          narrative,
+          levelUp: xpResult.levelUp,
+          newLevel: xpResult.newLevel,
+          player: mapPlayerRow({
+            ...finalRes.rows[0],
+            energy: finalPlayer.energy,
+          }),
+          chainVerified: !!chainResult,
+          txSignature: chainResult?.txSignature ?? null,
+        };
+      });
+    } catch (err) {
+      // DB transaction failed — reset resolved flag so player can retry
+      try {
+        state.resolved = false;
+        await redis.set(
+          GAME_KEY(playerId),
+          JSON.stringify(state),
+          "EX",
+          MINIGAME_BALANCE.gameStateRetentionSeconds
+        );
+      } catch { /* best effort */ }
+      throw err;
+    }
 
     // Clean up Redis
     await redis.del(GAME_KEY(playerId));

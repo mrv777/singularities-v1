@@ -126,7 +126,7 @@ export async function executeDeath(playerId: string, outerClient?: TxClient): Pr
     if (mintAddress && !mintAddress.startsWith("mock_mint_")) {
       await client.query(
         `INSERT INTO pending_nft_burns (player_id, mint_address) VALUES ($1, $2)
-         ON CONFLICT DO NOTHING`,
+         ON CONFLICT (mint_address) DO NOTHING`,
         [playerId, mintAddress]
       );
       mintToBurn = mintAddress;

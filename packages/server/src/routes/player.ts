@@ -206,9 +206,9 @@ export async function playerRoutes(app: FastifyInstance) {
         });
       }
 
-      // Look up pending mint
+      // Atomically claim the pending mint — prevents concurrent confirm-mint races
       const pendingRes = await query(
-        "SELECT * FROM pending_mints WHERE player_id = $1 AND mint_address = $2",
+        "DELETE FROM pending_mints WHERE player_id = $1 AND mint_address = $2 RETURNING *",
         [playerId, mintAddress]
       );
       if (pendingRes.rows.length === 0) {
@@ -221,7 +221,6 @@ export async function playerRoutes(app: FastifyInstance) {
 
       const pending = pendingRes.rows[0];
       if (new Date(pending.expires_at as string) < new Date()) {
-        await query("DELETE FROM pending_mints WHERE id = $1", [pending.id]);
         return reply.code(400).send({
           error: "Expired",
           message: "Mint transaction expired, please try again",
@@ -331,9 +330,6 @@ export async function playerRoutes(app: FastifyInstance) {
           await processRebirth(playerId, wallet, client);
         });
       }
-
-      // Clean up pending mint
-      await query("DELETE FROM pending_mints WHERE player_id = $1", [playerId]);
 
       const updated = await query("SELECT * FROM players WHERE id = $1", [
         playerId,

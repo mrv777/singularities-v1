@@ -158,16 +158,14 @@ export async function createSeason(name?: string): Promise<Season> {
       `SELECT srp.pool_lamports, srp.season_id
        FROM season_reward_pool srp
        WHERE srp.paid_out = true
+         AND srp.carryover_applied = false
          AND srp.season_id < $1
-         AND NOT EXISTS (
-           SELECT 1 FROM season_reward_pool next_pool
-           WHERE next_pool.season_id = $1
-         )
        ORDER BY srp.season_id DESC LIMIT 1`,
       [s.id]
     );
 
     if (carryoverRes.rows.length > 0) {
+      const sourceSeasonId = carryoverRes.rows[0].season_id as number;
       const prevPoolLamports = Number(carryoverRes.rows[0].pool_lamports);
       const carryoverAmount = Math.floor(prevPoolLamports * SEASON_CARRYOVER_SHARE);
       if (carryoverAmount > 0) {
@@ -179,6 +177,11 @@ export async function createSeason(name?: string): Promise<Season> {
                  pool_lamports = season_reward_pool.total_mint_revenue_lamports * $3 + $2,
                  updated_at = NOW()`,
           [s.id, carryoverAmount, SEASON_REWARD_POOL_SHARE]
+        );
+        // Mark source season's carryover as consumed
+        await client.query(
+          "UPDATE season_reward_pool SET carryover_applied = true WHERE season_id = $1",
+          [sourceSeasonId]
         );
       }
     }
