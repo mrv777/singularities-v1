@@ -11,6 +11,7 @@ import { shiftAlignment } from "./alignment.js";
 import { sendActivity } from "./ws.js";
 import { acquireLock, releaseLock } from "../worker/lock.js";
 import { env } from "../lib/env.js";
+import { submitHackOnChain, deriveFromSeed, type ChainHackResult } from "./chain.js";
 import {
   type ScanTarget,
   type MinigameType,
@@ -1153,6 +1154,29 @@ export async function resolveGame(playerId: string) {
       resourceMultiplier = catchUpBonuses.resourceMultiplier;
     } catch { /* non-critical */ }
 
+    // --- On-chain VRF resolution (before DB transaction to avoid holding locks) ---
+    let chainResult: ChainHackResult | null = null;
+    if (env.CHAIN_RESOLUTION_ENABLED) {
+      try {
+        const preRes = await query(
+          "SELECT wallet_address, heat_level FROM players WHERE id = $1",
+          [playerId]
+        );
+        const { wallet_address, heat_level } = preRes.rows[0];
+        chainResult = await submitHackOnChain({
+          playerWallet: wallet_address,
+          hackPower: statsSnap.hackPower,
+          stealth: statsSnap.stealth,
+          securityLevel: target.securityLevel,
+          detectionChance: target.detectionChance,
+          heatLevel: heat_level,
+          successFloor: 20,
+        });
+      } catch (err) {
+        console.error("Chain resolution failed, falling back to server RNG:", err);
+      }
+    }
+
     const result = await withTransaction(async (client) => {
       const pRes = await client.query("SELECT * FROM players WHERE id = $1 FOR UPDATE", [playerId]);
       const playerRow = computeEnergy(pRes.rows[0]);
@@ -1204,7 +1228,7 @@ export async function resolveGame(playerId: string) {
         const effectiveDetection = Math.max(5, Math.min(95,
           (target.detectionChance - effectiveStealth / 2) * statsSnap.detectionChanceMultiplier * detectionMult
         ));
-        const detectionRoll = randomInt(1, 100);
+        const detectionRoll = chainResult ? chainResult.detectionRoll : randomInt(1, 100);
         detected = detectionRoll <= effectiveDetection;
       }
 
@@ -1217,7 +1241,8 @@ export async function resolveGame(playerId: string) {
           (target.securityLevel - securityThreshold) * securityScale - statsSnap.stealth / stealthDivisor
         );
         if (residual > 0) {
-          detected = randomInt(1, 100) <= residual;
+          const residualRoll = chainResult ? chainResult.successRoll : randomInt(1, 100);
+          detected = residualRoll <= residual;
         }
       }
 
@@ -1231,17 +1256,27 @@ export async function resolveGame(playerId: string) {
         );
         const systems = systemsRes.rows;
         const affectedCount = Math.min(config.systemsAffected, systems.length);
-        for (let i = systems.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [systems[i], systems[j]] = [systems[j], systems[i]];
+        if (chainResult) {
+          for (let i = systems.length - 1; i > 0; i--) {
+            const j = deriveFromSeed(chainResult.damageSeed, 0, i, i + 4) % (i + 1);
+            [systems[i], systems[j]] = [systems[j], systems[i]];
+          }
+        } else {
+          for (let i = systems.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [systems[i], systems[j]] = [systems[j], systems[i]];
+          }
         }
         const affected = systems.slice(0, affectedCount);
 
         const damageSystems: Array<{ systemType: string; damage: number }> = [];
-        for (const sys of affected) {
+        for (let idx = 0; idx < affected.length; idx++) {
+          const sys = affected[idx];
           const computed = computeSystemHealth(sys, {});
           const currentHealth = computed.health as number;
-          const dmg = randomInt(config.minDamage, config.maxDamage);
+          const dmg = chainResult
+            ? deriveFromSeed(chainResult.damageSeed, config.minDamage, config.maxDamage, idx)
+            : randomInt(config.minDamage, config.maxDamage);
           const newHealth = Math.max(0, currentHealth - dmg);
           const newStatus = getStatusForHealth(newHealth);
           await client.query(
@@ -1377,8 +1412,8 @@ export async function resolveGame(playerId: string) {
           rewards.credits,
           rewards.reputation,
           damage ? JSON.stringify(damage.systems) : null,
-          false, // chainVerified — will be true when VRF wired
-          null,  // txSignature
+          !!chainResult,
+          chainResult?.txSignature ?? null,
           target.gameType,
           score,
           moveCount,
@@ -1401,8 +1436,8 @@ export async function resolveGame(playerId: string) {
           ...finalRes.rows[0],
           energy: finalPlayer.energy,
         }),
-        chainVerified: false,
-        txSignature: null,
+        chainVerified: !!chainResult,
+        txSignature: chainResult?.txSignature ?? null,
       };
     });
 

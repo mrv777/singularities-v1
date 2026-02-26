@@ -28,13 +28,18 @@
     "sim:exploits": "node --import tsx src/simulations/exploitDetectionSimulation.ts",
     "sim:worldEvents": "node --import tsx src/simulations/worldEventSimulation.ts",
     "sim:ice": "node --import tsx src/simulations/iceBreakerSimulation.ts",
-    "sim:all": "set -e; pnpm -C ../shared build; pnpm run sim:progression; pnpm run sim:economy; pnpm run sim:day1; pnpm run sim:bots; pnpm run sim:health; pnpm run sim:newplayer; pnpm run sim:energy; pnpm run sim:pvp; pnpm run sim:modules; pnpm run sim:death; pnpm run sim:decisions; pnpm run sim:modifiers; pnpm run sim:catchup; pnpm run sim:endgame; pnpm run sim:exploits; pnpm run sim:worldEvents; pnpm run sim:ice"
+    "sim:all": "set -e; pnpm -C ../shared build; pnpm run sim:progression; pnpm run sim:economy; pnpm run sim:day1; pnpm run sim:bots; pnpm run sim:health; pnpm run sim:newplayer; pnpm run sim:energy; pnpm run sim:pvp; pnpm run sim:modules; pnpm run sim:death; pnpm run sim:decisions; pnpm run sim:modifiers; pnpm run sim:catchup; pnpm run sim:endgame; pnpm run sim:exploits; pnpm run sim:worldEvents; pnpm run sim:ice",
+    "setup:solana": "tsx scripts/setup-solana.ts"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.32.1",
     "@fastify/cors": "^11.0.0",
     "@fastify/jwt": "^9.0.0",
     "@fastify/websocket": "^11.0.0",
+    "@metaplex-foundation/mpl-core": "^1.7.0",
+    "@metaplex-foundation/umi": "^1.5.1",
+    "@metaplex-foundation/umi-bundle-defaults": "^1.5.1",
+    "@noble/hashes": "^1.8.0",
     "@singularities/shared": "workspace:*",
     "@solana/web3.js": "^1.98.4",
     "bs58": "^6.0.0",
@@ -42,6 +47,7 @@
     "fastify": "^5.2.0",
     "ioredis": "^5.4.0",
     "pg": "^8.13.0",
+    "sharp": "^0.34.5",
     "tweetnacl": "^1.0.3"
   },
   "devDependencies": {

@@ -7,6 +7,9 @@ import type {
   HealthResponse,
   RegisterRequest,
   RegisterResponse,
+  ConfirmMintRequest,
+  ConfirmMintResponse,
+  MintPriceResponse,
   ScanResponse,
   HackRequest,
   HackResult,
@@ -154,12 +157,23 @@ class ApiClient {
     return this.fetch<PlayerResponse>("/player/me");
   }
 
-  // Registration
+  // Registration (two-step mint flow)
   register(data: RegisterRequest) {
     return this.fetch<RegisterResponse>("/players/register", {
       method: "POST",
       body: JSON.stringify(data),
     });
+  }
+
+  confirmMint(data: ConfirmMintRequest) {
+    return this.fetch<ConfirmMintResponse>("/players/confirm-mint", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  getMintPrice() {
+    return this.fetch<MintPriceResponse>("/mint-price");
   }
 
   // Scanner

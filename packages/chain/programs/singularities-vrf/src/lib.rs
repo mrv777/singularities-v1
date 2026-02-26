@@ -1,6 +1,5 @@
 use anchor_lang::prelude::*;
-use ephemeral_rollups_sdk::anchor::delegate;
-use ephemeral_rollups_sdk::cpi::delegate_account;
+use ephemeral_rollups_sdk::cpi::{delegate_account, DelegateAccounts, DelegateConfig};
 use ephemeral_vrf_sdk::anchor::vrf;
 use ephemeral_vrf_sdk::instructions::{create_request_randomness_ix, RequestRandomnessParams};
 use ephemeral_vrf_sdk::types::SerializableAccountMeta;
@@ -11,15 +10,13 @@ pub mod state;
 use errors::SingularitiesError;
 use state::HackSession;
 
-// Replace after `anchor build` generates the real program ID
-declare_id!("11111111111111111111111111111111");
+declare_id!("A6Jmogct56jdyd7MGygTSvzu7f4eJgYSXiTAGBaDGw4S");
 
 pub const HACK_SEED: &[u8] = b"hack";
 
 /// Base chance constant — mirrors SCANNER_BALANCE.hackSuccess.baseChance
 const BASE_CHANCE: i16 = 58;
 
-#[delegate]
 #[program]
 pub mod singularities_vrf {
     use super::*;
@@ -78,17 +75,21 @@ pub mod singularities_vrf {
         let pda_seeds: &[&[u8]] = &[HACK_SEED, player_wallet.as_ref(), &nonce_bytes];
 
         delegate_account(
-            &ctx.accounts.payer,
-            &ctx.accounts.hack_session,
-            &ctx.accounts.owner_program,
-            &ctx.accounts.buffer,
-            &ctx.accounts.delegation_record,
-            &ctx.accounts.delegate_account_seeds,
-            &ctx.accounts.delegation_program,
-            &ctx.accounts.system_program,
+            DelegateAccounts {
+                payer: &ctx.accounts.payer,
+                pda: &ctx.accounts.hack_session.to_account_info(),
+                owner_program: &ctx.accounts.owner_program,
+                buffer: &ctx.accounts.buffer,
+                delegation_record: &ctx.accounts.delegation_record,
+                delegation_metadata: &ctx.accounts.delegate_account_seeds,
+                delegation_program: &ctx.accounts.delegation_program,
+                system_program: &ctx.accounts.system_program,
+            },
             pda_seeds,
-            0,     // unlimited delegation lifetime
-            30000, // 30s commit interval
+            DelegateConfig {
+                commit_frequency_ms: 30000,
+                validator: None,
+            },
         )?;
 
         msg!("Hack session delegated to ER");

@@ -7,7 +7,8 @@ interface OnChainBadgeProps {
 const EXPLORER_BASE = "https://explorer.solana.com/tx";
 
 export function OnChainBadge({ txSignature }: OnChainBadgeProps) {
-  const url = `${EXPLORER_BASE}/${txSignature}?cluster=devnet`;
+  const cluster = import.meta.env.VITE_SOLANA_NETWORK;
+  const url = `${EXPLORER_BASE}/${txSignature}${cluster && cluster !== "mainnet-beta" ? `?cluster=${cluster}` : ""}`;
 
   return (
     <a

@@ -23,8 +23,8 @@ export const env = {
     "postgresql://singularities:singularities@localhost:5432/singularities",
   REDIS_URL: process.env.REDIS_URL ?? "redis://localhost:6379",
   SOLANA_RPC_URL:
-    process.env.SOLANA_RPC_URL ?? "https://api.devnet.solana.com",
-  SOLANA_NETWORK: process.env.SOLANA_NETWORK ?? "devnet",
+    process.env.SOLANA_RPC_URL ?? "https://api.mainnet-beta.solana.com",
+  SOLANA_NETWORK: process.env.SOLANA_NETWORK ?? "mainnet-beta",
   JWT_SECRET: process.env.JWT_SECRET ?? "change-me-in-production",
   PORT: Number(process.env.PORT ?? 3001),
   CORS_ORIGIN: process.env.CORS_ORIGIN ?? "http://localhost:5173",
@@ -35,6 +35,11 @@ export const env = {
   PROGRAM_ID: process.env.PROGRAM_ID ?? "",
   SERVER_KEYPAIR_PATH:
     process.env.SERVER_KEYPAIR_PATH ?? "./server-keypair.json",
+  TREASURY_WALLET_ADDRESS: process.env.TREASURY_WALLET_ADDRESS ?? "",
+  COLLECTION_ADDRESS: process.env.COLLECTION_ADDRESS ?? "",
+  MINT_PRICE_USD: Number(process.env.MINT_PRICE_USD ?? 10),
+  NFT_METADATA_BASE_URL:
+    process.env.NFT_METADATA_BASE_URL ?? "http://localhost:3001",
   ADMIN_ENABLED: process.env.ADMIN_ENABLED === "true",
   ADMIN_PLAYER_IDS: process.env.ADMIN_PLAYER_IDS ?? "",
   ADMIN_WALLET_ADDRESSES: process.env.ADMIN_WALLET_ADDRESSES ?? "",

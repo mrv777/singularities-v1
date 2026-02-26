@@ -10,6 +10,7 @@ import {
   DEATH_TEMPLATES,
 } from "@singularities/shared";
 import { broadcastSystem } from "./ws.js";
+import { burnNft } from "./nft.js";
 
 interface CarryoverModuleRecord {
   moduleId: string;
@@ -113,11 +114,25 @@ export async function executeDeath(playerId: string, outerClient?: TxClient): Pr
       [walletAddress, guaranteedModuleId, JSON.stringify(recoveredModules)]
     );
 
-    // NFT burn stub — TODO: real Metaplex burn when real minting is added
     const aiName = player.ai_name as string;
+    const mintAddress = player.mint_address as string | null;
     const deathNarrative = fillTemplate(pickTemplate(DEATH_TEMPLATES), { name: aiName });
-    console.log(`[death] ${deathNarrative}\n  Player ${playerId} (wallet: ${walletAddress}) died. NFT burn would happen here.`);
+    console.log(`[death] ${deathNarrative}\n  Player ${playerId} (wallet: ${walletAddress}) died.`);
     broadcastSystem(`${aiName} has been terminated. Systems corrupted beyond recovery.`);
+
+    // Burn the NFT on-chain
+    if (mintAddress && !mintAddress.startsWith("mock_mint_")) {
+      try {
+        await burnNft(mintAddress);
+        console.log(`[death] NFT ${mintAddress} burned successfully.`);
+      } catch (err) {
+        console.error(`[death] NFT burn failed for ${mintAddress}, queuing for retry:`, err);
+        await client.query(
+          `INSERT INTO pending_nft_burns (player_id, mint_address) VALUES ($1, $2)`,
+          [playerId, mintAddress]
+        );
+      }
+    }
   };
 
   if (outerClient) {

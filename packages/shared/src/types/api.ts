@@ -66,13 +66,32 @@ export interface PlayerResponse {
   activeModifier: ModifierDefinition | null;
 }
 
-// Registration
+// Registration (two-step mint flow)
 export interface RegisterRequest {
   aiName: string;
 }
 
 export interface RegisterResponse {
+  serializedTx: string;
+  mintAddress: string;
+  mintPriceLamports: number;
+  mintPriceSol: number;
+}
+
+export interface ConfirmMintRequest {
+  signedTx: string;
+  mintAddress: string;
+}
+
+export interface ConfirmMintResponse {
   player: Player;
+  txSignature: string;
+}
+
+export interface MintPriceResponse {
+  lamports: number;
+  sol: number;
+  usd: number;
 }
 
 // Scanner

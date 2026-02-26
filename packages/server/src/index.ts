@@ -23,6 +23,7 @@ import { seasonRoutes } from "./routes/seasons.js";
 import { adminRoutes } from "./routes/admin.js";
 import { iceBreakerRoutes } from "./routes/iceBreaker.js";
 import { daemonForgeRoutes } from "./routes/daemonForge.js";
+import { nftRoutes } from "./routes/nft.js";
 import { wsRoutes } from "./routes/ws.js";
 import { startWorker, stopWorker } from "./worker/index.js";
 
@@ -74,6 +75,7 @@ await app.register(seasonRoutes);
 await app.register(adminRoutes);
 await app.register(iceBreakerRoutes);
 await app.register(daemonForgeRoutes);
+await app.register(nftRoutes);
 await app.register(wsRoutes);
 
 // Start

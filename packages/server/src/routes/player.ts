@@ -16,6 +16,9 @@ import { getCarryoverForWallet, processRebirth } from "../services/death.js";
 import { computeSystemHealth } from "../services/maintenance.js";
 import { getActiveModifierEffects, getTodayModifier } from "../services/modifiers.js";
 import { materializePassiveIncome } from "../services/passive.js";
+import { buildMintTransaction, submitMintTransaction } from "../services/nft.js";
+import { getMintPriceLamports } from "../services/solPrice.js";
+import { generateNftImage } from "../services/nftImage.js";
 
 export async function playerRoutes(app: FastifyInstance) {
   // Get current player profile (protected)
@@ -94,7 +97,7 @@ export async function playerRoutes(app: FastifyInstance) {
     }
   );
 
-  // Register AI (mock mint)
+  // Register AI — Step 1: Build and return partially-signed mint transaction
   app.post(
     "/api/players/register",
     { preHandler: [authGuard] },
@@ -148,19 +151,114 @@ export async function playerRoutes(app: FastifyInstance) {
         });
       }
 
+      // Delete any stale pending mint for this player
+      await query("DELETE FROM pending_mints WHERE player_id = $1", [playerId]);
+
+      // Store name temporarily so confirm-mint can use it
+      await query("UPDATE players SET ai_name = $2 WHERE id = $1", [
+        playerId,
+        trimmed,
+      ]);
+
+      // Build the mint transaction
+      const { serializedTx, mintAddress } = await buildMintTransaction(
+        wallet,
+        trimmed,
+        "" // image URI resolved from metadata endpoint dynamically
+      );
+
+      // Get price for response
+      const price = await getMintPriceLamports();
+
+      // Store pending mint (90s expiry — blockhash lifetime)
+      await query(
+        `INSERT INTO pending_mints (player_id, mint_address, serialized_tx, expires_at)
+         VALUES ($1, $2, $3, NOW() + INTERVAL '90 seconds')`,
+        [playerId, mintAddress, serializedTx]
+      );
+
+      return {
+        serializedTx,
+        mintAddress,
+        mintPriceLamports: price.lamports,
+        mintPriceSol: price.sol,
+      };
+    }
+  );
+
+  // Register AI — Step 2: Submit player-signed transaction and finalize registration
+  app.post(
+    "/api/players/confirm-mint",
+    { preHandler: [authGuard] },
+    async (request, reply) => {
+      const { sub: playerId, wallet } = request.user as AuthPayload;
+      const { signedTx, mintAddress } = request.body as {
+        signedTx: string;
+        mintAddress: string;
+      };
+
+      if (!signedTx || !mintAddress) {
+        return reply.code(400).send({
+          error: "Validation",
+          message: "signedTx and mintAddress are required",
+          statusCode: 400,
+        });
+      }
+
+      // Look up pending mint
+      const pendingRes = await query(
+        "SELECT * FROM pending_mints WHERE player_id = $1 AND mint_address = $2",
+        [playerId, mintAddress]
+      );
+      if (pendingRes.rows.length === 0) {
+        return reply.code(400).send({
+          error: "Not Found",
+          message: "No pending mint found (may have expired)",
+          statusCode: 400,
+        });
+      }
+
+      const pending = pendingRes.rows[0];
+      if (new Date(pending.expires_at as string) < new Date()) {
+        await query("DELETE FROM pending_mints WHERE id = $1", [pending.id]);
+        return reply.code(400).send({
+          error: "Expired",
+          message: "Mint transaction expired, please try again",
+          statusCode: 400,
+        });
+      }
+
+      // Submit to Solana
+      let txSignature: string;
+      try {
+        txSignature = await submitMintTransaction(signedTx, mintAddress, wallet);
+      } catch (err: any) {
+        return reply.code(500).send({
+          error: "Chain Error",
+          message: `Failed to confirm mint on Solana: ${err.message}`,
+          statusCode: 500,
+        });
+      }
+
+      // Generate the NFT image now that mint is confirmed
+      const existing = await query("SELECT * FROM players WHERE id = $1", [
+        playerId,
+      ]);
+      const aiName = (existing.rows[0]?.ai_name as string) || "AI";
       const wasDead = !(existing.rows[0].is_alive as boolean);
 
-      // Generate placeholder mint
-      const mintAddress = `mock_mint_${wallet.slice(0, 8)}_${Date.now()}`;
+      // Fire and forget image generation (non-blocking)
+      generateNftImage(aiName, mintAddress).catch((err) =>
+        console.error("[nft] Image generation failed:", err)
+      );
 
-      // Update player — includes full state reset (harmless for fresh, necessary for rebirth)
+      // Finalize player state
       await query(
         `UPDATE players
-         SET ai_name = $2,
-             mint_address = $3,
-             credits = $4,
-             data = $5,
-             processing_power = $6,
+         SET mint_address = $2,
+             credits = $3,
+             data = $4,
+             processing_power = $5,
              is_alive = true,
              level = 1,
              xp = 0,
@@ -175,7 +273,6 @@ export async function playerRoutes(app: FastifyInstance) {
          WHERE id = $1`,
         [
           playerId,
-          trimmed,
           mintAddress,
           STARTING_RESOURCES.credits,
           STARTING_RESOURCES.data,
@@ -223,11 +320,17 @@ export async function playerRoutes(app: FastifyInstance) {
         });
       }
 
+      // Clean up pending mint
+      await query("DELETE FROM pending_mints WHERE player_id = $1", [playerId]);
+
       const updated = await query("SELECT * FROM players WHERE id = $1", [
         playerId,
       ]);
 
-      return { player: mapPlayerRow(computeEnergy(updated.rows[0])) };
+      return {
+        player: mapPlayerRow(computeEnergy(updated.rows[0])),
+        txSignature,
+      };
     }
   );
 

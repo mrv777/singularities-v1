@@ -17,6 +17,7 @@ import { NextActionHint } from "@/components/tutorial/NextActionHint";
 import { TUTORIAL_HIGHLIGHT_NODE, type TutorialStep } from "@singularities/shared";
 import { ModalSkeleton } from "@/components/ui/ModalSkeleton";
 import { useState, useEffect, lazy, Suspense, type ComponentType } from "react";
+import { useWallet } from "@solana/wallet-adapter-react";
 import { api } from "@/lib/api";
 import { wsManager } from "@/lib/ws";
 import { useChatStore } from "@/stores/chat";
@@ -74,29 +75,72 @@ export const Route = createFileRoute("/game")({
   component: GamePage,
 });
 
+type MintStage = "idle" | "signing" | "confirming" | "error";
+
 function RegistrationForm() {
   const { setPlayer } = useAuthStore();
   const initTutorial = useTutorialStore((s) => s.initFromPlayer);
   const queryClient = useQueryClient();
+  const wallet = useWallet();
   const [aiName, setAiName] = useState("");
   const [error, setError] = useState("");
-  const [submitting, setSubmitting] = useState(false);
+  const [stage, setStage] = useState<MintStage>("idle");
+  const [mintPrice, setMintPrice] = useState<{ sol: number; usd: number } | null>(null);
+
+  // Fetch mint price on mount
+  useEffect(() => {
+    api.getMintPrice().then((p) => setMintPrice({ sol: p.sol, usd: p.usd })).catch(() => {});
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    setSubmitting(true);
+
+    if (!wallet.signTransaction) {
+      setError("Wallet does not support transaction signing");
+      return;
+    }
+
+    setStage("signing");
     try {
-      const result = await api.register({ aiName: aiName.trim() });
-      setPlayer(result.player);
-      initTutorial(result.player.tutorialStep);
+      // Step 1: Get partially-signed transaction from server
+      const { serializedTx, mintAddress, mintPriceSol } = await api.register({
+        aiName: aiName.trim(),
+      });
+
+      // Step 2: Deserialize and sign with wallet
+      const txBytes = Uint8Array.from(atob(serializedTx), (c) => c.charCodeAt(0));
+      const { VersionedTransaction } = await import("@solana/web3.js");
+      const tx = VersionedTransaction.deserialize(txBytes);
+      const signedTx = await wallet.signTransaction(tx);
+
+      // Step 3: Submit signed transaction back to server
+      setStage("confirming");
+      const signedBytes = signedTx.serialize();
+      const signedBase64 = btoa(String.fromCharCode(...signedBytes));
+      const { player, txSignature } = await api.confirmMint({
+        signedTx: signedBase64,
+        mintAddress,
+      });
+
+      console.log(`[mint] NFT minted! tx: ${txSignature}`);
+      setPlayer(player);
+      initTutorial(player.tutorialStep);
       queryClient.invalidateQueries({ queryKey: ["player"] });
     } catch (err: any) {
       setError(err.message || "Registration failed");
-    } finally {
-      setSubmitting(false);
+      setStage("error");
     }
   };
+
+  const isSubmitting = stage === "signing" || stage === "confirming";
+
+  const stageLabel = {
+    idle: "ACTIVATE",
+    signing: "Approve in wallet...",
+    confirming: "Confirming on Solana...",
+    error: "RETRY",
+  }[stage];
 
   return (
     <motion.div
@@ -119,19 +163,37 @@ function RegistrationForm() {
             onChange={(e) => setAiName(e.target.value)}
             placeholder="Enter AI name..."
             maxLength={20}
+            disabled={isSubmitting}
             error={error || undefined}
           />
           <div className="text-text-muted text-[10px] -mt-3">
             2-20 characters, alphanumeric + spaces
           </div>
 
+          {mintPrice && (
+            <div className="text-center text-xs text-text-secondary border border-border-default rounded px-3 py-2 bg-bg-base">
+              Mint cost: ~{mintPrice.sol.toFixed(3)} SOL
+              <span className="text-text-muted ml-1">(~${mintPrice.usd.toFixed(2)})</span>
+            </div>
+          )}
+
           <CyberButton
             type="submit"
-            disabled={submitting || aiName.trim().length < 2}
+            disabled={isSubmitting || aiName.trim().length < 2 || !wallet.connected}
             className="w-full"
           >
-            {submitting ? "Initializing..." : "ACTIVATE"}
+            {stageLabel}
           </CyberButton>
+
+          {stage === "error" && (
+            <button
+              type="button"
+              onClick={() => { setStage("idle"); setError(""); }}
+              className="w-full text-xs text-text-muted hover:text-text-secondary text-center"
+            >
+              Reset
+            </button>
+          )}
         </form>
       </div>
     </motion.div>
