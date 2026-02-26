@@ -4,6 +4,8 @@ import {
   CATCH_UP_BASE,
   SEASON_DURATION_DAYS,
   SEASON_STIPEND,
+  SEASON_CARRYOVER_SHARE,
+  SEASON_REWARD_POOL_SHARE,
 } from "@singularities/shared";
 import type { Season, SeasonLeaderboardEntry } from "@singularities/shared";
 
@@ -80,7 +82,7 @@ export async function endSeason(adminEnded = false): Promise<void> {
     const topRes = await client.query(
       `SELECT id, reputation FROM players
        WHERE season_id = $1 AND is_alive = true
-       ORDER BY reputation DESC LIMIT 3`,
+       ORDER BY reputation DESC, updated_at ASC, id ASC LIMIT 3`,
       [season.id]
     );
 
@@ -148,6 +150,38 @@ export async function createSeason(name?: string): Promise<Season> {
        WHERE season_id IS NULL AND is_alive = true`,
       [s.id]
     );
+
+    // Seed carryover from the most recently paid-out season that hasn't
+    // had its carryover applied yet (covers the case where payouts ran
+    // before this season existed).
+    const carryoverRes = await client.query(
+      `SELECT srp.pool_lamports, srp.season_id
+       FROM season_reward_pool srp
+       WHERE srp.paid_out = true
+         AND srp.season_id < $1
+         AND NOT EXISTS (
+           SELECT 1 FROM season_reward_pool next_pool
+           WHERE next_pool.season_id = $1
+         )
+       ORDER BY srp.season_id DESC LIMIT 1`,
+      [s.id]
+    );
+
+    if (carryoverRes.rows.length > 0) {
+      const prevPoolLamports = Number(carryoverRes.rows[0].pool_lamports);
+      const carryoverAmount = Math.floor(prevPoolLamports * SEASON_CARRYOVER_SHARE);
+      if (carryoverAmount > 0) {
+        await client.query(
+          `INSERT INTO season_reward_pool (season_id, carryover_lamports, pool_lamports)
+           VALUES ($1, $2, $2)
+           ON CONFLICT (season_id) DO UPDATE
+             SET carryover_lamports = $2,
+                 pool_lamports = season_reward_pool.total_mint_revenue_lamports * $3 + $2,
+                 updated_at = NOW()`,
+          [s.id, carryoverAmount, SEASON_REWARD_POOL_SHARE]
+        );
+      }
+    }
 
     return s;
   });

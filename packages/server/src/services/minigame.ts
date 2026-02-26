@@ -1127,7 +1127,9 @@ function processNetworkRelinkMove(
 // ---------------------------------------------------------------------------
 
 export async function resolveGame(playerId: string) {
-  const token = await acquireLock(LOCK_KEY(playerId), 30_000);
+  // Use longer TTL when chain resolution may involve multiple Solana txs + VRF polling
+  const lockTtl = env.CHAIN_RESOLUTION_ENABLED ? 90_000 : 30_000;
+  const token = await acquireLock(LOCK_KEY(playerId), lockTtl);
   if (!token) throw new MinigameError("Operation in progress, try again", 409);
   try {
     const raw = await redis.get(GAME_KEY(playerId));
@@ -1138,6 +1140,15 @@ export async function resolveGame(playerId: string) {
       throw new MinigameError("Game already resolved", 400);
     }
     state.resolved = true;
+
+    // Persist resolved flag to Redis immediately so concurrent callers
+    // see it even if our lock expires during chain work
+    await redis.set(
+      GAME_KEY(playerId),
+      JSON.stringify(state),
+      "EX",
+      MINIGAME_BALANCE.gameStateRetentionSeconds
+    );
 
     // Compute score
     const score = computeScore(state);

@@ -16,6 +16,7 @@ import {
   SEASON_PRIZE_SPLITS,
 } from "@singularities/shared";
 import { getCurrentSeason } from "./seasons.js";
+import { acquireLock, releaseLock } from "../worker/lock.js";
 
 // ---------------------------------------------------------------------------
 // Solana helpers (reuse same lazy-singleton pattern from nft.ts)
@@ -135,89 +136,111 @@ export async function executePayouts(seasonId: number): Promise<{
   payouts: { rank: number; wallet: string; lamports: number; txSignature: string | null; status: string }[];
   carryoverCreated: number;
 }> {
-  const summary = await getRewardSummary(seasonId);
-  if (!summary) throw new Error("No reward pool found for this season");
-  if (summary.paidOut) throw new Error("Payouts already executed for this season");
+  // Distributed lock prevents concurrent payout attempts
+  const lockToken = await acquireLock(`season_payout:${seasonId}`, 120_000);
+  if (!lockToken) throw new Error("Payout already in progress for this season");
 
-  // Get top 3 winners from season_winners
-  const winnersRes = await query(
-    `SELECT sw.player_id, p.wallet_address,
-            (sw.trophy_metadata->>'rank')::int as rank
-     FROM season_winners sw
-     JOIN players p ON p.id = sw.player_id
-     WHERE sw.season_id = $1
-     ORDER BY rank ASC
-     LIMIT 3`,
-    [seasonId]
-  );
+  try {
+    // Atomically check + mark as paid_out before any transfers
+    const poolRow = await withTransaction(async (client) => {
+      const res = await client.query(
+        "SELECT * FROM season_reward_pool WHERE season_id = $1 FOR UPDATE",
+        [seasonId]
+      );
+      if (res.rows.length === 0) throw new Error("No reward pool found for this season");
+      if (res.rows[0].paid_out as boolean) throw new Error("Payouts already executed for this season");
 
-  if (winnersRes.rows.length === 0) {
-    throw new Error("No season winners found — end the season first");
-  }
+      await client.query(
+        "UPDATE season_reward_pool SET paid_out = true, updated_at = NOW() WHERE season_id = $1",
+        [seasonId]
+      );
+      return res.rows[0];
+    });
 
-  const conn = getConnection();
-  const treasury = getServerKeypair();
-  const payableAmount = Math.floor(summary.poolLamports * SEASON_PAYOUT_SHARE);
+    const poolLamports = Number(poolRow.pool_lamports);
 
-  const payoutResults: {
-    rank: number;
-    wallet: string;
-    lamports: number;
-    txSignature: string | null;
-    status: string;
-  }[] = [];
-
-  for (const winner of winnersRes.rows) {
-    const rank = winner.rank as number;
-    const splitIndex = rank - 1;
-    if (splitIndex >= SEASON_PRIZE_SPLITS.length) continue;
-
-    const amountLamports = Math.floor(payableAmount * SEASON_PRIZE_SPLITS[splitIndex]);
-    const wallet = winner.wallet_address as string;
-    const playerId = winner.player_id as string;
-
-    let txSignature: string | null = null;
-    let status = "pending";
-    let errorMessage: string | null = null;
-
-    try {
-      txSignature = await sendSolTransfer(treasury, wallet, amountLamports, conn);
-      status = "sent";
-    } catch (err: any) {
-      status = "failed";
-      errorMessage = err.message?.slice(0, 500) ?? "Unknown error";
-      console.error(`[seasonRewards] Payout failed for rank ${rank} (${wallet}):`, err);
-    }
-
-    await query(
-      `INSERT INTO season_payouts (season_id, rank, player_id, wallet_address, amount_lamports, tx_signature, status, error_message)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-       ON CONFLICT (season_id, rank) DO UPDATE
-         SET tx_signature = $6, status = $7, error_message = $8, updated_at = NOW()`,
-      [seasonId, rank, playerId, wallet, amountLamports, txSignature, status, errorMessage]
-    );
-
-    payoutResults.push({ rank, wallet, lamports: amountLamports, txSignature, status });
-  }
-
-  // Mark pool as paid out and create carryover for next season
-  const carryoverAmount = Math.floor(summary.poolLamports * SEASON_CARRYOVER_SHARE);
-
-  await withTransaction(async (client) => {
-    await client.query(
-      "UPDATE season_reward_pool SET paid_out = true, updated_at = NOW() WHERE season_id = $1",
+    // Get top 3 winners from season_winners
+    const winnersRes = await query(
+      `SELECT sw.player_id, p.wallet_address,
+              (sw.trophy_metadata->>'rank')::int as rank
+       FROM season_winners sw
+       JOIN players p ON p.id = sw.player_id
+       WHERE sw.season_id = $1
+       ORDER BY rank ASC
+       LIMIT 3`,
       [seasonId]
     );
 
-    // Seed next season's carryover (find the next season, or create placeholder)
-    const nextSeasonRes = await client.query(
+    if (winnersRes.rows.length === 0) {
+      throw new Error("No season winners found — end the season first");
+    }
+
+    const conn = getConnection();
+    const treasury = getServerKeypair();
+    const payableAmount = Math.floor(poolLamports * SEASON_PAYOUT_SHARE);
+
+    const payoutResults: {
+      rank: number;
+      wallet: string;
+      lamports: number;
+      txSignature: string | null;
+      status: string;
+    }[] = [];
+
+    for (const winner of winnersRes.rows) {
+      const rank = winner.rank as number;
+      const splitIndex = rank - 1;
+      if (splitIndex >= SEASON_PRIZE_SPLITS.length) continue;
+
+      const amountLamports = Math.floor(payableAmount * SEASON_PRIZE_SPLITS[splitIndex]);
+      const wallet = winner.wallet_address as string;
+      const playerId = winner.player_id as string;
+
+      // Skip if already sent (idempotent on retry)
+      const existingPayout = await query(
+        "SELECT status FROM season_payouts WHERE season_id = $1 AND rank = $2",
+        [seasonId, rank]
+      );
+      if (existingPayout.rows.length > 0 && existingPayout.rows[0].status === "sent") {
+        payoutResults.push({ rank, wallet, lamports: amountLamports, txSignature: null, status: "sent" });
+        continue;
+      }
+
+      let txSignature: string | null = null;
+      let status = "pending";
+      let errorMessage: string | null = null;
+
+      try {
+        txSignature = await sendSolTransfer(treasury, wallet, amountLamports, conn);
+        status = "sent";
+      } catch (err: any) {
+        status = "failed";
+        errorMessage = err.message?.slice(0, 500) ?? "Unknown error";
+        console.error(`[seasonRewards] Payout failed for rank ${rank} (${wallet}):`, err);
+      }
+
+      await query(
+        `INSERT INTO season_payouts (season_id, rank, player_id, wallet_address, amount_lamports, tx_signature, status, error_message)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+         ON CONFLICT (season_id, rank) DO UPDATE
+           SET tx_signature = $6, status = $7, error_message = $8, updated_at = NOW()`,
+        [seasonId, rank, playerId, wallet, amountLamports, txSignature, status, errorMessage]
+      );
+
+      payoutResults.push({ rank, wallet, lamports: amountLamports, txSignature, status });
+    }
+
+    // Create carryover for next season
+    const carryoverAmount = Math.floor(poolLamports * SEASON_CARRYOVER_SHARE);
+
+    const nextSeasonRes = await query(
       "SELECT id FROM seasons WHERE id > $1 ORDER BY id ASC LIMIT 1",
       [seasonId]
     );
 
     if (nextSeasonRes.rows.length > 0) {
       const nextSeasonId = nextSeasonRes.rows[0].id as number;
-      await client.query(
+      await query(
         `INSERT INTO season_reward_pool (season_id, carryover_lamports, pool_lamports)
          VALUES ($1, $2, $2)
          ON CONFLICT (season_id) DO UPDATE
@@ -228,9 +251,11 @@ export async function executePayouts(seasonId: number): Promise<{
       );
     }
     // If no next season yet, carryover will be applied when createSeason seeds the pool
-  });
 
-  return { payouts: payoutResults, carryoverCreated: carryoverAmount };
+    return { payouts: payoutResults, carryoverCreated: carryoverAmount };
+  } finally {
+    await releaseLock(`season_payout:${seasonId}`, lockToken);
+  }
 }
 
 // ---------------------------------------------------------------------------

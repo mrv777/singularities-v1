@@ -162,7 +162,7 @@ export async function playerRoutes(app: FastifyInstance) {
       ]);
 
       // Build the mint transaction
-      const { serializedTx, mintAddress } = await buildMintTransaction(
+      const { serializedTx, mintAddress, lastValidBlockHeight } = await buildMintTransaction(
         wallet,
         trimmed,
         "" // image URI resolved from metadata endpoint dynamically
@@ -173,9 +173,9 @@ export async function playerRoutes(app: FastifyInstance) {
 
       // Store pending mint (90s expiry — blockhash lifetime)
       await query(
-        `INSERT INTO pending_mints (player_id, mint_address, serialized_tx, expires_at)
-         VALUES ($1, $2, $3, NOW() + INTERVAL '90 seconds')`,
-        [playerId, mintAddress, serializedTx]
+        `INSERT INTO pending_mints (player_id, mint_address, serialized_tx, expires_at, mint_price_lamports, last_valid_block_height)
+         VALUES ($1, $2, $3, NOW() + INTERVAL '90 seconds', $4, $5)`,
+        [playerId, mintAddress, serializedTx, price.lamports, lastValidBlockHeight]
       );
 
       return {
@@ -229,10 +229,14 @@ export async function playerRoutes(app: FastifyInstance) {
         });
       }
 
-      // Submit to Solana
+      // Submit to Solana — validates that the signed tx matches the server-built tx
       let txSignature: string;
       try {
-        txSignature = await submitMintTransaction(signedTx, mintAddress, wallet);
+        txSignature = await submitMintTransaction(
+          signedTx,
+          pending.serialized_tx as string,
+          Number(pending.last_valid_block_height)
+        );
       } catch (err: any) {
         return reply.code(500).send({
           error: "Chain Error",
@@ -241,10 +245,12 @@ export async function playerRoutes(app: FastifyInstance) {
         });
       }
 
-      // Track mint revenue for season reward pool (fire and forget)
-      getMintPriceLamports()
-        .then(({ lamports }) => recordMintRevenue(lamports))
-        .catch((err) => console.error("[seasonRewards] Failed to record mint revenue:", err));
+      // Track mint revenue using the price locked at register time
+      const storedLamports = Number(pending.mint_price_lamports);
+      if (storedLamports > 0) {
+        recordMintRevenue(storedLamports)
+          .catch((err) => console.error("[seasonRewards] Failed to record mint revenue:", err));
+      }
 
       // Generate the NFT image now that mint is confirmed
       const existing = await query("SELECT * FROM players WHERE id = $1", [

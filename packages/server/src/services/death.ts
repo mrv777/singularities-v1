@@ -57,6 +57,8 @@ export async function checkDeath(playerId: string, client?: TxClient): Promise<b
  * Execute death: mark dead, calculate carryover, store for rebirth.
  */
 export async function executeDeath(playerId: string, outerClient?: TxClient): Promise<void> {
+  let mintToBurn: string | null = null;
+
   const fn = async (client: TxClient) => {
     // Lock player
     const playerRes = await client.query(
@@ -120,18 +122,14 @@ export async function executeDeath(playerId: string, outerClient?: TxClient): Pr
     console.log(`[death] ${deathNarrative}\n  Player ${playerId} (wallet: ${walletAddress}) died.`);
     broadcastSystem(`${aiName} has been terminated. Systems corrupted beyond recovery.`);
 
-    // Burn the NFT on-chain
+    // Queue burn inside transaction; actual RPC call happens after commit
     if (mintAddress && !mintAddress.startsWith("mock_mint_")) {
-      try {
-        await burnNft(mintAddress);
-        console.log(`[death] NFT ${mintAddress} burned successfully.`);
-      } catch (err) {
-        console.error(`[death] NFT burn failed for ${mintAddress}, queuing for retry:`, err);
-        await client.query(
-          `INSERT INTO pending_nft_burns (player_id, mint_address) VALUES ($1, $2)`,
-          [playerId, mintAddress]
-        );
-      }
+      await client.query(
+        `INSERT INTO pending_nft_burns (player_id, mint_address) VALUES ($1, $2)
+         ON CONFLICT DO NOTHING`,
+        [playerId, mintAddress]
+      );
+      mintToBurn = mintAddress;
     }
   };
 
@@ -139,6 +137,21 @@ export async function executeDeath(playerId: string, outerClient?: TxClient): Pr
     await fn(outerClient);
   } else {
     await withTransaction(fn);
+  }
+
+  // Attempt burn outside the DB transaction to avoid holding row locks during RPC.
+  // On success, remove from retry queue. On failure, the retry worker handles it.
+  if (mintToBurn) {
+    try {
+      await burnNft(mintToBurn);
+      console.log(`[death] NFT ${mintToBurn} burned successfully.`);
+      await query(
+        "DELETE FROM pending_nft_burns WHERE mint_address = $1",
+        [mintToBurn]
+      );
+    } catch (err) {
+      console.error(`[death] NFT burn failed for ${mintToBurn}, left in retry queue:`, err);
+    }
   }
 }
 

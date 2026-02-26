@@ -92,7 +92,7 @@ export async function buildMintTransaction(
   playerWallet: string,
   aiName: string,
   _imageUri: string
-): Promise<{ serializedTx: string; mintAddress: string }> {
+): Promise<{ serializedTx: string; mintAddress: string; lastValidBlockHeight: number }> {
   const conn = getConnection();
   const server = getServerKeypair();
   const payer = new PublicKey(playerWallet);
@@ -165,7 +165,7 @@ export async function buildMintTransaction(
   }
 
   // Build final combined transaction with player as payer
-  const { blockhash } = await conn.getLatestBlockhash("confirmed");
+  const { blockhash, lastValidBlockHeight } = await conn.getLatestBlockhash("confirmed");
 
   const combinedMessage = new TransactionMessage({
     payerKey: payer,
@@ -181,7 +181,7 @@ export async function buildMintTransaction(
 
   const serializedTx = Buffer.from(combinedTx.serialize()).toString("base64");
 
-  return { serializedTx, mintAddress };
+  return { serializedTx, mintAddress, lastValidBlockHeight };
 }
 
 // ---------------------------------------------------------------------------
@@ -190,16 +190,30 @@ export async function buildMintTransaction(
 
 export async function submitMintTransaction(
   signedTxBase64: string,
-  _expectedMint: string,
-  _expectedPayer: string
+  expectedSerializedTx: string,
+  lastValidBlockHeight: number
 ): Promise<string> {
   const conn = getConnection();
-  const txBytes = Buffer.from(signedTxBase64, "base64");
-  const tx = VersionedTransaction.deserialize(txBytes);
 
-  const sig = await conn.sendTransaction(tx, { skipPreflight: false });
-  const { blockhash, lastValidBlockHeight } =
-    await conn.getLatestBlockhash("confirmed");
+  // Validate: the submitted tx message must match the server-built tx message.
+  // The client adds their signature but cannot alter instructions/accounts.
+  const submittedBytes = Buffer.from(signedTxBase64, "base64");
+  const submittedTx = VersionedTransaction.deserialize(submittedBytes);
+  const expectedBytes = Buffer.from(expectedSerializedTx, "base64");
+  const expectedTx = VersionedTransaction.deserialize(expectedBytes);
+
+  const submittedMsg = Buffer.from(submittedTx.message.serialize());
+  const expectedMsg = Buffer.from(expectedTx.message.serialize());
+
+  if (!submittedMsg.equals(expectedMsg)) {
+    throw new Error("Signed transaction does not match the expected mint transaction");
+  }
+
+  const sig = await conn.sendTransaction(submittedTx, { skipPreflight: false });
+
+  // Use the blockhash from the tx itself + the stored lastValidBlockHeight
+  // for correct confirmation timing
+  const blockhash = submittedTx.message.recentBlockhash;
   await conn.confirmTransaction(
     { signature: sig, blockhash, lastValidBlockHeight },
     "confirmed"
